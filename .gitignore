@@ -1,0 +1,10 @@
+parser
+parser.output
+parser.tab.c
+parser.tab.h
+
+src/lexer
+*.exe
+lex.yy.c
+
+test/output/*
