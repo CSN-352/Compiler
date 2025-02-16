@@ -2,7 +2,7 @@
 
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
 
-SRC="$BASE_DIR/src/lexer"
+SRC="$BASE_DIR/src/parser.exe"
 TEST_DIR="$BASE_DIR/test/lexer_tests"
 OUTPUT_DIR="$BASE_DIR/test/output"
 
@@ -36,7 +36,7 @@ for test_file in $test_files; do
     printf "Running test: %-*s" "$COL_WIDTH" "$test_name"
 
     # Run the test, capturing stdout and stderr separately
-    "$SRC" < "$test_file" > "$output_file" 2> "${output_file%.txt}.err"
+    "$SRC" "$test_file" > "$output_file" 2> "${output_file%.txt}.err"
 
     # Check if there were any errors
     if [[ -s "${output_file%.txt}.err" ]]; then

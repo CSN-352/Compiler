@@ -12,7 +12,7 @@ LEX = lex
 YACC = bison
 YFLAGS = -d -v
 CC = gcc
-CFLAGS = -ll
+CFLAGS = -lfl
 
 # # Initial cleaning
 # clean:
@@ -25,13 +25,20 @@ all: $(EXECUTABLE)
 $(YACC_C_FILE) $(YACC_H_FILE): $(YACC_FILE)
 	$(YACC) $(YFLAGS) $(YACC_FILE)
 
-# Generate lex.yy.c from lexer.l 
-$(LEX_C_FILE): $(LEX_FILE)
+# Generate lex.yy.c from lexer.l (depends on parser.tab.h)
+$(LEX_C_FILE): $(LEX_FILE) $(YACC_H_FILE)
 	$(LEX) $(LEX_FILE)
 
-# Compile lex.yy.c into the final executable
-$(EXECUTABLE): $(LEX_C_FILE) $(YACC_C_FILE)
-	$(CC) -o $(EXECUTABLE) $(LEX_C_FILE) $(YACC_C_FILE) $(CFLAGS)
+# Compile lex.yy.c and parser.tab.c separately, then link them
+lex.yy.o: $(LEX_C_FILE)
+	$(CC) -c $(LEX_C_FILE) $(CFLAGS)
+
+parser.tab.o: $(YACC_C_FILE)
+	$(CC) -c $(YACC_C_FILE) $(CFLAGS)
+
+# Link object files into the final executable
+$(EXECUTABLE): lex.yy.o parser.tab.o
+	$(CC) -o $(EXECUTABLE) lex.yy.o parser.tab.o $(CFLAGS)
 
 clean:
-	rm -rf $(LEX_C_FILE) $(EXECUTABLE) $(YACC_C_FILE) $(YACC_H_FILE) $(YACC_D_FILE)
+	rm -rf $(LEX_C_FILE) $(EXECUTABLE) $(YACC_C_FILE) $(YACC_H_FILE) $(YACC_D_FILE) *.o
