@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// External declarations
+// External declarations 
 extern int yylex();
 extern int yyparse();
 extern FILE *yyin;
