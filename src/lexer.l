@@ -6,6 +6,7 @@
 
 int line_no = 1;  // Line number tracker
 int has_error=0;
+int is_typedef=0;
 
 // Symbol table structure
 #define MAX_SYMBOLS 10000
@@ -59,6 +60,16 @@ void printSymbolTable() {
 
     printf("+----------------------+----------------------+\n");
 }
+
+int check_type_name(const char* lexeme) {  
+    for (int i = 0; i < symbolCount; i++) {  
+        if (strcmp(symbolTable[i].token, "type_name") == 0 && strcmp(symbolTable[i].lexeme, lexeme) == 0) {  
+            return 1;
+        }  
+    }  
+    return 0;
+}  
+
 
 // Function to check identifier length
 void checkIdentifierLength(const char *identifier) {
@@ -205,7 +216,7 @@ MULTI_LINE_COMMENT  "/*"[^*]*"*"+[^/]*"/"
 {STATIC}              { addToSymbolTable(yytext, "keyword"); return(STATIC); }
 {STRUCT}              { addToSymbolTable(yytext, "keyword"); return(STRUCT); }
 {SWITCH}              { addToSymbolTable(yytext, "keyword"); return(SWITCH); }
-{TYPEDEF}             { addToSymbolTable(yytext, "keyword"); return(TYPEDEF); }
+{TYPEDEF}             { addToSymbolTable(yytext, "keyword"); is_typedef=1; return(TYPEDEF); }
 {UNION}               { addToSymbolTable(yytext, "keyword"); return(UNION); }
 {UNSIGNED}            { addToSymbolTable(yytext, "keyword"); return(UNSIGNED); }
 {VOID}                { addToSymbolTable(yytext, "keyword"); return(VOID); }
@@ -218,7 +229,7 @@ MULTI_LINE_COMMENT  "/*"[^*]*"*"+[^/]*"/"
 {PROTECTED}           { addToSymbolTable(yytext, "keyword"); return(PROTECTED); }
 {ASSEMBLY_DIRECTIVE}  { addToSymbolTable(yytext, "keyword"); return(ASSEMBLY_DIRECTIVE); }
 
-{IDENTIFIER}   { checkIdentifierLength(yytext); addToSymbolTable(yytext, "identifier"); return(IDENTIFIER); }
+{IDENTIFIER}   { checkIdentifierLength(yytext); if(check_type_name(yytext)){addToSymbolTable(yytext, "type_name");return(TYPE_NAME);} if(is_typedef==1){is_typedef=0;addToSymbolTable(yytext, "type_name");return(TYPE_NAME);} addToSymbolTable(yytext, "identifier"); return(IDENTIFIER); }
 {H_CONSTANT}   { addToSymbolTable(yytext, "hexadecimal_constant"); return(H_CONSTANT); }
 {O_CONSTANT}   { addToSymbolTable(yytext, "octal_constant"); return(O_CONSTANT); }
 {I_CONSTANT}   { addToSymbolTable(yytext, "integer_constant"); return(I_CONSTANT); }

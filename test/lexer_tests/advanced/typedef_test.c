@@ -1,2 +1,2 @@
 typedef unsigned long int ULI;
-ULI number = 1000000; 
+ULI number = 1000000;  

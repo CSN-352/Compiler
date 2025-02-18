@@ -3,5 +3,7 @@ void counter() {
     count++;
     printf("%d\n", count);
 }
-counter(); 
-counter();
+int main(){
+    counter(); 
+    counter();
+}

@@ -1,4 +1,7 @@
-int y = 5;
-do {
-    y--;
-} while (y > 0);
+int main(){
+    int y = 5;
+    do {
+        y--;
+    } while (y > 0); 
+    return 0;
+}

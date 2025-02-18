@@ -8,6 +8,7 @@
 extern int yylex();
 extern int yyparse();
 extern int yylineno;
+extern YYSTYPE yylval;
 extern FILE *yyin;
 
 void yyerror(const char *msg);
@@ -15,18 +16,23 @@ void yyerror(const char *msg);
 %} 
 
 /* Token definitions */
-%debug
+%union {
+    int intval;
+    char* strval;
+}
 %token AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED
 %token VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
-%token IDENTIFIER I_CONSTANT H_CONSTANT O_CONSTANT F_CONSTANT STRING_LITERAL C_CONSTANT
+%token IDENTIFIER TYPE_NAME I_CONSTANT H_CONSTANT O_CONSTANT F_CONSTANT STRING_LITERAL C_CONSTANT
 %token ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token RIGHT_OP LEFT_OP INC_OP DEC_OP INHERITANCE_OP PTR_OP AND_OP OR_OP LE_OP GE_OP EQ_OP NE_OP XOR_OP
 %token SEMICOLON LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET COMMA COLON EQ LEFT_BRACKET RIGHT_BRACKET LEFT_THIRD_BRACKET RIGHT_THIRD_BRACKET
 %token DOT LOGICAL_AND NOT LOGICAL_NOT MINUS PLUS MULTIPLY DIVIDE MOD LESS GREATER EXPONENT LOGICAL_OR QUESTION
 %token NEWLINE ERROR
 %nonassoc LOWER_THAN_ELSE
-%nonassoc ELSE
+%nonassoc ELSE 
+%precedence LOW_PREC
+%precedence HIGH_PREC
 %start translation_unit
 %%
 
@@ -38,13 +44,13 @@ primary_expression:
     | F_CONSTANT
     | C_CONSTANT
     | STRING_LITERAL
-    | LEFT_BRACKET expression RIGHT_BRACKET
     ;
 
 postfix_expression:
     primary_expression
+    | LEFT_BRACKET expression RIGHT_BRACKET
     | postfix_expression LEFT_BRACKET expression RIGHT_BRACKET
-    | postfix_expression LEFT_BRACKET RIGHT_BRACKET
+    | postfix_expression LEFT_BRACKET RIGHT_BRACKET 
     | postfix_expression LEFT_THIRD_BRACKET expression RIGHT_THIRD_BRACKET
     | postfix_expression DOT IDENTIFIER
     | postfix_expression PTR_OP IDENTIFIER
@@ -168,10 +174,10 @@ declaration:
     ;
 
 declaration_specifiers:
-    storage_class_specifier
-    | storage_class_specifier declaration_specifiers
-	| type_specifier
-	| type_specifier declaration_specifiers
+    storage_class_specifier 
+    | storage_class_specifier declaration_specifiers 
+	| type_specifier %prec HIGH_PREC
+	| type_specifier declaration_specifiers %prec LOW_PREC
 	| type_qualifier
 	| type_qualifier declaration_specifiers
     ;
@@ -182,12 +188,12 @@ init_declarator_list:
     ;
 
 init_declarator:
-    declarator
+    declarator 
     | declarator EQ initializer
     ;
 
 storage_class_specifier:
-    TYPEDEF
+    TYPEDEF 
     | EXTERN
     | STATIC
     | AUTO
@@ -206,6 +212,7 @@ type_specifier:
 	| UNSIGNED
 	| struct_or_union_specifier
 	| enum_specifier
+    | TYPE_NAME
 	;
 
 struct_or_union_specifier:
@@ -274,9 +281,9 @@ declarator:
 
 direct_declarator:
     IDENTIFIER 
-    | direct_declarator LEFT_THIRD_BRACKET conditional_expression RIGHT_THIRD_BRACKET
-	| direct_declarator LEFT_THIRD_BRACKET RIGHT_THIRD_BRACKET
-    | LEFT_BRACKET declarator RIGHT_BRACKET
+    | direct_declarator LEFT_THIRD_BRACKET conditional_expression RIGHT_THIRD_BRACKET 
+	| direct_declarator LEFT_THIRD_BRACKET RIGHT_THIRD_BRACKET 
+    | LEFT_BRACKET declarator RIGHT_BRACKET 
     | direct_declarator LEFT_BRACKET parameter_type_list RIGHT_BRACKET 
     | direct_declarator LEFT_BRACKET identifier_list RIGHT_BRACKET 
     | direct_declarator LEFT_BRACKET RIGHT_BRACKET 
@@ -350,7 +357,7 @@ initializer_list:
 statement:
     labeled_statement
 	| compound_statement
-	| expression_statement
+    | expression_statement
 	| selection_statement
 	| iteration_statement
 	| jump_statement
@@ -381,20 +388,21 @@ statement_list:
 
 expression_statement:
     SEMICOLON
-    expression SEMICOLON
+    | expression SEMICOLON
     ;
 
 selection_statement:
-    IF LEFT_BRACKET expression RIGHT_BRACKET statement %prec LOWER_THAN_ELSE
-    | IF LEFT_BRACKET expression RIGHT_BRACKET ELSE statement
-    | SWITCH LEFT_BRACKET expression statement
-    ;
+    IF LEFT_BRACKET expression RIGHT_BRACKET statement ELSE statement
+    | IF LEFT_BRACKET expression RIGHT_BRACKET statement
+    | SWITCH LEFT_BRACKET expression RIGHT_BRACKET statement
 
 iteration_statement:
     WHILE LEFT_BRACKET expression RIGHT_BRACKET statement
     | DO statement WHILE LEFT_BRACKET expression RIGHT_BRACKET SEMICOLON
     | FOR LEFT_BRACKET expression_statement expression_statement RIGHT_BRACKET statement
     | FOR LEFT_BRACKET expression_statement expression_statement expression RIGHT_BRACKET statement
+    | FOR LEFT_BRACKET declaration expression_statement RIGHT_BRACKET statement
+    | FOR LEFT_BRACKET declaration expression_statement expression RIGHT_BRACKET statement
     | UNTIL LEFT_BRACKET expression RIGHT_BRACKET statement
     ;
 
@@ -442,7 +450,6 @@ int main(int argc, char **argv) {
     }
 
     yyin = file;  // Set yyin to read from the input file
-    yydebug = 1;
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     printf("Parsing completed successfully.\n");

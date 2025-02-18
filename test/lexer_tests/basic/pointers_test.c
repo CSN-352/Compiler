@@ -1,3 +1,5 @@
 int p = 10;
 int *ptr = &p;
-*ptr = 20;
+int main(){
+    *ptr = 20; 
+}
