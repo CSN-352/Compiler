@@ -4,6 +4,7 @@ parser.tab.*
 
 src/lexer
 *.exe
-lex.yy.c
+src/lex.yy.c
+src/lex.yy.o
 
 test/output/*

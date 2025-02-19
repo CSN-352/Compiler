@@ -13,6 +13,42 @@ extern FILE *yyin;
 
 void yyerror(const char *msg);
 
+#define MAX_PARSE_SYMBOLS 10000
+
+typedef struct {
+    char *token;
+    char *type;       // Data type (int, float, etc.)
+} ParseSymbol;
+
+ParseSymbol parseSymbolTable[MAX_PARSE_SYMBOLS];
+int parseSymbolCount = 0;
+
+// Function to add an entry to the parser symbol table
+void addParseSymbol(const char *token, const char *type) {
+    if (parseSymbolCount >= MAX_PARSE_SYMBOLS) return;
+
+    parseSymbolTable[parseSymbolCount].token = strdup(token);
+    parseSymbolTable[parseSymbolCount].type = strdup(type);
+    parseSymbolCount++;
+}
+
+// Function to print the symbol table after parsing
+void printParseSymbolTable() {
+    printf("\nParser Symbol Table:\n");
+    printf("-------------------------------------------------\n");
+    printf("| %-20s | %-10s |\n", "Token", "Type");
+    printf("-------------------------------------------------\n");
+
+    for (int i = 0; i < parseSymbolCount; i++) {
+        printf("| %-20s | %-10s |\n",
+            parseSymbolTable[i].token,
+            parseSymbolTable[i].type);
+    }
+
+    printf("-------------------------------------------------\n");
+}
+
+
 %} 
 
 /* Token definitions */
@@ -20,19 +56,23 @@ void yyerror(const char *msg);
     int intval;
     char* strval;
 }
-%token AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
-%token IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED
-%token VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
-%token IDENTIFIER TYPE_NAME I_CONSTANT H_CONSTANT O_CONSTANT F_CONSTANT STRING_LITERAL C_CONSTANT
-%token ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
-%token RIGHT_OP LEFT_OP INC_OP DEC_OP INHERITANCE_OP PTR_OP AND_OP OR_OP LE_OP GE_OP EQ_OP NE_OP XOR_OP
-%token SEMICOLON LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET COMMA COLON ASSIGN LEFT_BRACKET RIGHT_BRACKET LEFT_THIRD_BRACKET RIGHT_THIRD_BRACKET
-%token DOT LOGICAL_AND NOT LOGICAL_NOT MINUS PLUS MULTIPLY DIVIDE MOD LESS GREATER EXPONENT LOGICAL_OR QUESTION
-%token NEWLINE ERROR
+
+%token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
+%token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED
+%token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
+%token <strval> IDENTIFIER I_CONSTANT H_CONSTANT O_CONSTANT F_CONSTANT HEX_F_CONSTANT STRING_LITERAL CHAR_CONSTANT
+%token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
+%token <strval> RIGHT_OP LEFT_OP INC_OP DEC_OP INHERITANCE_OP PTR_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
+%token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN DOT QUESTION POUND
+%token <strval> NOT BITWISE_NOT BITWISE_XOR BITWISE_OR BITWISE_AND MINUS PLUS MULTIPLY DIVIDE MOD LESS GREATER
+%token <strval> NEWLINE ERROR
+%type <strval> type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
+%type <strval> enum_specifier init_declarator_list init_declarator declarator direct_declarator pointer specifier_qualifier_list struct_declarator_list
+%type <strval> struct_declarator
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
-%precedence LOW_PREC
-%precedence HIGH_PREC
+%nonassoc LOW_PREC
+%nonassoc HIGH_PREC
 %start translation_unit
 %%
 
@@ -42,16 +82,16 @@ primary_expression:
     | O_CONSTANT
     | H_CONSTANT
     | F_CONSTANT
-    | C_CONSTANT
+    | CHAR_CONSTANT
     | STRING_LITERAL
     ;
 
 postfix_expression:
     primary_expression
-    | LEFT_BRACKET expression RIGHT_BRACKET
-    | postfix_expression LEFT_BRACKET expression RIGHT_BRACKET
-    | postfix_expression LEFT_BRACKET RIGHT_BRACKET 
-    | postfix_expression LEFT_THIRD_BRACKET expression RIGHT_THIRD_BRACKET
+    | LEFT_PAREN expression RIGHT_PAREN
+    | postfix_expression LEFT_PAREN expression RIGHT_PAREN
+    | postfix_expression LEFT_PAREN RIGHT_PAREN 
+    | postfix_expression LEFT_SQUARE expression RIGHT_SQUARE
     | postfix_expression DOT IDENTIFIER
     | postfix_expression PTR_OP IDENTIFIER
     | postfix_expression INC_OP
@@ -64,21 +104,21 @@ unary_expression:
     | DEC_OP unary_expression
     | unary_operator cast_expression
     | SIZEOF unary_expression
-    | SIZEOF LEFT_BRACKET type_name RIGHT_BRACKET
+    | SIZEOF LEFT_PAREN type_name RIGHT_PAREN
     ;
 
 unary_operator:
-    AND_OP
+    BITWISE_AND
     | MULTIPLY
     | PLUS
     | MINUS
     | NOT
-    | LOGICAL_NOT
+    | BITWISE_NOT
     ;
 
 cast_expression:
     unary_expression
-    | LEFT_BRACKET type_name RIGHT_BRACKET cast_expression
+    | LEFT_PAREN type_name RIGHT_PAREN cast_expression
     ;
 
 multiplicative_expression:
@@ -116,17 +156,17 @@ equality_expression:
 
 and_expression:
     equality_expression
-    | and_expression AND_OP equality_expression
+    | and_expression BITWISE_AND equality_expression
     ;
 
 xor_expression:
     and_expression
-    | xor_expression XOR_OP and_expression
+    | xor_expression BITWISE_XOR and_expression
     ;
 
 or_expression:
     xor_expression
-    | or_expression OR_OP xor_expression
+    | or_expression BITWISE_OR xor_expression
     ;
 
 logical_and_expression:
@@ -169,27 +209,52 @@ expression:
     ;
 
 declaration:
-    declaration_specifiers SEMICOLON
-    | declaration_specifiers init_declarator_list SEMICOLON
+    declaration_specifiers SEMICOLON                           
+    | declaration_specifiers init_declarator_list SEMICOLON  {
+        char *type = $1;
+        char *variables = $2;
+
+        
+        char *token = strtok(variables, ", ");
+        while (token != NULL) {
+            addParseSymbol(token, type);
+            token = strtok(NULL, ", ");
+        }
+    } 
     ;
 
 declaration_specifiers:
-    storage_class_specifier 
-    | storage_class_specifier declaration_specifiers 
-	| type_specifier %prec HIGH_PREC
-	| type_specifier declaration_specifiers %prec LOW_PREC
-	| type_qualifier
-	| type_qualifier declaration_specifiers
+    storage_class_specifier {$$ = strdup($1);}   
+    | storage_class_specifier declaration_specifiers {
+        char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
+        sprintf(newType, "%s %s", $1, $2);
+        $$ = newType;
+    }
+	| type_specifier %prec HIGH_PREC                                    {$$ = strdup($1);}                                             
+	| type_specifier declaration_specifiers %prec LOW_PREC  {
+        char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
+        sprintf(newType, "%s %s", $1, $2);
+        $$ = newType;
+    }
+	| type_qualifier    {$$ = strdup($1);}   
+	| type_qualifier declaration_specifiers {
+        char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
+        sprintf(newType, "%s %s", $1, $2);
+        $$ = newType;
+    }
     ;
 
 init_declarator_list:
-    init_declarator
-    | init_declarator_list COMMA init_declarator
+    init_declarator {$$ = strdup($1);}
+    | init_declarator_list COMMA init_declarator {
+        $$ = (char *)malloc(strlen($1) + strlen($3) + 3);  
+        sprintf($$, "%s, %s", $1, $3);  
+    }
     ;
 
 init_declarator:
-    declarator 
-    | declarator ASSIGN initializer
+    declarator {$$ = strdup($1);}
+    | declarator ASSIGN initializer {$$ = strdup($1);}
     ;
 
 storage_class_specifier:
@@ -201,24 +266,29 @@ storage_class_specifier:
     ;
 
 type_specifier:
-    VOID
-    | CHAR
-	| SHORT
-	| INT
-	| LONG
-	| FLOAT
-	| DOUBLE
-	| SIGNED
-	| UNSIGNED
-	| struct_or_union_specifier
-	| enum_specifier
-    | TYPE_NAME
+    VOID      
+    | CHAR    
+	| SHORT   
+	| INT     
+	| LONG    
+	| FLOAT   
+	| DOUBLE  
+	| SIGNED  
+	| UNSIGNED 
+	| struct_or_union_specifier  {
+        $$ = (char *)malloc(strlen($1) + strlen("struct ") + 1);
+        sprintf($$, "struct %s", $1);
+    }
+	| enum_specifier  {
+        $$ = (char *)malloc(strlen($1) + strlen("enum ") + 1);
+        sprintf($$, "enum %s", $1);
+    }
 	;
 
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER LEFT_CURLY_BRACKET struct_declaration_list RIGHT_CURLY_BRACKET
-	| struct_or_union LEFT_CURLY_BRACKET struct_declaration_list RIGHT_CURLY_BRACKET
-	| struct_or_union IDENTIFIER
+    struct_or_union IDENTIFIER LEFT_CURLY struct_declaration_list RIGHT_CURLY     { $$ = strdup($2);}
+	| struct_or_union LEFT_CURLY struct_declaration_list RIGHT_CURLY              { $$ = strdup("unidentified");}
+	| struct_or_union IDENTIFIER                                                  { $$ = strdup($2); }
 	;
 
 struct_or_union:
@@ -232,19 +302,38 @@ struct_declaration_list:
     ;
 
 struct_declaration:
-    specifier_qualifier_list struct_declarator_list SEMICOLON
+    specifier_qualifier_list struct_declarator_list SEMICOLON {
+        char *type = $1;
+        char *variables = $2;
+
+        
+        char *token = strtok(variables, ", ");
+        while (token != NULL) {
+            addParseSymbol(token, type);
+            token = strtok(NULL, ", ");
+        }
+    } 
     ;
 
 specifier_qualifier_list:
-    type_specifier specifier_qualifier_list
-	| type_specifier
-	| type_qualifier specifier_qualifier_list
-	| type_qualifier
+    type_specifier specifier_qualifier_list {
+        $$ = (char *)malloc(strlen($1) + strlen($2) + 2);
+        sprintf($$, "%s %s", $1, $2); // Append qualifier to type
+    }
+	| type_specifier                                { $$ = strdup($1);}
+	| type_qualifier specifier_qualifier_list {
+        $$ = (char *)malloc(strlen($1) + strlen($2) + 2);
+        sprintf($$, "%s %s", $1, $2); // Append qualifier to type
+    }     
+	| type_qualifier                                { $$ = strdup($1);}
 	;
 
 struct_declarator_list:
-    struct_declarator
-	| struct_declarator_list COMMA struct_declarator
+    struct_declarator { $$ = strdup($1); }
+	| struct_declarator_list COMMA struct_declarator {
+        $$ = (char *)malloc(strlen($1) + strlen($3) + 3);
+        sprintf($$, "%s, %s", $1, $3);
+    }
 	;
 
 struct_declarator:
@@ -254,9 +343,9 @@ struct_declarator:
 	;
 
 enum_specifier:
-    ENUM LEFT_CURLY_BRACKET enumerator_list RIGHT_CURLY_BRACKET
-	| ENUM IDENTIFIER LEFT_CURLY_BRACKET enumerator_list RIGHT_CURLY_BRACKET
-	| ENUM IDENTIFIER
+    ENUM LEFT_CURLY enumerator_list RIGHT_CURLY                 { $$ = strdup("unidentified");}
+	| ENUM IDENTIFIER LEFT_CURLY enumerator_list RIGHT_CURLY    { $$ = strdup($2);}
+	| ENUM IDENTIFIER                                           { $$ = strdup($2);}
 	;
 
 enumerator_list:
@@ -275,18 +364,18 @@ type_qualifier:
     ;
 
 declarator:
-    pointer direct_declarator
-    | direct_declarator
+    pointer direct_declarator 
+    | direct_declarator  
     ;
 
 direct_declarator:
-    IDENTIFIER 
-    | direct_declarator LEFT_THIRD_BRACKET conditional_expression RIGHT_THIRD_BRACKET 
-	| direct_declarator LEFT_THIRD_BRACKET RIGHT_THIRD_BRACKET 
-    | LEFT_BRACKET declarator RIGHT_BRACKET 
-    | direct_declarator LEFT_BRACKET parameter_type_list RIGHT_BRACKET 
-    | direct_declarator LEFT_BRACKET identifier_list RIGHT_BRACKET 
-    | direct_declarator LEFT_BRACKET RIGHT_BRACKET 
+    IDENTIFIER  
+    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE 
+	| direct_declarator LEFT_SQUARE RIGHT_SQUARE 
+    | LEFT_PAREN declarator RIGHT_PAREN 
+    | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN 
+    | direct_declarator LEFT_PAREN identifier_list RIGHT_PAREN 
+    | direct_declarator LEFT_PAREN RIGHT_PAREN 
     ;
 
 pointer:
@@ -334,19 +423,19 @@ abstract_declarator:
 	;
 
 direct_abstract_declarator:
-    LEFT_BRACKET abstract_declarator RIGHT_BRACKET
-    | LEFT_THIRD_BRACKET conditional_expression RIGHT_THIRD_BRACKET
-	| LEFT_THIRD_BRACKET RIGHT_THIRD_BRACKET
-	| LEFT_BRACKET RIGHT_BRACKET
-	| LEFT_BRACKET parameter_type_list RIGHT_BRACKET
-	| direct_abstract_declarator LEFT_BRACKET RIGHT_BRACKET
-	| direct_abstract_declarator LEFT_BRACKET parameter_type_list RIGHT_BRACKET
+    LEFT_PAREN abstract_declarator RIGHT_PAREN
+    | LEFT_SQUARE conditional_expression RIGHT_SQUARE
+	| LEFT_SQUARE RIGHT_SQUARE
+	| LEFT_PAREN RIGHT_PAREN
+	| LEFT_PAREN parameter_type_list RIGHT_PAREN
+	| direct_abstract_declarator LEFT_PAREN RIGHT_PAREN
+	| direct_abstract_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN
 	;
 
 initializer:
     assignment_expression
-    | LEFT_CURLY_BRACKET initializer_list RIGHT_CURLY_BRACKET
-    | LEFT_CURLY_BRACKET initializer_list COMMA RIGHT_CURLY_BRACKET
+    | LEFT_CURLY initializer_list RIGHT_CURLY
+    | LEFT_CURLY initializer_list COMMA RIGHT_CURLY
     ;
 
 initializer_list:
@@ -370,10 +459,10 @@ labeled_statement:
 	;
 
 compound_statement:
-    LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET
-    | LEFT_CURLY_BRACKET statement_list RIGHT_CURLY_BRACKET
-    | LEFT_CURLY_BRACKET declaration_list RIGHT_CURLY_BRACKET
-    | LEFT_CURLY_BRACKET declaration_list statement_list RIGHT_CURLY_BRACKET
+    LEFT_CURLY RIGHT_CURLY
+    | LEFT_CURLY statement_list RIGHT_CURLY
+    | LEFT_CURLY declaration_list RIGHT_CURLY
+    | LEFT_CURLY declaration_list statement_list RIGHT_CURLY
     ;
 
 declaration_list:
@@ -392,18 +481,18 @@ expression_statement:
     ;
 
 selection_statement:
-    IF LEFT_BRACKET expression RIGHT_BRACKET statement ELSE statement
-    | IF LEFT_BRACKET expression RIGHT_BRACKET statement
-    | SWITCH LEFT_BRACKET expression RIGHT_BRACKET statement
+    IF LEFT_PAREN expression RIGHT_PAREN statement ELSE statement
+    | IF LEFT_PAREN expression RIGHT_PAREN statement
+    | SWITCH LEFT_PAREN expression RIGHT_PAREN statement
 
 iteration_statement:
-    WHILE LEFT_BRACKET expression RIGHT_BRACKET statement
-    | DO statement WHILE LEFT_BRACKET expression RIGHT_BRACKET SEMICOLON
-    | FOR LEFT_BRACKET expression_statement expression_statement RIGHT_BRACKET statement
-    | FOR LEFT_BRACKET expression_statement expression_statement expression RIGHT_BRACKET statement
-    | FOR LEFT_BRACKET declaration expression_statement RIGHT_BRACKET statement
-    | FOR LEFT_BRACKET declaration expression_statement expression RIGHT_BRACKET statement
-    | UNTIL LEFT_BRACKET expression RIGHT_BRACKET statement
+    WHILE LEFT_PAREN expression RIGHT_PAREN statement
+    | DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON
+    | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement
+    | FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement
+    | FOR LEFT_PAREN declaration expression_statement RIGHT_PAREN statement
+    | FOR LEFT_PAREN declaration expression_statement expression RIGHT_PAREN statement
+    | UNTIL LEFT_PAREN expression RIGHT_PAREN statement
     ;
 
 jump_statement:
@@ -426,7 +515,7 @@ external_declaration:
 
 function_definition:
     declaration_specifiers declarator declaration_list compound_statement
-	| declaration_specifiers declarator compound_statement
+	| declaration_specifiers declarator compound_statement                   
 	| declarator declaration_list compound_statement
 	| declarator compound_statement
 	;
@@ -436,6 +525,8 @@ function_definition:
 void yyerror(const char *msg) {
     fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
 }
+
+
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -452,6 +543,7 @@ int main(int argc, char **argv) {
     yyin = file;  // Set yyin to read from the input file
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
+    printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;
 }

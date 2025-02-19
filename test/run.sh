@@ -2,8 +2,8 @@
 
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
 
-SRC="$BASE_DIR/src/parser.exe"
-TEST_DIR="$BASE_DIR/test/lexer_tests"
+SRC="$BASE_DIR/src/parser"
+TEST_DIR="$BASE_DIR/Lexer/test/lexer_tests"
 OUTPUT_DIR="$BASE_DIR/test/output"
 
 # Clean function
