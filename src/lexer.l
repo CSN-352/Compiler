@@ -4,26 +4,35 @@
 #include <string.h>
 #include "parser.tab.h"
 
+#ifdef ENABLE_MAIN
+    #define RETURN_IF_NOT_MAIN(x)  // Expands to nothing
+#else
+    #define RETURN_IF_NOT_MAIN(x) return x
+#endif 
+
 int line_no = 1;  // Line number tracker
 int has_error=0;
-int is_typedef=0;
+int column_no = 1; // Column number tracker
 
 // Symbol table structure
 #define MAX_SYMBOLS 10000
 typedef struct {
     char *lexeme;  // Pointer to char for storing strings
     char *token;   // Pointer to char for storing token types
+    int line;      // Line where the symbol appears
+    int column;    // Column where the symbol appears
 } Symbol;
 
 Symbol symbolTable[MAX_SYMBOLS];
 int symbolCount = 0;
 
 extern int yylex();  // Lexical analyzer function
+extern FILE *yyin;   // Input file
 
 // Function to handle errors
 void report_error(const char *msg, const char *symbol) {
     has_error=1;
-    printf("Error at line %d: %s %s\n", line_no, msg, symbol);
+    printf("Error at line %d, column %d: %s '%s'\n", line_no, column_no, msg, symbol);
 }
 
 // Function to add symbol to the symbol table
@@ -42,23 +51,32 @@ void addToSymbolTable(const char *lexeme, const char *type) {
     symbolTable[symbolCount].lexeme = strdup(lexeme);
     if (symbolTable[symbolCount].lexeme == NULL) {
         report_error("Memory allocation failed for lexeme.", lexeme);
+        free(symbolTable[symbolCount].token); // Clean up previous allocation
         return;  // Handle memory allocation failure
     }
+
+    // Store position information
+    symbolTable[symbolCount].line = line_no;
+    symbolTable[symbolCount].column = column_no;
 
     symbolCount++;
 }
 
 // Function to print the symbol table in a structured format
 void printSymbolTable() {
-    printf("\n+----------------------+----------------------+\n");
-    printf("|      Lexeme          |        Token         |\n");
-    printf("+----------------------+----------------------+\n");
+    printf("\n+----------------------+----------------------+--------+--------+\n");
+    printf("|      Lexeme          |        Token         |  Line  | Column |\n");
+    printf("+----------------------+----------------------+--------+--------+\n");
 
     for (int i = 0; i < symbolCount; i++) {
-        printf("| %-20s | %-20s |\n", symbolTable[i].lexeme, symbolTable[i].token);
+        printf("| %-20s | %-20s | %6d | %6d |\n", 
+               symbolTable[i].lexeme, 
+               symbolTable[i].token,
+               symbolTable[i].line,
+               symbolTable[i].column);
     }
 
-    printf("+----------------------+----------------------+\n");
+    printf("+----------------------+----------------------+--------+--------+\n");
 }
 
 int check_type_name(const char* lexeme) {  
@@ -75,6 +93,23 @@ int check_type_name(const char* lexeme) {
 void checkIdentifierLength(const char *identifier) {
     if (strlen(identifier) > 32) {
         report_error("Identifier exceeds maximum length (32 characters):", identifier);
+    }
+}
+
+// Function to update column number
+void updateColumn(int length) {
+    column_no += length;
+}
+
+// Function to handle multiline comment column tracking
+void handleMultilineComment(const char* text, int length) {
+    for(int i = 0; i < length; i++) {
+        if(text[i] == '\n') {
+            line_no++;
+            column_no = 1;
+        } else {
+            column_no++;
+        }
     }
 }
 
@@ -125,13 +160,13 @@ ASSEMBLY_DIRECTIVE "asm_directive"
 
 /* Regular expression for identifiers, constants, literals */
 IDENTIFIER    [A-Za-z_][A-Za-z0-9_]*
-I_CONSTANT    [0-9]+[uU]?[lL]{0,2}
-H_CONSTANT    0[xX][0-9a-fA-F]+[uU]?[lL]{0,2}
-O_CONSTANT    0[0-7]+[uU]?[lL]{0,2}
-F_CONSTANT_INT [0-9]+([eE][+-]?[0-9]+)?[fFlL]?
-F_CONSTANT_DECIMAL   [0-9]*\.[0-9]+([eE][+-]?[0-9]+)?[fFlL]?
-STRING_LITERAL \"((\\.)|[^\"\\])*\"
-C_CONSTANT    \'([^'\\n]|(\\.))\'
+I_CONSTANT    [0-9]+[uU]?[lL]?[lL]?
+H_CONSTANT    0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?
+O_CONSTANT    0[0-7]+[uU]?[lL]?[lL]?
+F_CONSTANT    ([0-9]*\.[0-9]+|[0-9]+\.)([eE][+-]?[0-9]+)?[fFlL]?|[0-9]+[eE][+-]?[0-9]+[fFlL]?
+HEX_F_CONSTANT 0[xX]([0-9a-fA-F]*\.[0-9a-fA-F]+|[0-9a-fA-F]+\.)[pP][+-]?[0-9]+[fFlL]?
+STRING_LITERAL \"(\\(['"?\\abfnrtv]|[0-7]{1,3}|x[0-9a-fA-F]+)|[^"\\])*\"
+CHAR_CONSTANT \'(\\(['"?\\abfnrtv]|[0-7]{1,3}|x[0-9a-fA-F]+)|[^'\\])\'
 
 /* Operators and special symbols */
 ELLIPSIS      \.\.\.
@@ -143,7 +178,7 @@ MUL_ASSIGN    \*=
 DIV_ASSIGN    "/="      
 MOD_ASSIGN    %=       
 AND_ASSIGN    &=       
-XOR_ASSIGN    ^=       
+XOR_ASSIGN    \^=       
 OR_ASSIGN     \|=      
 
 RIGHT_OP      >>       
@@ -152,29 +187,31 @@ INC_OP        \+\+
 DEC_OP        --       
 INHERITANCE_OP <-     
 PTR_OP        ->       
-AND_OP        &  
-XOR_OP        "^"    
-OR_OP         \|     
+LOGICAL_AND   &&       
+LOGICAL_OR    \|\|     
 LE_OP         <=       
 GE_OP         >=       
 EQ_OP         ==       
 NE_OP         !=       
 
+/* Punctuators */
 SEMICOLON     ;        
-LEFT_CURLY_BRACKET  \{  
-RIGHT_CURLY_BRACKET \}  
+LEFT_CURLY    \{       
+RIGHT_CURLY   \}       
 COMMA         ,        
-COLON         :      
-EQ            =        
-LEFT_BRACKET   \(      
-RIGHT_BRACKET  \)      
-LEFT_THIRD_BRACKET \[  
-RIGHT_THIRD_BRACKET \]  
-
+COLON         :        
+ASSIGN        =        
+LEFT_PAREN    \(       
+RIGHT_PAREN   \)       
+LEFT_BRACKET  \[       
+RIGHT_BRACKET \]       
 DOT           \.       
-LOGICAL_AND   &&       
+QUESTION      \?       
+POUND         "#"
+
+/* Individual operators */
 NOT           !        
-LOGICAL_NOT   ~        
+BITWISE_NOT   ~        
 MINUS         -        
 PLUS          \+       
 MULTIPLY      \*       
@@ -182,126 +219,163 @@ DIVIDE        "/"
 MOD           %        
 LESS          <        
 GREATER       >        
-EXPONENT      \^       
-LOGICAL_OR    \|\|     
-QUESTION      \? 
+BITWISE_XOR   \^       
+BITWISE_OR    \|       
+BITWISE_AND   &
 
-SINGLE_LINE_COMMENT "//"[^\n]*\n          
-MULTI_LINE_COMMENT  "/*"[^*]*"*"+[^/]*"/" 
-
-%%
-
-{AUTO}                { addToSymbolTable(yytext, "keyword"); return(AUTO); }
-{BREAK}               { addToSymbolTable(yytext, "keyword"); return(BREAK); }
-{CASE}                { addToSymbolTable(yytext, "keyword"); return(CASE); }
-{CHAR}                { addToSymbolTable(yytext, "keyword"); return(CHAR); }
-{CONST}               { addToSymbolTable(yytext, "keyword"); return(CONST); }
-{CONTINUE}            { addToSymbolTable(yytext, "keyword"); return(CONTINUE); }
-{DEFAULT}             { addToSymbolTable(yytext, "keyword"); return(DEFAULT); }
-{DO}                  { addToSymbolTable(yytext, "keyword"); return(DO); }
-{DOUBLE}              { addToSymbolTable(yytext, "keyword"); return(DOUBLE); }
-{ELSE}                { addToSymbolTable(yytext, "keyword"); return(ELSE); }
-{ENUM}                { addToSymbolTable(yytext, "keyword"); return(ENUM); }
-{EXTERN}              { addToSymbolTable(yytext, "keyword"); return(EXTERN); }
-{FLOAT}               { addToSymbolTable(yytext, "keyword"); return(FLOAT); }
-{FOR}                 { addToSymbolTable(yytext, "keyword"); return(FOR); }
-{GOTO}                { addToSymbolTable(yytext, "keyword"); return(GOTO); }
-{IF}                  { addToSymbolTable(yytext, "keyword"); return(IF); }
-{INT}                 { addToSymbolTable(yytext, "keyword"); return(INT); }
-{LONG}                { addToSymbolTable(yytext, "keyword"); return(LONG); }
-{REGISTER}            { addToSymbolTable(yytext, "keyword"); return(REGISTER); }
-{RETURN}              { addToSymbolTable(yytext, "keyword"); return(RETURN); }
-{SHORT}               { addToSymbolTable(yytext, "keyword"); return(SHORT); }
-{SIGNED}              { addToSymbolTable(yytext, "keyword"); return(SIGNED); }
-{STATIC}              { addToSymbolTable(yytext, "keyword"); return(STATIC); }
-{STRUCT}              { addToSymbolTable(yytext, "keyword"); return(STRUCT); }
-{SWITCH}              { addToSymbolTable(yytext, "keyword"); return(SWITCH); }
-{TYPEDEF}             { addToSymbolTable(yytext, "keyword"); is_typedef=1; return(TYPEDEF); }
-{UNION}               { addToSymbolTable(yytext, "keyword"); return(UNION); }
-{UNSIGNED}            { addToSymbolTable(yytext, "keyword"); return(UNSIGNED); }
-{VOID}                { addToSymbolTable(yytext, "keyword"); return(VOID); }
-{VOLATILE}            { addToSymbolTable(yytext, "keyword"); return(VOLATILE); }
-{WHILE}               { addToSymbolTable(yytext, "keyword"); return(WHILE); }
-{UNTIL}               { addToSymbolTable(yytext, "keyword"); return(UNTIL); }
-{CLASS}               { addToSymbolTable(yytext, "keyword"); return(CLASS); }
-{PRIVATE}             { addToSymbolTable(yytext, "keyword"); return(PRIVATE); }
-{PUBLIC}              { addToSymbolTable(yytext, "keyword"); return(PUBLIC); }
-{PROTECTED}           { addToSymbolTable(yytext, "keyword"); return(PROTECTED); }
-{ASSEMBLY_DIRECTIVE}  { addToSymbolTable(yytext, "keyword"); return(ASSEMBLY_DIRECTIVE); }
-
-{IDENTIFIER}   { checkIdentifierLength(yytext); if(check_type_name(yytext)){addToSymbolTable(yytext, "type_name");return(TYPE_NAME);} if(is_typedef==1){is_typedef=0;addToSymbolTable(yytext, "type_name");return(TYPE_NAME);} addToSymbolTable(yytext, "identifier"); return(IDENTIFIER); }
-{H_CONSTANT}   { addToSymbolTable(yytext, "hexadecimal_constant"); return(H_CONSTANT); }
-{O_CONSTANT}   { addToSymbolTable(yytext, "octal_constant"); return(O_CONSTANT); }
-{I_CONSTANT}   { addToSymbolTable(yytext, "integer_constant"); return(I_CONSTANT); }
-{C_CONSTANT}   { addToSymbolTable(yytext, "char_constant"); return(C_CONSTANT); }
-{F_CONSTANT_DECIMAL}   { addToSymbolTable(yytext, "float_constant"); return(F_CONSTANT); }
-{F_CONSTANT_INT}   { addToSymbolTable(yytext, "float_constant"); return(F_CONSTANT); }
-{STRING_LITERAL}   { addToSymbolTable(yytext, "string_literal"); return(STRING_LITERAL); }
-
-{RIGHT_ASSIGN}     { addToSymbolTable(yytext, "operator"); return(RIGHT_ASSIGN); }
-{LEFT_ASSIGN}      { addToSymbolTable(yytext, "operator"); return(LEFT_ASSIGN); }
-{ADD_ASSIGN}       { addToSymbolTable(yytext, "operator"); return(ADD_ASSIGN); }
-{SUB_ASSIGN}       { addToSymbolTable(yytext, "operator"); return(SUB_ASSIGN); }
-{MUL_ASSIGN}       { addToSymbolTable(yytext, "operator"); return(MUL_ASSIGN); }
-{DIV_ASSIGN}       { addToSymbolTable(yytext, "operator"); return(DIV_ASSIGN); } 
-{MOD_ASSIGN}       { addToSymbolTable(yytext, "operator"); return(MOD_ASSIGN); }
-{AND_ASSIGN}       { addToSymbolTable(yytext, "operator"); return(AND_ASSIGN); }
-{XOR_ASSIGN}       { addToSymbolTable(yytext, "operator"); return(XOR_ASSIGN); }
-{OR_ASSIGN}        { addToSymbolTable(yytext, "operator"); return(OR_ASSIGN); }
-{DIVIDE}           { addToSymbolTable(yytext, "operator"); return(DIVIDE); }
-{LOGICAL_AND}     { addToSymbolTable(yytext, "operator"); return(LOGICAL_AND); }
-{NOT}             { addToSymbolTable(yytext, "operator"); return(NOT); }
-{LOGICAL_NOT}     { addToSymbolTable(yytext, "operator"); return(LOGICAL_NOT); }
-{MINUS}           { addToSymbolTable(yytext, "operator"); return(MINUS); }
-{PLUS}            { addToSymbolTable(yytext, "operator"); return(PLUS); }
-{MULTIPLY}        { addToSymbolTable(yytext, "operator"); return(MULTIPLY); }
-{LOGICAL_OR}      { addToSymbolTable(yytext, "operator"); return(LOGICAL_OR); }
-
-{RIGHT_OP}        { addToSymbolTable(yytext, "operator"); return(RIGHT_OP); }
-{LEFT_OP}         { addToSymbolTable(yytext, "operator"); return(LEFT_OP); }
-{INC_OP}          { addToSymbolTable(yytext, "operator"); return(INC_OP); }
-{DEC_OP}          { addToSymbolTable(yytext, "operator"); return(DEC_OP); }
-{INHERITANCE_OP}  { addToSymbolTable(yytext, "operator"); return(INHERITANCE_OP); }
-{PTR_OP}          { addToSymbolTable(yytext, "operator"); return(PTR_OP); }
-{AND_OP}          { addToSymbolTable(yytext, "operator"); return(AND_OP); }
-{OR_OP}           { addToSymbolTable(yytext, "operator"); return(OR_OP); }
-{LE_OP}           { addToSymbolTable(yytext, "operator"); return(LE_OP); }
-{GE_OP}           { addToSymbolTable(yytext, "operator"); return(GE_OP); }
-{EQ_OP}           { addToSymbolTable(yytext, "operator"); return(EQ_OP); }
-{NE_OP}           { addToSymbolTable(yytext, "operator"); return(NE_OP); }
-{XOR_OP}          { addToSymbolTable(yytext, "operator"); return(XOR_OP); }
-
-{SEMICOLON}           { addToSymbolTable(yytext, "symbol"); return(SEMICOLON); }
-{LEFT_CURLY_BRACKET}  { addToSymbolTable(yytext, "symbol"); return(LEFT_CURLY_BRACKET); }
-{RIGHT_CURLY_BRACKET} { addToSymbolTable(yytext, "symbol"); return(RIGHT_CURLY_BRACKET); }
-{COMMA}               { addToSymbolTable(yytext, "symbol"); return(COMMA); }
-{COLON}               { addToSymbolTable(yytext, "symbol"); return(COLON); }
-{EQ}                  { addToSymbolTable(yytext, "symbol"); return(EQ); }
-{LEFT_BRACKET}        { addToSymbolTable(yytext, "symbol"); return(LEFT_BRACKET); }
-{RIGHT_BRACKET}       { addToSymbolTable(yytext, "symbol"); return(RIGHT_BRACKET); }
-{LEFT_THIRD_BRACKET}  { addToSymbolTable(yytext, "symbol"); return(LEFT_THIRD_BRACKET); }
-{RIGHT_THIRD_BRACKET} { addToSymbolTable(yytext, "symbol"); return(RIGHT_THIRD_BRACKET); }
-
-{DOT}              { addToSymbolTable(yytext, "symbol"); return(DOT); }
-
-{MOD}              { addToSymbolTable(yytext, "operator"); return(MOD); }
-{LESS}             { addToSymbolTable(yytext, "operator"); return(LESS); }
-{GREATER}          { addToSymbolTable(yytext, "operator"); return(GREATER); }
-{EXPONENT}         { addToSymbolTable(yytext, "operator"); return(EXPONENT); }
-
-{QUESTION}         { addToSymbolTable(yytext, "operator"); return(QUESTION); }
-
-{SINGLE_LINE_COMMENT}       { }
-{MULTI_LINE_COMMENT}        { }
-
-[ \t]+             { /* Ignore whitespace */ }
-
-\n                 { line_no++;  }
-
-<<EOF>>            { return 0; }
-
-.                  { report_error("Unrecognized symbol", yytext); return(ERROR); }
+/* Comments and whitespace */
+SINGLE_LINE_COMMENT "//".*\n
+MULTI_LINE_COMMENT  "/*"([^*]|\*[^/])*"*/"
+WHITESPACE     [ \t\v\f\r]+
+NEWLINE        \n
 
 %%
 
+{AUTO}                { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AUTO); }
+{BREAK}               { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BREAK); }
+{CASE}                { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CASE); }
+{CHAR}                { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CHAR); }
+{CONST}               { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONST); }
+{CONTINUE}            { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONTINUE); }
+{DEFAULT}             { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DEFAULT); }
+{DO}                  { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DO); }
+{DOUBLE}              { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DOUBLE); }
+{ELSE}                { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ELSE); }
+{ENUM}                { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ENUM); }
+{EXTERN}              { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(EXTERN); }
+{FLOAT}               { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(FLOAT); }
+{FOR}                 { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(FOR); }
+{GOTO}                { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(GOTO); }
+{IF}                  { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(IF); }
+{INT}                 { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INT); }
+{LONG}                { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LONG); }
+{REGISTER}            { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(REGISTER); }
+{RETURN}              { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RETURN); }
+{SHORT}               { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SHORT); }
+{SIGNED}              { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SIGNED); }
+{SIZEOF}              { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SIZEOF); }
+{STATIC}              { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STATIC); }
+{STRUCT}              { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STRUCT); }
+{SWITCH}              { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SWITCH); }
+{TYPEDEF}             { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(TYPEDEF); }
+{UNION}               { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(UNION); }
+{UNSIGNED}            { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(UNSIGNED); }
+{VOID}                { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(VOID); }
+{VOLATILE}            { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(VOLATILE); }
+{WHILE}               { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(WHILE); }
+{UNTIL}               { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(UNTIL); }
+{CLASS}               { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CLASS); }
+{PRIVATE}             { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PRIVATE); }
+{PUBLIC}              { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PUBLIC); }
+{PROTECTED}           { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PROTECTED); }
+{ASSEMBLY_DIRECTIVE}  { addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ASSEMBLY_DIRECTIVE); }
 
+{IDENTIFIER}          { checkIdentifierLength(yytext); addToSymbolTable(yytext, "identifier"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(IDENTIFIER); }
+{H_CONSTANT}          { addToSymbolTable(yytext, "hexadecimal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONSTANT); }
+{O_CONSTANT}          { addToSymbolTable(yytext, "octal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONSTANT); }
+{I_CONSTANT}          { addToSymbolTable(yytext, "integer_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONSTANT); }
+{F_CONSTANT}          { addToSymbolTable(yytext, "float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONSTANT); }
+{HEX_F_CONSTANT}      { addToSymbolTable(yytext, "hexadecimal_float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONSTANT); }
+{CHAR_CONSTANT}       { addToSymbolTable(yytext, "char_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONSTANT); }
+{STRING_LITERAL}      { addToSymbolTable(yytext, "string_literal"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STRING_LITERAL); }
+
+{RIGHT_ASSIGN}        { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_ASSIGN); }
+{LEFT_ASSIGN}         { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_ASSIGN); }
+{ADD_ASSIGN}          { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ADD_ASSIGN); }
+{SUB_ASSIGN}          { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SUB_ASSIGN); }
+{MUL_ASSIGN}          { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MUL_ASSIGN); }
+{DIV_ASSIGN}          { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DIV_ASSIGN); }
+{MOD_ASSIGN}          { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MOD_ASSIGN); }
+{AND_ASSIGN}          { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AND_ASSIGN); }
+{XOR_ASSIGN}          { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(XOR_ASSIGN); }
+{OR_ASSIGN}           { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(OR_ASSIGN); }
+
+{RIGHT_OP}            { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_OP); }
+{LEFT_OP}             { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_OP); }
+{INC_OP}              { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INC_OP); }
+{DEC_OP}              { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DEC_OP); }
+{INHERITANCE_OP}      { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INHERITANCE_OP); }
+{PTR_OP}              { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PTR_OP); }
+{LOGICAL_AND}         { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LOGICAL_AND); }
+{LOGICAL_OR}          { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LOGICAL_OR); }
+{LE_OP}               { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LE_OP); }
+{GE_OP}               { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(GE_OP); }
+{EQ_OP}               { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(EQ_OP); }
+{NE_OP}               { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(NE_OP); }
+
+{SEMICOLON}           { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SEMICOLON); }
+{LEFT_CURLY}          { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_CURLY); }
+{RIGHT_CURLY}         { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_CURLY); }
+{COMMA}               { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(COMMA); }
+{COLON}               { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(COLON); }
+{ASSIGN}              { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ASSIGN); }
+{LEFT_PAREN}          { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_PAREN); }
+{RIGHT_PAREN}         { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_PAREN); }
+{LEFT_BRACKET}        { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_BRACKET); }
+{RIGHT_BRACKET}       { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_BRACKET); }
+{DOT}                 { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DOT); }
+{ELLIPSIS}            { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ELLIPSIS); }
+{POUND}               { addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(POUND); }
+
+{NOT}                 { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(NOT); }
+{BITWISE_NOT}         { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_NOT); }
+{MINUS}               { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MINUS); }
+{PLUS}                { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PLUS); }
+{MULTIPLY}            { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MULTIPLY); }
+{DIVIDE}              { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DIVIDE); }
+{MOD}                 { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MOD); }
+{LESS}                { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LESS); }
+{GREATER}             { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(GREATER); }
+{BITWISE_XOR}         { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_XOR); }
+{BITWISE_OR}          { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_OR); }
+{BITWISE_AND}         { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_AND); }
+{QUESTION}            { addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(QUESTION); }
+
+{SINGLE_LINE_COMMENT} { line_no++; column_no = 1; /* Reset column for new line */ }
+{MULTI_LINE_COMMENT}  { handleMultilineComment(yytext, yyleng); }
+
+{WHITESPACE}          { updateColumn(yyleng); /* Just count whitespace */ }
+{NEWLINE}             { line_no++; column_no = 1; }
+
+<<EOF>>               { return 0; }
+
+.                     { report_error("Unrecognized symbol", yytext); updateColumn(1); }
+
+%%
+
+#ifdef ENABLE_MAIN
+int main(int argc, char *argv[]) {
+    // Check if file name is provided
+    if (argc > 1) {
+        if (!(yyin = fopen(argv[1], "r"))) {
+            fprintf(stderr, "Cannot open input file %s\n", argv[1]);
+            return 1;
+        }
+    } else {
+        yyin = stdin; // Read from standard input if no file provided
+    }
+    
+    // Process lexical analysis
+    yylex();
+    
+    // Print symbol table if no errors occurred
+    if(has_error == 0) {
+        printSymbolTable();
+    } else {
+        printf("\nLexical analysis completed with errors.\n");
+    }
+    
+    // Clean up
+    if (yyin != stdin) {
+        fclose(yyin);
+    }
+    
+    // Free memory in symbol table
+    for (int i = 0; i < symbolCount; i++) {
+        free(symbolTable[i].lexeme);
+        free(symbolTable[i].token);
+    }
+    
+    return has_error;
+}
+#endif

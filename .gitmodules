@@ -1,0 +1,3 @@
+[submodule "Lexer"]
+	path = Lexer
+	url = git@github.com:CSN-352/Lexer.git
