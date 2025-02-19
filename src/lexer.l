@@ -4,6 +4,12 @@
 #include <string.h>
 #include "parser.tab.h"
 
+#ifdef ENABLE_MAIN
+    #define RETURN_IF_NOT_MAIN(x) 
+#else
+    #define RETURN_IF_NOT_MAIN(x) return x
+#endif 
+
 int line_no = 1;  // Line number tracker
 int has_error=0;
 int is_typedef=0;
@@ -191,7 +197,7 @@ MULTI_LINE_COMMENT  "/*"[^*]*"*"+[^/]*"/"
 
 %%
 
-{AUTO}                { addToSymbolTable(yytext, "keyword"); return(AUTO); }
+{AUTO}                { addToSymbolTable(yytext, "keyword"); RETURN_IF_NOT_MAIN(AUTO); }
 {BREAK}               { addToSymbolTable(yytext, "keyword"); return(BREAK); }
 {CASE}                { addToSymbolTable(yytext, "keyword"); return(CASE); }
 {CHAR}                { addToSymbolTable(yytext, "keyword"); return(CHAR); }
