@@ -303,5 +303,3 @@ MULTI_LINE_COMMENT  "/*"[^*]*"*"+[^/]*"/"
 .                  { report_error("Unrecognized symbol", yytext); return(ERROR); }
 
 %%
-
-
