@@ -1,7 +1,6 @@
 parser
 parser.output
-parser.tab.c
-parser.tab.h
+parser.tab.*
 
 src/lexer
 *.exe
