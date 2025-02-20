@@ -68,7 +68,7 @@ void printParseSymbolTable() {
 %token <strval> NEWLINE ERROR
 %type <strval> type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
 %type <strval> enum_specifier init_declarator_list init_declarator declarator direct_declarator pointer specifier_qualifier_list struct_declarator_list
-%type <strval> struct_declarator
+%type <strval> struct_declarator type_qualifier_list 
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
 %nonassoc LOW_PREC
@@ -116,7 +116,7 @@ unary_operator:
     | BITWISE_NOT
     ;
 
-cast_expression:
+cast_expression: 
     unary_expression
     | LEFT_PAREN type_name RIGHT_PAREN cast_expression
     ;
@@ -359,13 +359,17 @@ enumerator:
     ;
 
 type_qualifier:
-    CONST
-    | VOLATILE
+    CONST  { $$ = strdup($1); }
+    | VOLATILE  { $$ = strdup($1); }
     ;
 
 declarator:
-    pointer direct_declarator 
-    | direct_declarator  
+    pointer direct_declarator {
+        char *fullType = (char *)malloc(strlen($1) + strlen($2) + 1);
+        sprintf(fullType, "%s%s", $1, $2); 
+        $$ = fullType;
+    }
+    | direct_declarator  { $$ = strdup($1);}
     ;
 
 direct_declarator:
@@ -379,15 +383,27 @@ direct_declarator:
     ;
 
 pointer:
-    MULTIPLY
-    | MULTIPLY type_qualifier_list
-    | MULTIPLY pointer
-    | MULTIPLY type_qualifier_list pointer
+    MULTIPLY { $$ = strdup("*"); }
+    | MULTIPLY type_qualifier_list { 
+        $$ = (char *)malloc(strlen("* ") + strlen($2) + 1);
+        sprintf($$, "* %s", $2); 
+    }
+    | MULTIPLY pointer { 
+        $$ = (char *)malloc(strlen($2) + 2);
+        sprintf($$, "*%s", $2);  
+    }
+    | MULTIPLY type_qualifier_list pointer { 
+        $$ = (char *)malloc(strlen($3) + strlen($2) + 3);
+        sprintf($$, "* %s %s", $2, $3);  
+    }
     ;
 
 type_qualifier_list:
-    type_qualifier
-    | type_qualifier_list type_qualifier
+    type_qualifier  { $$ = strdup($1); }
+    | type_qualifier_list type_qualifier  { 
+        $$ = (char *)malloc(strlen($1) + strlen($2) + 2);
+        sprintf($$, "%s %s", $1, $2);  
+    }
     ;
 
 parameter_type_list:
@@ -514,11 +530,27 @@ external_declaration:
 	;
 
 function_definition:
-    declaration_specifiers declarator declaration_list compound_statement
-	| declaration_specifiers declarator compound_statement                   
-	| declarator declaration_list compound_statement
-	| declarator compound_statement
-	;
+    declaration_specifiers declarator declaration_list compound_statement {
+        char functionType[256];  
+        sprintf(functionType, "Function(%s)", $1);  
+        addParseSymbol($2, functionType);
+    }
+    | declaration_specifiers declarator compound_statement {
+        char functionType[256];  
+        sprintf(functionType, "Function(%s)", $1);  
+        addParseSymbol($2, functionType);
+    }
+    | declarator declaration_list compound_statement {
+        char functionType[256];  
+        sprintf(functionType, "Function(%s)", "int"); // Default return type
+        addParseSymbol($1, functionType);
+    }
+    | declarator compound_statement {
+        char functionType[256];  
+        sprintf(functionType, "Function(%s)", "int"); // Default return type
+        addParseSymbol($1, functionType);
+    }
+    ;
 
 %%
 

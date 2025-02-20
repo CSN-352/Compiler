@@ -1,4 +1,4 @@
-void func(int a1,float* d){
+int void func(int a1,float* d){
     int a2 =10;
     int b=20;
     float c=30;
@@ -20,7 +20,7 @@ struct GAMMA{
     int a,c;
     const float b;
     int dd;
-    char* st;
+    char** st;
     struct TT tt;
    
 } 
