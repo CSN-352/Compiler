@@ -1,4 +1,4 @@
-int void func(int a1,float* d){
+int void func(long long int a1,float* d){
     int a2 =10;
     int b=20;
     float c=30;
@@ -34,3 +34,4 @@ int main(){
     float a2;
     func(a1,&d);
 }
+

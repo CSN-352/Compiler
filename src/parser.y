@@ -69,20 +69,13 @@ void printParseSymbolTable() {
 %token <strval> NEWLINE ERROR
 %type <strval> type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
 %type <strval> enum_specifier init_declarator_list init_declarator declarator direct_declarator pointer specifier_qualifier_list struct_declarator_list
-%type <strval> struct_declarator type_qualifier_list 
+%type <strval> struct_declarator type_qualifier_list parameter_declaration
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
 %nonassoc LOW_PREC
 %nonassoc HIGH_PREC
 %start translation_unit
 %%
-
-error:
-    I_CONSTANT IDENTIFIER 
-    | MULTIPLY DIVIDE
-    | '"'
-    | '''
-    ;
 
 primary_expression:
     IDENTIFIER
@@ -222,6 +215,16 @@ declaration:
         char *type = strdup($1);
         char *variables = strdup($2);
 
+        char formattedType[256];
+
+        if (strncmp(type, "enum ", 5) == 0) {
+            sprintf(formattedType, "enum(%s)", type + 5);  
+        } else if (strncmp(type, "struct ", 7) == 0) {
+            sprintf(formattedType, "struct(%s)", type + 7); 
+        } else {
+            strcpy(formattedType, type); 
+        }
+
         char *token = strtok(variables, ", ");
         while (token != NULL) {
             char fullType[256];
@@ -230,13 +233,14 @@ declaration:
 
             while (*varName == '*') {
                 starCount++;
-                varName++; // Move past the '*'
+                varName++; 
             }
-            sprintf(fullType, "%s%.*s", type, starCount, "****************"); 
+            sprintf(fullType, "%s%.*s", formattedType, starCount, "****************");
+
             addParseSymbol(varName, fullType);
             token = strtok(NULL, ", ");
         }
-    } 
+    }
     ;
 
 declaration_specifiers:
@@ -302,9 +306,17 @@ type_specifier:
 	;
 
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER LEFT_CURLY struct_declaration_list RIGHT_CURLY     { $$ = strdup($2);}
-	| struct_or_union LEFT_CURLY struct_declaration_list RIGHT_CURLY              { $$ = strdup("unidentified");}
-	| struct_or_union IDENTIFIER                                                  { $$ = strdup($2); }
+    struct_or_union IDENTIFIER LEFT_CURLY struct_declaration_list RIGHT_CURLY  {
+        addParseSymbol($2, $1); 
+        $$ = strdup($2);
+    }
+	| struct_or_union LEFT_CURLY struct_declaration_list RIGHT_CURLY    {
+        $$ = strdup("unidentified");
+    }
+	| struct_or_union IDENTIFIER {
+        addParseSymbol($2, $1); 
+        $$ = strdup($2);
+    }                                                 
 	;
 
 struct_or_union:
@@ -327,12 +339,15 @@ struct_declaration:
             char fullType[256];
             char *varName = token;
             int starCount = 0;
+
             while (*varName == '*') {
                 starCount++;
                 varName++; // Move past '*'
             }
+
             sprintf(fullType, "%s%.*s", type, starCount, "****************");
-            addParseSymbol(varName, fullType);
+
+            addParseSymbol(varName, fullType); 
             token = strtok(NULL, ", ");
         }
     }
@@ -367,8 +382,14 @@ struct_declarator:
 
 enum_specifier:
     ENUM LEFT_CURLY enumerator_list RIGHT_CURLY                 { $$ = strdup("unidentified");}
-	| ENUM IDENTIFIER LEFT_CURLY enumerator_list RIGHT_CURLY    { $$ = strdup($2);}
-	| ENUM IDENTIFIER                                           { $$ = strdup($2);}
+	| ENUM IDENTIFIER LEFT_CURLY enumerator_list RIGHT_CURLY    {
+        addParseSymbol($2, "enum");
+        $$ = strdup($2);
+    }
+	| ENUM IDENTIFIER  {
+        addParseSymbol($2, "enum");
+        $$ = strdup($2);
+    }                                        
 	;
 
 enumerator_list:
@@ -377,8 +398,12 @@ enumerator_list:
     ;
 
 enumerator:
-    IDENTIFIER
-    | IDENTIFIER ASSIGN conditional_expression
+    IDENTIFIER {
+        addParseSymbol($1, "int");  
+    }
+    | IDENTIFIER ASSIGN conditional_expression {
+        addParseSymbol($1, "int");  
+    }
     ;
 
 type_qualifier:
@@ -440,9 +465,21 @@ parameter_list:
     ;
 
 parameter_declaration:
-    declaration_specifiers declarator
+    declaration_specifiers declarator { 
+        char *fullType = strdup($1);  
+        char *varName = strdup($2);   
+       
+        if ($2[0] == '*') {  
+            fullType = (char *)malloc(strlen($1) + 2);
+            sprintf(fullType, "%s*", $1);
+            varName = strdup($2 + 1);  
+        }
+
+        $$ = fullType;
+        addParseSymbol(varName, fullType);  
+    }
 	| declaration_specifiers abstract_declarator
-	| declaration_specifiers
+	| declaration_specifiers                        { $$ = strdup($1); }
 	;
 
 identifier_list:
