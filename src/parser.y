@@ -35,18 +35,19 @@ void addParseSymbol(const char *token, const char *type) {
 // Function to print the symbol table after parsing
 void printParseSymbolTable() {
     printf("\nParser Symbol Table:\n");
-    printf("-------------------------------------------------\n");
-    printf("| %-20s | %-10s |\n", "Token", "Type");
-    printf("-------------------------------------------------\n");
+    printf("--------------------------------------------------------------\n");
+    printf("| %-20s | %-30s |\n", "Token", "Type");
+    printf("--------------------------------------------------------------\n");
 
     for (int i = 0; i < parseSymbolCount; i++) {
-        printf("| %-20s | %-10s |\n",
-            parseSymbolTable[i].token,
-            parseSymbolTable[i].type);
+        printf("| %-20s | %-30s |\n",
+               parseSymbolTable[i].token,
+               parseSymbolTable[i].type);
     }
 
-    printf("-------------------------------------------------\n");
+    printf("--------------------------------------------------------------\n");
 }
+
 
 
 %} 
@@ -75,6 +76,13 @@ void printParseSymbolTable() {
 %nonassoc HIGH_PREC
 %start translation_unit
 %%
+
+error:
+    I_CONSTANT IDENTIFIER 
+    | MULTIPLY DIVIDE
+    | '"'
+    | '''
+    ;
 
 primary_expression:
     IDENTIFIER
@@ -211,13 +219,21 @@ expression:
 declaration:
     declaration_specifiers SEMICOLON                           
     | declaration_specifiers init_declarator_list SEMICOLON  {
-        char *type = $1;
-        char *variables = $2;
+        char *type = strdup($1);
+        char *variables = strdup($2);
 
-        
         char *token = strtok(variables, ", ");
         while (token != NULL) {
-            addParseSymbol(token, type);
+            char fullType[256];
+            char *varName = token;
+            int starCount = 0;
+
+            while (*varName == '*') {
+                starCount++;
+                varName++; // Move past the '*'
+            }
+            sprintf(fullType, "%s%.*s", type, starCount, "****************"); 
+            addParseSymbol(varName, fullType);
             token = strtok(NULL, ", ");
         }
     } 
@@ -303,16 +319,23 @@ struct_declaration_list:
 
 struct_declaration:
     specifier_qualifier_list struct_declarator_list SEMICOLON {
-        char *type = $1;
-        char *variables = $2;
+        char *type = strdup($1);
+        char *variables = strdup($2);
 
-        
         char *token = strtok(variables, ", ");
         while (token != NULL) {
-            addParseSymbol(token, type);
+            char fullType[256];
+            char *varName = token;
+            int starCount = 0;
+            while (*varName == '*') {
+                starCount++;
+                varName++; // Move past '*'
+            }
+            sprintf(fullType, "%s%.*s", type, starCount, "****************");
+            addParseSymbol(varName, fullType);
             token = strtok(NULL, ", ");
         }
-    } 
+    }
     ;
 
 specifier_qualifier_list:
