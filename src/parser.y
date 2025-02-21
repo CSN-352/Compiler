@@ -69,13 +69,12 @@ void printParseSymbolTable() {
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
 %type <strval> enum_specifier init_declarator_list init_declarator declarator direct_declarator pointer specifier_qualifier_list struct_declarator_list
-%type <strval> struct_declarator type_qualifier_list parameter_declaration
+%type <strval> struct_declarator type_qualifier_list parameter_declaration class_declaration class_declaration_list class_specifier access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
 %nonassoc LOW_PREC
 %nonassoc HIGH_PREC
 %start translation_unit
-%debug
 %%
 
 error_case:
@@ -229,6 +228,8 @@ declaration:
             sprintf(formattedType, "enum(%s)", type + 5);  
         } else if (strncmp(type, "struct ", 7) == 0) {
             sprintf(formattedType, "struct(%s)", type + 7); 
+        } else if (strncmp(type, "class ", 6) == 0) {   // Handle class type
+            sprintf(formattedType, "class(%s)", type + 6);  
         } else {
             strcpy(formattedType, type); 
         }
@@ -312,6 +313,10 @@ type_specifier:
         $$ = (char *)malloc(strlen($1) + strlen("enum ") + 1);
         sprintf($$, "enum %s", $1);
     }
+    | class_specifier {
+        $$ = (char *)malloc(strlen($1) + strlen("class ") + 1);
+        sprintf($$, "class %s", $1);
+    }
 	;
 
 struct_or_union_specifier:
@@ -335,6 +340,34 @@ struct_or_union:
 struct_declaration_list:
     struct_declaration
     | struct_declaration_list struct_declaration
+    ;
+
+class_specifier:
+    CLASS IDENTIFIER LEFT_CURLY class_declaration_list RIGHT_CURLY {
+        addParseSymbol($2, "class");
+        $$ = strdup($2);
+    }
+    | CLASS LEFT_CURLY class_declaration_list RIGHT_CURLY {
+        $$ = strdup("anonymous_class");
+    }
+    | CLASS IDENTIFIER {
+        $$ = strdup($2);
+    }
+    ;
+
+class_declaration_list:
+    class_declaration
+    | class_declaration_list class_declaration
+    ;
+
+class_declaration:
+    access_specifier LEFT_CURLY struct_declaration_list RIGHT_CURLY 
+    ;
+
+access_specifier:
+    PUBLIC  { $$ = strdup("public"); }
+    | PRIVATE { $$ = strdup("private"); }
+    | PROTECTED { $$ = strdup("protected"); }
     ;
 
 struct_declaration:
@@ -607,7 +640,7 @@ translation_unit:
 external_declaration:
 	function_definition
 	| declaration
-    	| error_case skip_until_semicolon 
+    | error_case skip_until_semicolon 
 	;
 
 function_definition:
@@ -660,7 +693,6 @@ int main(int argc, char **argv) {
     }
 
     yyin = file;
-    yydebug = 1;  // Set yyin to read from the input file
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     if(!has_error)printParseSymbolTable();

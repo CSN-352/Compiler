@@ -10,7 +10,7 @@ YACC_D_FILE = parser.output
 # Compiler and flags
 LEX = lex
 YACC = bison
-YFLAGS = -d -v -t
+YFLAGS = -d -v
 CC = gcc
 CFLAGS = -ll
 

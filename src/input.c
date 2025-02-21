@@ -8,9 +8,30 @@
 // int add(int a, int b) {
 //     return a + b;
 // }
-int (*funcPtr)(int, int) = add;
-int sum = funcPtr(3, 4); 
+// class Basic_Class {
+//     private{
+//         int a;
+//         int b;
+//     }
+// };
 
+
+// class Basic_Class obj;
+ 
+
+// int add(int a, int b) {
+//     return a + b;
+// }
+// int (*funcPtr)(int, int) = add;
+// int sum = funcPtr(3, 4); 
+int main(){ 
+    int y = 5;
+    int z = 5;
+    do {
+        static int k;
+        y--;
+    } while (y > 0);
+}
 // int add(int a, int b) {
 //     return a + b;
 // }
@@ -47,7 +68,7 @@ int sum = funcPtr(3, 4);
 //     const char** st;
 //     struct TT tt;
    
-// } 
+// }fac;
 // struct TT1{
 //         long double p;
 // };
