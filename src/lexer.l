@@ -339,8 +339,8 @@ NEWLINE        \n
 
 <<EOF>>               { return 0; }
 
-"\'"                   { return(SINGLE_QUOTE);}
-'\"'                   { return(DOUBLE_QUOTE);}
+\'                   { return(SINGLE_QUOTE);}
+\"                   { return(DOUBLE_QUOTE);}
 
 .                     { yyerror("Unrecognized symbol"); updateColumn(1); return(ERROR); }
 
