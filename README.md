@@ -50,6 +50,7 @@ The language includes the following advanced features:
 - **Until Loop**
 - **Multi-level Pointers**
 - **Multi-dimensional Arrays**
+- **Function call with variable arguments**
 
 ---
 
