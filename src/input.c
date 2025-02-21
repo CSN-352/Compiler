@@ -3,23 +3,57 @@
 //     int y;
 // };
 // struct Point p1;
-// p1.x = 10;
-// p1.y = 20;
+// int a=10;
+// int main(){
+//     struct Point p1;
+//     int a;
+//     int b
+//     int c
+//     int d=10;
+//     struct Point p1;
+//     int a;
+//     int b
+//     int c
+
+//     int d=10;
+//     struct Point p1;
+//     int a;
+//     int b
+//     int c
+
+//     int d=10;
+// }
+
+// class Basic_Class {
+//     private{
+//         int a;
+//         int b;
+//     }
+// };
+
+// class Basic_Class obj;
+
 // int add(int a, int b) {
 //     return a + b;
 // }
 // class Basic_Class {
 
 // };
-// class Basic_Class {
-//     private{
-//         int a;
-//         int b;
-//     }
-//     public{
-//         int x;
-//     }
-// };
+class Basic_Class {
+    private{
+        int a;
+        int b;
+    }
+    public{
+        int x;
+    }
+};
+
+class B : A, C {
+    public{
+        int x;
+    }
+};
 
 // class Basic_Class obj;
 
@@ -106,12 +140,4 @@
 //     float a2;
 //     func(a1,&d);
 // }
-// int main(){
-//     long long int somua;
-//     int som 
-//     int abc;
-//     int def;
-//     int hello 
-//     int ghi
-//     int jkl;
-// }
+

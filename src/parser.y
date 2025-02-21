@@ -348,6 +348,10 @@ class_specifier:
         addParseSymbol($2, "class");
         $$ = strdup($2);
     }
+    | CLASS IDENTIFIER INHERITANCE_OP init_declarator_list LEFT_CURLY class_declaration_list RIGHT_CURLY {
+        addParseSymbol($2, "class");
+        $$ = strdup($2);
+    }
     | CLASS LEFT_CURLY class_declaration_list RIGHT_CURLY {
         $$ = strdup("anonymous_class");
     }
@@ -393,7 +397,6 @@ struct_declaration:
             token = strtok(NULL, ", ");
         }
     }
-    
     ;
 
 specifier_qualifier_list:
