@@ -1,13 +1,14 @@
 # Syntax Analyzer / Parser
 
-## Project Overview
-This project is a **Syntax Analyzer / Parser** designed to validate and analyze the syntax of programs written in a **custom programming language**. The language syntax is **inspired by C**, but also includes additional features such as **class-based object-oriented programming, function overloading, and new control structures**. The parser is implemented using **C++** and utilizes **LALR(1) parsing techniques**.
+## **Project Overview**  
+The **Syntax Analyzer / Parser** is designed to validate and analyze programs written in a **custom programming language**. This language is **inspired by C** but extends its capabilities with features like **class-based object-oriented programming, function overloading, and new control structures**.  
 
-- **Source Language:** Custom Language (C-like with extended features)  
+The parser is implemented in **C++** and follows the **LALR(1) parsing technique** to efficiently process and validate syntax.
+
+### **Key Details:**  
+- **Source Language:** Custom (C-like with additional features)  
 - **Implementation Language:** C++  
-- **Parsing Method:** LALR(1)  
-
----
+- **Parsing Technique:** LALR(1)  
 
 ## Features
 
@@ -39,6 +40,7 @@ The language includes the following advanced features:
 
 - **Recursive Function Calls**
 - **Class and Object Support**
+- **Inheritance**
 - **Dynamic Memory Allocation**
 - **Function Pointers**
 - **Command Line Input**
