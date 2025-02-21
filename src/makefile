@@ -10,9 +10,9 @@ YACC_D_FILE = parser.output
 # Compiler and flags
 LEX = lex
 YACC = bison
-YFLAGS = -d -v
+YFLAGS = -d -v -t
 CC = gcc
-CFLAGS = -lfl
+CFLAGS = -ll
 
 # # Initial cleaning
 # clean:

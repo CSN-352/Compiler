@@ -75,6 +75,7 @@ void printParseSymbolTable() {
 %nonassoc LOW_PREC
 %nonassoc HIGH_PREC
 %start translation_unit
+%debug
 %%
 
 primary_expression:
@@ -314,8 +315,7 @@ struct_or_union_specifier:
 	| struct_or_union LEFT_CURLY struct_declaration_list RIGHT_CURLY    {
         $$ = strdup("unidentified");
     }
-	| struct_or_union IDENTIFIER {
-        addParseSymbol($2, $1); 
+	| struct_or_union IDENTIFIER { 
         $$ = strdup($2);
     }                                                 
 	;
@@ -422,10 +422,22 @@ declarator:
     ;
 
 direct_declarator:
-    IDENTIFIER  
-    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE 
-	| direct_declarator LEFT_SQUARE RIGHT_SQUARE 
-    | LEFT_PAREN declarator RIGHT_PAREN 
+    IDENTIFIER  {
+        $$ = strdup($1);  // Store variable name
+    }
+    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {
+        // Append "[]" for each array dimension
+        $$ = (char *)malloc(strlen($1) + 3);
+        sprintf($$, "%s[]", $1);
+    }
+	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {
+        // Handle unsized arrays (e.g., `char str[]`)
+        $$ = (char *)malloc(strlen($1) + 3);
+        sprintf($$, "%s[]", $1);
+    }
+    | LEFT_PAREN declarator RIGHT_PAREN {
+        $$ = strdup($2);
+    }
     | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN 
     | direct_declarator LEFT_PAREN identifier_list RIGHT_PAREN 
     | direct_declarator LEFT_PAREN RIGHT_PAREN 
@@ -633,7 +645,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    yyin = file;  // Set yyin to read from the input file
+    yyin = file;
+    yydebug = 1;  // Set yyin to read from the input file
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     printParseSymbolTable();
