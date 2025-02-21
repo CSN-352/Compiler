@@ -9,11 +9,38 @@
 //     return a + b;
 // }
 // class Basic_Class {
+
+// };
+// class Basic_Class {
 //     private{
 //         int a;
 //         int b;
 //     }
+//     public{
+//         int x;
+//     }
 // };
+
+// class Basic_Class obj;
+
+// class Basic_Class {
+//     private{
+//         int x;
+//     }
+//     private{
+        
+//         int func(int a, int b){
+//             return a+b;
+//         }
+        
+//     }
+// };
+
+// int func(int x, ...){
+//     int x;
+// }
+
+// class Basic_Class obj;
 
 
 // class Basic_Class obj;
@@ -24,14 +51,14 @@
 // }
 // int (*funcPtr)(int, int) = add;
 // int sum = funcPtr(3, 4); 
-int main(){ 
-    int y = 5;
-    int z = 5;
-    do {
-        static int k;
-        y--;
-    } while (y > 0);
-}
+// int main(){ 
+//     int y = 5;
+//     int z = 5;
+//     do {
+//         static int k;
+//         y--;
+//     } while (y > 0);
+// }
 // int add(int a, int b) {
 //     return a + b;
 // }
@@ -79,4 +106,12 @@ int main(){
 //     float a2;
 //     func(a1,&d);
 // }
-
+// int main(){
+//     long long int somua;
+//     int som 
+//     int abc;
+//     int def;
+//     int hello 
+//     int ghi
+//     int jkl;
+// }

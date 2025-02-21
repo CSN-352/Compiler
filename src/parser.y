@@ -393,6 +393,7 @@ struct_declaration:
             token = strtok(NULL, ", ");
         }
     }
+    
     ;
 
 specifier_qualifier_list:
