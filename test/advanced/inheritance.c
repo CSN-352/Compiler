@@ -1,7 +1,6 @@
 class Basic_Class {
     private{
         int a;
-        int b;
     }
     public{
         int x;

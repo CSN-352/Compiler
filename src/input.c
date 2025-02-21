@@ -17,18 +17,22 @@
 //     printf("Sum: %d\n", calc.operation(3, 7));
 //     return 0;
 // }
-
-class A{
-    public{
-        int x;
-        int add(int a, int c){
-            return a+c;
-        }
-        int sub(int k, int l){
-            return k-l;
-        }
-    }
-};
+struct iobuf
+{
+    char*   _ptr;
+    int _cnt;
+    char*   _base;
+    int _flag;
+    int _file;
+    int _charbuf;
+    int _bufsiz;
+    char*   _tmpfname;
+} FILE;
+int main() {
+    struct FILE *f = fopen("test.txt", "w+"); fprintf(f, "Hello, File!"); rewind(f);
+    char buf[20]; fgets(buf, 20, f); printf("%s", buf);
+    fclose(f);
+}
 
 // struct Point {
 //     int x;

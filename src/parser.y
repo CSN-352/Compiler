@@ -366,13 +366,9 @@ class_declaration_list:
     | class_declaration_list class_declaration
     ;
 
-class_declaration:
-    access_specifier LEFT_CURLY struct_declaration_list function_definition_list RIGHT_CURLY 
-    ;
 
-function_definition_list:
-    function_definition
-    | function_definition_list function_definition
+class_declaration:
+    access_specifier LEFT_CURLY translation_unit RIGHT_CURLY 
     ;
 
 access_specifier:
@@ -719,7 +715,6 @@ int main(int argc, char **argv) {
     }
 
     yyin = file;
-    
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     if(!has_error)printParseSymbolTable();

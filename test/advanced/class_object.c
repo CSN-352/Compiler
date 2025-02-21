@@ -1,9 +1,13 @@
-class Basic_Class {
-    private{
-        int a;
-        int b;
+class A{
+    public{
+        int x;
+        int add(int a, int c){
+            return a+c;
+        }
+        int sub(int k, int l){
+            return k-l;
+        }
     }
 };
-
-class Basic_Class obj;
+class A obj;
  
