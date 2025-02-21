@@ -81,7 +81,7 @@ error_case:
     I_CONSTANT IDENTIFIER { yyerror("Invalid Identifier"); has_error=1; yyclearin;}
     | MULTIPLY DIVIDE { yyerror("Unterminated Comment"); has_error=1; yyclearin;}
     | ERROR { has_error=1; yyclearin;}
-    | error {  has_error=1; yyclearin;}
+    | error { has_error=1; yyclearin;}
     ;
 
 primary_expression:
@@ -248,7 +248,6 @@ declaration:
             token = strtok(NULL, ", ");
         }
     }
-    | error_case skip_until_semicolon { yyclearin;}
     ;
 
 declaration_specifiers:
@@ -596,6 +595,7 @@ translation_unit:
 external_declaration:
 	function_definition
 	| declaration
+    | error_case skip_until_semicolon { yyclearin;}
 	;
 
 function_definition:
