@@ -1,22 +1,34 @@
-struct Calculator
-{
-    int x;
+// struct Calculator
+// {
+//     int x;
+// };
+
+// int add(int a, int b)
+// {
+//     return a + b;
+// }
+// int (*funcPtr)(int, int) = add;
+// int main()
+// {
+//     int sum = funcPtr(3, 4);
+//     struct Calculator calc;
+//     calc.operation = add;
+
+//     printf("Sum: %d\n", calc.operation(3, 7));
+//     return 0;
+// }
+
+class A{
+    public{
+        int x;
+        int add(int a, int c){
+            return a+c;
+        }
+        int sub(int k, int l){
+            return k-l;
+        }
+    }
 };
-
-int add(int a, int b)
-{
-    return a + b;
-}
-int (*funcPtr)(int, int) = add;
-int main()
-{
-    int sum = funcPtr(3, 4);
-    struct Calculator calc;
-    calc.operation = add;
-
-    printf("Sum: %d\n", calc.operation(3, 7));
-    return 0;
-}
 
 // struct Point {
 //     int x;

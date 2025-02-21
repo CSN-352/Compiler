@@ -367,7 +367,12 @@ class_declaration_list:
     ;
 
 class_declaration:
-    access_specifier LEFT_CURLY struct_declaration_list RIGHT_CURLY 
+    access_specifier LEFT_CURLY struct_declaration_list function_definition_list RIGHT_CURLY 
+    ;
+
+function_definition_list:
+    function_definition
+    | function_definition_list function_definition
     ;
 
 access_specifier:
