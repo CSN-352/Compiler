@@ -64,7 +64,7 @@ void printParseSymbolTable() {
 %token <strval> IDENTIFIER I_CONSTANT H_CONSTANT O_CONSTANT F_CONSTANT HEX_F_CONSTANT STRING_LITERAL CHAR_CONSTANT
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token <strval> RIGHT_OP LEFT_OP INC_OP DEC_OP INHERITANCE_OP PTR_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
-%token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN DOT QUESTION POUND
+%token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN DOT QUESTION
 %token <strval> NOT BITWISE_NOT BITWISE_XOR BITWISE_OR BITWISE_AND MINUS PLUS MULTIPLY DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
@@ -330,7 +330,6 @@ struct_or_union_specifier:
         $$ = strdup("unidentified");
     }
 	| struct_or_union IDENTIFIER {
-        addParseSymbol($2, $1); 
         $$ = strdup($2);
     }                                                 
 	;
@@ -469,13 +468,35 @@ declarator:
     ;
 
 direct_declarator:
-    IDENTIFIER  
-    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE 
-	| direct_declarator LEFT_SQUARE RIGHT_SQUARE 
-    | LEFT_PAREN declarator RIGHT_PAREN 
-    | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN 
-    | direct_declarator LEFT_PAREN identifier_list RIGHT_PAREN 
-    | direct_declarator LEFT_PAREN RIGHT_PAREN 
+    IDENTIFIER  {
+        $$ = strdup($1);  // Store variable name
+    }
+    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {
+        // Append "[]" for each array dimension
+        $$ = (char *)malloc(strlen($1) + 3);
+        sprintf($$, "%s[]", $1);
+    }
+	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {
+        // Handle unsized arrays (e.g., `char str[]`)
+        $$ = (char *)malloc(strlen($1) + 3);
+        sprintf($$, "%s[]", $1);
+    }
+    | LEFT_PAREN declarator RIGHT_PAREN {
+        $$ = strdup($2);
+    }
+    | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {
+        // Handle normal function declaration
+        $$ = (char *)malloc(strlen($1) + 10);
+        sprintf($$, "%s", $1);
+    }
+    | direct_declarator LEFT_PAREN identifier_list RIGHT_PAREN {
+        $$ = (char *)malloc(strlen($1) + 10);
+        sprintf($$, "%s", $1);
+    } 
+    | direct_declarator LEFT_PAREN RIGHT_PAREN {
+        $$ = (char *)malloc(strlen($1) + 10);
+        sprintf($$, "%s", $1);
+    }
     ;
 
 pointer:

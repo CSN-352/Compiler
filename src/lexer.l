@@ -206,7 +206,7 @@ COLON         :
 ASSIGN        =       
 DOT           \.       
 QUESTION      \?       
-POUND         "#"
+
 
 /* Individual operators */
 NOT           !        
@@ -315,7 +315,7 @@ NEWLINE        \n
 {RIGHT_SQUARE}       { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_SQUARE); }
 {DOT}                 { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DOT); }
 {ELLIPSIS}            { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ELLIPSIS); }
-{POUND}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(POUND); }
+
 
 {NOT}                 { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(NOT); }
 {BITWISE_NOT}         { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_NOT); }

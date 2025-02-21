@@ -1,3 +1,23 @@
+struct Calculator
+{
+    int x;
+};
+
+int add(int a, int b)
+{
+    return a + b;
+}
+int (*funcPtr)(int, int) = add;
+int main()
+{
+    int sum = funcPtr(3, 4);
+    struct Calculator calc;
+    calc.operation = add;
+
+    printf("Sum: %d\n", calc.operation(3, 7));
+    return 0;
+}
+
 // struct Point {
 //     int x;
 //     int y;
@@ -39,21 +59,24 @@
 // class Basic_Class {
 
 // };
-class Basic_Class {
-    private{
-        int a;
-        int b;
-    }
-    public{
-        int x;
-    }
-};
+// class Basic_Class {
+//     private{
+//         int a;
+//         int b;
+//     }
+//     public{
+//         int x;
+//     }
+// };
 
-class B : A, C {
-    public{
-        int x;
-    }
-};
+// class B <- A, C {
+//     public{
+//         int x;
+//     }
+// };
+
+// int arr[][];
+// int p[];
 
 // class Basic_Class obj;
 
