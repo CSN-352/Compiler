@@ -248,6 +248,7 @@ declaration:
             token = strtok(NULL, ", ");
         }
     }
+    | error_case skip_until_semicolon SEMICOLON
     ;
 
 declaration_specifiers:
@@ -534,6 +535,7 @@ statement:
 	| selection_statement
 	| iteration_statement
 	| jump_statement
+    | error_case skip_until_semicolon
 	;
 
 labeled_statement:
@@ -544,9 +546,14 @@ labeled_statement:
 
 compound_statement:
     LEFT_CURLY RIGHT_CURLY
-    | LEFT_CURLY statement_list RIGHT_CURLY
-    | LEFT_CURLY declaration_list RIGHT_CURLY
-    | LEFT_CURLY declaration_list statement_list RIGHT_CURLY
+    | LEFT_CURLY declaration_statement_list RIGHT_CURLY
+    ;
+
+declaration_statement_list:
+    declaration_list
+    | statement_list
+    | declaration_statement_list declaration_list 
+    | declaration_statement_list statement_list
     ;
 
 declaration_list:
@@ -594,8 +601,7 @@ translation_unit:
 
 external_declaration:
 	function_definition
-	| declaration
-    | error_case skip_until_semicolon 
+	| declaration 
 	;
 
 function_definition:
@@ -622,7 +628,7 @@ function_definition:
     ;
 
 skip_until_semicolon:
-    SEMICOLON { yyclearin; }  // Stop at semicolon and reset error handling
+    SEMICOLON   // Stop at semicolon and reset error handling
     | error 
     | skip_until_semicolon error  // Consume any unexpected token
     ;
