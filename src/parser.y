@@ -79,7 +79,7 @@ void printParseSymbolTable() {
 
 error_case:
     I_CONSTANT IDENTIFIER { yyerror("Invalid Identifier"); has_error=1; yyclearin;}
-    | MULTIPLY DIVIDE { yyerror("Unterminated Comment"); has_error=1; yyclearin;}
+    | DIVIDE MULTIPLY { yyerror("Unterminated Comment"); has_error=1; yyclearin;}
     | ERROR { has_error=1; yyclearin;}
     | error {  has_error=1; yyclearin;}
     ;
