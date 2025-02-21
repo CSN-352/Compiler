@@ -184,7 +184,7 @@ RIGHT_OP      >>
 LEFT_OP       <<       
 INC_OP        \+\+     
 DEC_OP        --       
-INHERITANCE_OP <-     
+INHERITANCE_OP :     
 PTR_OP        ->       
 LOGICAL_AND   &&       
 LOGICAL_OR    \|\|     
