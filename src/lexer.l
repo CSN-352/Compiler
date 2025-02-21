@@ -11,9 +11,9 @@
 #endif 
 
 int line_no = 1;  // Line number tracker
-int has_error=0;
 int column_no = 1; // Column number tracker
 int is_typedef=0;
+extern void yyerror(const char* msg);
 
 // Symbol table structure
 #define MAX_SYMBOLS 10000
@@ -31,27 +31,24 @@ extern int yylex();  // Lexical analyzer function
 extern FILE *yyin;   // Input file
 
 // Function to handle errors
-void report_error(const char *msg, const char *symbol) {
-    has_error=1;
-    printf("Error at line %d, column %d: %s '%s'\n", line_no, column_no, msg, symbol);
-}
+//void report_error(const char *msg, const char *symbol) {
+//    has_error=1;
+//    printf("Error at line %d, column %d: %s '%s'\n", line_no, column_no, msg, symbol);
+//}
 
 // Function to add symbol to the symbol table
 void addToSymbolTable(const char *lexeme, const char *type) {
     if (symbolCount >= MAX_SYMBOLS) {
-        report_error("Symbol table is full.", lexeme);
         return;  // Avoid adding more symbols if table is full
     }
 
     symbolTable[symbolCount].token = strdup(type);
     if (symbolTable[symbolCount].token == NULL) {
-        report_error("Memory allocation failed for token.", lexeme);
         return;  // Handle memory allocation failure
     }
 
     symbolTable[symbolCount].lexeme = strdup(lexeme);
     if (symbolTable[symbolCount].lexeme == NULL) {
-        report_error("Memory allocation failed for lexeme.", lexeme);
         free(symbolTable[symbolCount].token); // Clean up previous allocation
         return;  // Handle memory allocation failure
     }
@@ -91,10 +88,11 @@ int check_type_name(const char* lexeme) {
 
 
 // Function to check identifier length
-void checkIdentifierLength(const char *identifier) {
+int checkIdentifierLength(const char *identifier) {
     if (strlen(identifier) > 32) {
-        report_error("Identifier exceeds maximum length (32 characters):", identifier);
+        return 0;
     }
+    return 1;
 }
 
 // Function to update column number
@@ -233,7 +231,7 @@ NEWLINE        \n
 
 %%
 
-{AUTO}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); if(check_type_name(yytext)){return(TYPE_NAME);} RETURN_IF_NOT_MAIN(AUTO); }
+{AUTO}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AUTO); }
 {BREAK}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BREAK); }
 {CASE}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CASE); }
 {CHAR}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CHAR); }
@@ -272,7 +270,7 @@ NEWLINE        \n
 {PROTECTED}           { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PROTECTED); }
 {ASSEMBLY_DIRECTIVE}  { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ASSEMBLY_DIRECTIVE); }
 
-{IDENTIFIER}          { yylval.strval = strdup(yytext); checkIdentifierLength(yytext); if(is_typedef){addToSymbolTable(yytext, "type_name"); is_typedef=0;} else addToSymbolTable(yytext, "identifier"); updateColumn(yyleng); if(check_type_name(yytext))return(TYPE_NAME); RETURN_IF_NOT_MAIN(IDENTIFIER); }
+{IDENTIFIER}          { yylval.strval = strdup(yytext); if(!checkIdentifierLength(yytext)){yyerror("Identifier exceeds maximum length (32 characters):"); return(ERROR);} if(is_typedef){addToSymbolTable(yytext, "type_name"); is_typedef=0;} else addToSymbolTable(yytext, "identifier"); updateColumn(yyleng); if(check_type_name(yytext))return(TYPE_NAME); RETURN_IF_NOT_MAIN(IDENTIFIER); }
 {H_CONSTANT}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "hexadecimal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(H_CONSTANT); }
 {O_CONSTANT}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "octal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(O_CONSTANT); }
 {I_CONSTANT}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "integer_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }
@@ -341,7 +339,10 @@ NEWLINE        \n
 
 <<EOF>>               { return 0; }
 
-.                     { report_error("Unrecognized symbol", yytext); updateColumn(1); }
+"\'"                   { return(SINGLE_QUOTE);}
+'\"'                   { return(DOUBLE_QUOTE);}
+
+.                     { yyerror("Unrecognized symbol"); updateColumn(1); return(ERROR); }
 
 %%
 

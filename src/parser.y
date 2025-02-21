@@ -10,6 +10,7 @@ extern int yyparse();
 extern int yylineno;
 extern YYSTYPE yylval;
 extern FILE *yyin;
+int has_error=0;
 
 void yyerror(const char *msg);
 
@@ -57,7 +58,6 @@ void printParseSymbolTable() {
     int intval;
     char* strval;
 }
-
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
@@ -66,8 +66,8 @@ void printParseSymbolTable() {
 %token <strval> RIGHT_OP LEFT_OP INC_OP DEC_OP INHERITANCE_OP PTR_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN DOT QUESTION POUND
 %token <strval> NOT BITWISE_NOT BITWISE_XOR BITWISE_OR BITWISE_AND MINUS PLUS MULTIPLY DIVIDE MOD LESS GREATER
-%token <strval> NEWLINE ERROR
-%type <strval> type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
+%token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
+%type <strval> error_case type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
 %type <strval> enum_specifier init_declarator_list init_declarator declarator direct_declarator pointer specifier_qualifier_list struct_declarator_list
 %type <strval> struct_declarator type_qualifier_list parameter_declaration
 %nonassoc LOWER_THAN_ELSE
@@ -77,6 +77,13 @@ void printParseSymbolTable() {
 %start translation_unit
 %debug
 %%
+
+error_case:
+    I_CONSTANT IDENTIFIER { yyerror("Invalid Identifier"); has_error=1; yyclearin;}
+    | MULTIPLY DIVIDE { yyerror("Unterminated Comment"); has_error=1; yyclearin;}
+    | ERROR { has_error=1; yyclearin;}
+    | error { has_error=1; yyclearin;}
+    ;
 
 primary_expression:
     IDENTIFIER
@@ -600,6 +607,7 @@ translation_unit:
 external_declaration:
 	function_definition
 	| declaration
+    | error_case skip_until_semicolon { yyclearin;}
 	;
 
 function_definition:
@@ -623,6 +631,12 @@ function_definition:
         sprintf(functionType, "Function(%s)", "int"); // Default return type
         addParseSymbol($1, functionType);
     }
+    ;
+
+skip_until_semicolon:
+    SEMICOLON { yyclearin; }  // Stop at semicolon and reset error handling
+    | error { yyclearin; }
+    | skip_until_semicolon error {yyclearin;} // Consume any unexpected token
     ;
 
 %%
@@ -649,7 +663,7 @@ int main(int argc, char **argv) {
     yydebug = 1;  // Set yyin to read from the input file
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
-    printParseSymbolTable();
+    if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;
 }
