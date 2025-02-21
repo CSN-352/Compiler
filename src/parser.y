@@ -75,6 +75,7 @@ void printParseSymbolTable() {
 %nonassoc LOW_PREC
 %nonassoc HIGH_PREC
 %start translation_unit
+
 %%
 
 error_case:
@@ -687,6 +688,7 @@ int main(int argc, char **argv) {
     }
 
     yyin = file;
+    
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     if(!has_error)printParseSymbolTable();
