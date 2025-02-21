@@ -12,7 +12,7 @@ LEX = lex
 YACC = bison
 YFLAGS = -d -v
 CC = gcc
-CFLAGS = -ll
+CFLAGS = -lfl
 
 # # Initial cleaning
 # clean:
