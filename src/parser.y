@@ -247,6 +247,12 @@ declaration:
             }
             sprintf(fullType, "%s%.*s", formattedType, starCount, "****************");
 
+            while (*varName == '[' && *(varName + 1) == ']') {
+                strcat(fullType, "[]");
+                varName++; 
+                varName++;
+            }
+
             addParseSymbol(varName, fullType);
             token = strtok(NULL, ", ");
         }
@@ -475,12 +481,12 @@ direct_declarator:
     | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {
         // Append "[]" for each array dimension
         $$ = (char *)malloc(strlen($1) + 3);
-        sprintf($$, "%s[]", $1);
+        sprintf($$, "[]%s", $1);
     }
 	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {
         // Handle unsized arrays (e.g., `char str[]`)
         $$ = (char *)malloc(strlen($1) + 3);
-        sprintf($$, "%s[]", $1);
+        sprintf($$, "[]%s", $1);
     }
     | LEFT_PAREN declarator RIGHT_PAREN {
         $$ = strdup($2);
