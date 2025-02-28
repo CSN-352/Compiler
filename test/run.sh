@@ -3,7 +3,7 @@
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
 
 SRC="$BASE_DIR/src/parser"
-TEST_DIR="$BASE_DIR/test/"
+TEST_DIR="$BASE_DIR/test"
 OUTPUT_DIR="$BASE_DIR/test/output"
 
 # Clean function
@@ -26,8 +26,8 @@ COL_WIDTH=30
 # Run tests
 for test_file in $test_files; do
     test_name=$(basename "$test_file" .c)  # Extract filename without extension
-    output_file="$OUTPUT_DIR/${test_file#$TEST_DIR/}"
-    output_file="${output_file%.c}.txt"
+    relative_path="${test_file#$TEST_DIR/}"  # Remove test directory prefix
+    output_file="$OUTPUT_DIR/${relative_path%.c}.txt"
 
     # Ensure subdirectories exist
     mkdir -p "$(dirname "$output_file")"
