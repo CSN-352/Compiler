@@ -16,16 +16,16 @@ int is_typedef=0;
 extern void yyerror(const char* msg);
 
 // Symbol table structure
-#define MAX_SYMBOLS 10000
-typedef struct {
-    char *lexeme;  // Pointer to char for storing strings
-    char *token;   // Pointer to char for storing token types
-    int line;      // Line where the symbol appears
-    int column;    // Column where the symbol appears
-} Symbol;
+// #define MAX_SYMBOLS 10000
+// typedef struct {
+//     char *lexeme;  // Pointer to char for storing strings
+//     char *token;   // Pointer to char for storing token types
+//     int line;      // Line where the symbol appears
+//     int column;    // Column where the symbol appears
+// } Symbol;
 
-Symbol symbolTable[MAX_SYMBOLS];
-int symbolCount = 0;
+// Symbol symbolTable[MAX_SYMBOLS];
+// int symbolCount = 0;
 
 extern int yylex();  // Lexical analyzer function
 extern FILE *yyin;   // Input file
@@ -38,51 +38,51 @@ extern FILE *yyin;   // Input file
 
 // Function to add symbol to the symbol table
 void addToSymbolTable(const char *lexeme, const char *type) {
-    if (symbolCount >= MAX_SYMBOLS) {
-        return;  // Avoid adding more symbols if table is full
-    }
+    // if (symbolCount >= MAX_SYMBOLS) {
+    //     return;  // Avoid adding more symbols if table is full
+    // }
 
-    symbolTable[symbolCount].token = strdup(type);
-    if (symbolTable[symbolCount].token == NULL) {
-        return;  // Handle memory allocation failure
-    }
+    // symbolTable[symbolCount].token = strdup(type);
+    // if (symbolTable[symbolCount].token == NULL) {
+    //     return;  // Handle memory allocation failure
+    // }
 
-    symbolTable[symbolCount].lexeme = strdup(lexeme);
-    if (symbolTable[symbolCount].lexeme == NULL) {
-        free(symbolTable[symbolCount].token); // Clean up previous allocation
-        return;  // Handle memory allocation failure
-    }
+    // symbolTable[symbolCount].lexeme = strdup(lexeme);
+    // if (symbolTable[symbolCount].lexeme == NULL) {
+    //     free(symbolTable[symbolCount].token); // Clean up previous allocation
+    //     return;  // Handle memory allocation failure
+    // }
 
-    // Store position information
-    symbolTable[symbolCount].line = line_no;
-    symbolTable[symbolCount].column = column_no;
+    // // Store position information
+    // symbolTable[symbolCount].line = line_no;
+    // symbolTable[symbolCount].column = column_no;
 
-    symbolCount++;
+    // symbolCount++;
 }
 
 // Function to print the symbol table in a structured format
 void printSymbolTable() {
-    printf("\n+----------------------+----------------------+--------+--------+\n");
-    printf("|      Lexeme          |        Token         |  Line  | Column |\n");
-    printf("+----------------------+----------------------+--------+--------+\n");
+    // printf("\n+----------------------+----------------------+--------+--------+\n");
+    // printf("|      Lexeme          |        Token         |  Line  | Column |\n");
+    // printf("+----------------------+----------------------+--------+--------+\n");
 
-    for (int i = 0; i < symbolCount; i++) {
-        printf("| %-20s | %-20s | %6d | %6d |\n", 
-               symbolTable[i].lexeme, 
-               symbolTable[i].token,
-               symbolTable[i].line,
-               symbolTable[i].column);
-    }
+    // for (int i = 0; i < symbolCount; i++) {
+    //     printf("| %-20s | %-20s | %6d | %6d |\n", 
+    //            symbolTable[i].lexeme, 
+    //            symbolTable[i].token,
+    //            symbolTable[i].line,
+    //            symbolTable[i].column);
+    // }
 
-    printf("+----------------------+----------------------+--------+--------+\n");
+    // printf("+----------------------+----------------------+--------+--------+\n");
 }
 
 int check_type_name(const char* lexeme) {  
-    for (int i = 0; i < symbolCount; i++) {  
-        if (strcmp(symbolTable[i].token, "type_name") == 0 && strcmp(symbolTable[i].lexeme, lexeme) == 0) {  
-            return 1;
-        }  
-    }  
+    // for (int i = 0; i < symbolCount; i++) {  
+    //     if (strcmp(symbolTable[i].token, "type_name") == 0 && strcmp(symbolTable[i].lexeme, lexeme) == 0) {  
+    //         return 1;
+    //     }  
+    // }  
     return 0;
 }  
 
