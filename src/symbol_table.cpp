@@ -5,6 +5,8 @@
 #include <iomanip>
 using namespace std;
 
+extern void yyerror(const char *msg);
+
 SymbolTable::SymbolTable() { currentScope = 0; }
 
 void SymbolTable::enterScope()
@@ -38,7 +40,8 @@ void SymbolTable::insert(string name, string type, int memoryAddr)
 {
 	if (lookup(name))
 	{
-		cout << "Error: Symbol '" << name << "' already declared in this scope.\n";
+		string error_msg = "Symbol '" + name + "' already declared in this scope.";
+		yyerror(error_msg.c_str());
         set_error();
 		return;
 	}
@@ -77,8 +80,9 @@ void SymbolTable::update(string name, string newType)
 	}
 	else
 	{
-		cout << "Error: Symbol '" << name << "' not found.\n";
-        set_error();
+		string error_msg = "Symbol '" + name + "' not found.";
+		yyerror(error_msg.c_str());
+		set_error();
 	}
 }
 
@@ -90,7 +94,8 @@ void SymbolTable::remove(string name)
 	}
 	else
 	{
-		cout << "Error: Symbol '" << name << "' not found.\n";
+		string error_msg = "Symbol '" + name + "' not found.";
+		yyerror(error_msg.c_str());
         set_error();
 	}
 }
