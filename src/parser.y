@@ -232,11 +232,11 @@ declaration:
         char formattedType[256];
 
         if (strncmp(type, "enum ", 5) == 0) {
-            sprintf(formattedType, "enum(%s)", type + 5);  
+            snprintf(formattedType, sizeof(formattedType), "enum(%s)", type + 5);  
         } else if (strncmp(type, "struct ", 7) == 0) {
-            sprintf(formattedType, "struct(%s)", type + 7); 
+            snprintf(formattedType, sizeof(formattedType), "struct(%s)", type + 7); 
         } else if (strncmp(type, "class ", 6) == 0) {   // Handle class type
-            sprintf(formattedType, "class(%s)", type + 6);  
+            snprintf(formattedType, sizeof(formattedType), "class(%s)", type + 6);  
         } else {
             strcpy(formattedType, type); 
         }
@@ -271,19 +271,19 @@ declaration_specifiers:
     storage_class_specifier {$$ = strdup($1);}   
     | storage_class_specifier declaration_specifiers {
         char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
-        sprintf(newType, "%s %s", $1, $2);
+        snprintf(newType, sizeof(newType), "%s %s", $1, $2);
         $$ = newType;
     }
 	| type_specifier %prec HIGH_PREC                                    {$$ = strdup($1);}                                             
 	| type_specifier declaration_specifiers %prec LOW_PREC  {
         char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
-        sprintf(newType, "%s %s", $1, $2);
+        snprintf(newType, sizeof(newType), "%s %s", $1, $2);
         $$ = newType;
     }
 	| type_qualifier    {$$ = strdup($1);}   
 	| type_qualifier declaration_specifiers {
         char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
-        sprintf(newType, "%s %s", $1, $2);
+        snprintf(newType, sizeof(newType), "%s %s", $1, $2);
         $$ = newType;
     }
     ;
@@ -341,7 +341,7 @@ struct_or_union_specifier:
     }
 	| struct_or_union add_left_curly struct_declaration_list add_right_curly    {
         char name[256];
-        sprintf(name, "anonymous_%s", $1);
+        snprintf(name, sizeof(name), "anonymous_%s", $1);
         addParseSymbol(name, $1);
         $$ = strdup("unidentified");
     }
@@ -410,7 +410,7 @@ struct_declaration:
                 varName++; // Move past '*'
             }
 
-            sprintf(fullType, "%s%.*s", type, starCount, "****************");
+            snprintf(fullType, sizeof(fullType), "%s%.*s", type, starCount, "****************");
 
             addParseSymbol(varName, fullType); 
             token = strtok(NULL, ", ");
@@ -479,7 +479,7 @@ type_qualifier:
 declarator:
     pointer direct_declarator {
         char *fullType = (char *)malloc(strlen($1) + strlen($2) + 1);
-        sprintf(fullType, "%s%s", $1, $2); 
+        snprintf(fullType, sizeof(fullType), "%s%s", $1, $2); 
         $$ = fullType;
     }
     | direct_declarator  { $$ = strdup($1);}
@@ -558,7 +558,7 @@ parameter_declaration:
        
         if ($2[0] == '*') {  
             fullType = (char *)malloc(strlen($1) + 2);
-            sprintf(fullType, "%s*", $1);
+            snprintf(fullType, sizeof(fullType), "%s*", $1);
             varName = strdup($2 + 1);  
         }
 
@@ -685,22 +685,22 @@ external_declaration:
 function_definition:
     declaration_specifiers declarator declaration_list compound_statement {
         char functionType[256];  
-        sprintf(functionType, "Function(%s)", $1);  
+        snprintf(functionType, sizeof(functionType), "Function(%s)", $1);  
         addParseSymbol($2, functionType);
     }
     | declaration_specifiers declarator compound_statement {
         char functionType[256];  
-        sprintf(functionType, "Function(%s)", $1);  
+        snprintf(functionType, sizeof(functionType), "Function(%s)", $1);  
         addParseSymbol($2, functionType);
     }
     | declarator declaration_list compound_statement {
         char functionType[256];  
-        sprintf(functionType, "Function(%s)", "int"); // Default return type
+        snprintf(functionType, sizeof(functionType), "Function(%s)", "int"); // Default return type
         addParseSymbol($1, functionType);
     }
     | declarator compound_statement {
         char functionType[256];  
-        sprintf(functionType, "Function(%s)", "int"); // Default return type
+        snprintf(functionType, sizeof(functionType), "Function(%s)", "int"); // Default return type
         addParseSymbol($1, functionType);
     }
     ;
