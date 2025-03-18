@@ -45,30 +45,6 @@ class PostfixExpression : public Expression {
       };
   };
 
-class ArgumentExprList : public Expression {
-    public:
-      std::vector <Expression * > args;
-  
-      ArgumentExprList() {};
-  };
-  
-class PostfixExpression : public Expression {
-    public:
-      PostfixExpression *pe;
-      Expression *exp;
-      Identifier *id;
-      ArgumentExprList *ae_list;
-      std::string op;
-  
-      PostfixExpression() {
-          pe = nullptr;
-          exp = nullptr;
-          id = nullptr;
-          ae_list = nullptr;
-          op = "";
-      };
-  };
-
 class UnaryExpression : public Expression {
     public:
       Expression *op1;
