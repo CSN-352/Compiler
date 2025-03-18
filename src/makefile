@@ -1,44 +1,61 @@
 # Define variables
+BUILD_DIR = build
+BIN_DIR = build/bin
+SRC_DIR = ../src
 LEX_FILE = lexer.l
-LEX_C_FILE = lex.yy.c
+LEX_C_FILE = $(BUILD_DIR)/lex.yy.c
 YACC_FILE = parser.y
-YACC_H_FILE = parser.tab.h
-YACC_C_FILE = parser.tab.c
-EXECUTABLE = parser
-YACC_D_FILE = parser.output
+YACC_BASE = $(BUILD_DIR)/parser
+YACC_H_FILE = $(YACC_BASE).tab.h
+YACC_C_FILE = $(YACC_BASE).tab.c
+EXECUTABLE = $(BIN_DIR)/parser
+YACC_D_FILE = $(YACC_BASE).output
+
+LEX_O_FILE = $(BUILD_DIR)/lex.yy.o
+YACC_O_FILE = $(BUILD_DIR)/parser.tab.o
+SYMBOL_TABLE_O_FILE = $(BUILD_DIR)/symbol_table.o
 
 # Compiler and flags
 LEX = lex
 YACC = bison
 YFLAGS = -d -v
+DEBUG ?= 0
 CC = gcc
-CFLAGS = -ll
+CXX = g++
+CFLAGS = -ll -I$(SRC_DIR)
+ifeq ($(DEBUG),1)
+    CFLAGS += -DDEBUG
+endif
 
-# # Initial cleaning
-# clean:
-# 	rm -rf $(C_FILE) $(EXECUTABLE)
-
-# Default target: Build the executable
 all: $(EXECUTABLE)
 
-# Generate parser.tab.h and parser.tab.c from parser.y
-$(YACC_C_FILE) $(YACC_H_FILE): $(YACC_FILE)
-	$(YACC) $(YFLAGS) $(YACC_FILE)
+# Ensure build and bin directories exist
+$(BUILD_DIR) $(BIN_DIR):
+	mkdir -p $@
 
-# Generate lex.yy.c from lexer.l (depends on parser.tab.h)
-$(LEX_C_FILE): $(LEX_FILE) $(YACC_H_FILE)
-	$(LEX) $(LEX_FILE)
+# Generate parser.tab.c and parser.tab.h (force output in build/)
+$(YACC_C_FILE) $(YACC_H_FILE): $(YACC_FILE) | $(BUILD_DIR)
+	$(YACC) $(YFLAGS) -o $(YACC_BASE).tab.c $(YACC_FILE)
 
-# Compile lex.yy.c and parser.tab.c separately, then link them
-lex.yy.o: $(LEX_C_FILE)
-	$(CC) -c $(LEX_C_FILE) $(CFLAGS)
+# Generate lex.yy.c (force output in build/)
+$(LEX_C_FILE): $(LEX_FILE) $(YACC_H_FILE) | $(BUILD_DIR)
+	$(LEX) -o $(LEX_C_FILE) $(LEX_FILE)
 
-parser.tab.o: $(YACC_C_FILE)
-	$(CC) -c $(YACC_C_FILE) $(CFLAGS)
+# Compile lex.yy.c into lex.yy.o
+$(LEX_O_FILE): $(LEX_C_FILE)
+	$(CXX) -c $(LEX_C_FILE) -o $(LEX_O_FILE) $(CFLAGS)
+
+# Compile parser.tab.c into parser.tab.o
+$(YACC_O_FILE): $(YACC_C_FILE)
+	$(CXX) -c $(YACC_C_FILE) -o $(YACC_O_FILE)  $(CFLAGS) 
+
+# Compile symbol_table.cpp into symbol_table.o
+$(SYMBOL_TABLE_O_FILE): $(SRC_DIR)/symbol_table.cpp $(SRC_DIR)/symbol_table.h | $(BUILD_DIR)
+	$(CXX) -c $(SRC_DIR)/symbol_table.cpp -o $(SYMBOL_TABLE_O_FILE) $(CFLAGS)
 
 # Link object files into the final executable
-$(EXECUTABLE): lex.yy.o parser.tab.o
-	$(CC) -o $(EXECUTABLE) lex.yy.o parser.tab.o $(CFLAGS)
+$(EXECUTABLE): $(LEX_O_FILE) $(YACC_O_FILE) $(SYMBOL_TABLE_O_FILE) | $(BIN_DIR)
+	$(CXX) -o $(EXECUTABLE) $(LEX_O_FILE) $(YACC_O_FILE) $(SYMBOL_TABLE_O_FILE) $(CFLAGS)
 
 clean:
-	rm -rf $(LEX_C_FILE) $(EXECUTABLE) $(YACC_C_FILE) $(YACC_H_FILE) $(YACC_D_FILE) *.o
+	rm -rf $(BUILD_DIR)

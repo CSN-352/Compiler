@@ -2,7 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "parser.tab.h"  
+#include "parser.tab.h" 
+#include "symbol_table.h" 
 
 // External declarations 
 extern int yylex();
@@ -22,11 +23,15 @@ typedef struct {
 } ParseSymbol;
 
 ParseSymbol parseSymbolTable[MAX_PARSE_SYMBOLS];
+
 int parseSymbolCount = 0;
 
 // Function to add an entry to the parser symbol table
 void addParseSymbol(const char *token, const char *type) {
     if (parseSymbolCount >= MAX_PARSE_SYMBOLS) return;
+
+    symbolTable.insert(token, type, 1000);
+    // symbolTable.print();
 
     parseSymbolTable[parseSymbolCount].token = strdup(token);
     parseSymbolTable[parseSymbolCount].type = strdup(type);
@@ -74,6 +79,7 @@ void printParseSymbolTable() {
 %nonassoc ELSE 
 %nonassoc LOW_PREC
 %nonassoc HIGH_PREC
+%debug
 %start translation_unit
 
 %%
@@ -226,18 +232,18 @@ declaration:
         char formattedType[256];
 
         if (strncmp(type, "enum ", 5) == 0) {
-            sprintf(formattedType, "enum(%s)", type + 5);  
+            snprintf(formattedType, sizeof(formattedType), "enum(%s)", type + 5);  
         } else if (strncmp(type, "struct ", 7) == 0) {
-            sprintf(formattedType, "struct(%s)", type + 7); 
+            snprintf(formattedType, sizeof(formattedType), "struct(%s)", type + 7); 
         } else if (strncmp(type, "class ", 6) == 0) {   // Handle class type
-            sprintf(formattedType, "class(%s)", type + 6);  
+            snprintf(formattedType, sizeof(formattedType), "class(%s)", type + 6);  
         } else {
             strcpy(formattedType, type); 
         }
 
         char *token = strtok(variables, ", ");
         while (token != NULL) {
-            char fullType[256];
+            char fullType[512];
             char *varName = token;
             int starCount = 0;
 
@@ -245,7 +251,14 @@ declaration:
                 starCount++;
                 varName++; 
             }
-            sprintf(fullType, "%s%.*s", formattedType, starCount, "****************");
+            snprintf(fullType, sizeof(fullType), "%s%.*s", formattedType, 
+                std::min(starCount, 16), "****************");
+
+            while (*varName == '[' && *(varName + 1) == ']') {
+                strcat(fullType, "[]");
+                varName++; 
+                varName++;
+            }
 
             addParseSymbol(varName, fullType);
             token = strtok(NULL, ", ");
@@ -258,19 +271,19 @@ declaration_specifiers:
     storage_class_specifier {$$ = strdup($1);}   
     | storage_class_specifier declaration_specifiers {
         char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
-        sprintf(newType, "%s %s", $1, $2);
+        snprintf(newType, sizeof(newType), "%s %s", $1, $2);
         $$ = newType;
     }
 	| type_specifier %prec HIGH_PREC                                    {$$ = strdup($1);}                                             
 	| type_specifier declaration_specifiers %prec LOW_PREC  {
         char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
-        sprintf(newType, "%s %s", $1, $2);
+        snprintf(newType, sizeof(newType), "%s %s", $1, $2);
         $$ = newType;
     }
 	| type_qualifier    {$$ = strdup($1);}   
 	| type_qualifier declaration_specifiers {
         char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
-        sprintf(newType, "%s %s", $1, $2);
+        snprintf(newType, sizeof(newType), "%s %s", $1, $2);
         $$ = newType;
     }
     ;
@@ -322,11 +335,14 @@ type_specifier:
 	;
 
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER LEFT_CURLY struct_declaration_list RIGHT_CURLY  {
+    struct_or_union IDENTIFIER add_left_curly struct_declaration_list add_right_curly  {
         addParseSymbol($2, $1); 
         $$ = strdup($2);
     }
-	| struct_or_union LEFT_CURLY struct_declaration_list RIGHT_CURLY    {
+	| struct_or_union add_left_curly struct_declaration_list add_right_curly    {
+        char name[256];
+        snprintf(name, sizeof(name), "anonymous_%s", $1);
+        addParseSymbol(name, $1);
         $$ = strdup("unidentified");
     }
 	| struct_or_union IDENTIFIER {
@@ -345,15 +361,16 @@ struct_declaration_list:
     ;
 
 class_specifier:
-    CLASS IDENTIFIER LEFT_CURLY class_declaration_list RIGHT_CURLY {
-        addParseSymbol($2, "class");
+    CLASS IDENTIFIER add_left_curly class_declaration_list add_right_curly {
+        addParseSymbol($2, $1);
         $$ = strdup($2);
     }
-    | CLASS IDENTIFIER INHERITANCE_OP init_declarator_list LEFT_CURLY class_declaration_list RIGHT_CURLY {
-        addParseSymbol($2, "class");
+    | CLASS IDENTIFIER INHERITANCE_OP init_declarator_list add_left_curly class_declaration_list add_right_curly {
+        addParseSymbol($2, $1);
         $$ = strdup($2);
     }
-    | CLASS LEFT_CURLY class_declaration_list RIGHT_CURLY {
+    | CLASS add_left_curly class_declaration_list add_right_curly {
+        addParseSymbol("anonymous_class", "class");
         $$ = strdup("anonymous_class");
     }
     | CLASS IDENTIFIER {
@@ -368,7 +385,7 @@ class_declaration_list:
 
 
 class_declaration:
-    access_specifier LEFT_CURLY translation_unit RIGHT_CURLY 
+    access_specifier add_left_curly translation_unit add_right_curly 
     ;
 
 access_specifier:
@@ -384,7 +401,7 @@ struct_declaration:
 
         char *token = strtok(variables, ", ");
         while (token != NULL) {
-            char fullType[256];
+            char fullType[512];
             char *varName = token;
             int starCount = 0;
 
@@ -393,7 +410,7 @@ struct_declaration:
                 varName++; // Move past '*'
             }
 
-            sprintf(fullType, "%s%.*s", type, starCount, "****************");
+            snprintf(fullType, sizeof(fullType), "%s%.*s", type, starCount, "****************");
 
             addParseSymbol(varName, fullType); 
             token = strtok(NULL, ", ");
@@ -429,8 +446,8 @@ struct_declarator:
 	;
 
 enum_specifier:
-    ENUM LEFT_CURLY enumerator_list RIGHT_CURLY                 { $$ = strdup("unidentified");}
-	| ENUM IDENTIFIER LEFT_CURLY enumerator_list RIGHT_CURLY    {
+    ENUM add_left_curly enumerator_list add_right_curly                 { $$ = strdup("unidentified");}
+	| ENUM IDENTIFIER add_left_curly enumerator_list add_right_curly    {
         addParseSymbol($2, "enum");
         $$ = strdup($2);
     }
@@ -462,7 +479,7 @@ type_qualifier:
 declarator:
     pointer direct_declarator {
         char *fullType = (char *)malloc(strlen($1) + strlen($2) + 1);
-        sprintf(fullType, "%s%s", $1, $2); 
+        snprintf(fullType, sizeof(fullType), "%s%s", $1, $2); 
         $$ = fullType;
     }
     | direct_declarator  { $$ = strdup($1);}
@@ -475,12 +492,12 @@ direct_declarator:
     | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {
         // Append "[]" for each array dimension
         $$ = (char *)malloc(strlen($1) + 3);
-        sprintf($$, "%s[]", $1);
+        sprintf($$, "[]%s", $1);
     }
 	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {
         // Handle unsized arrays (e.g., `char str[]`)
         $$ = (char *)malloc(strlen($1) + 3);
-        sprintf($$, "%s[]", $1);
+        sprintf($$, "[]%s", $1);
     }
     | LEFT_PAREN declarator RIGHT_PAREN {
         $$ = strdup($2);
@@ -541,7 +558,7 @@ parameter_declaration:
        
         if ($2[0] == '*') {  
             fullType = (char *)malloc(strlen($1) + 2);
-            sprintf(fullType, "%s*", $1);
+            snprintf(fullType, sizeof(fullType), "%s*", $1);
             varName = strdup($2 + 1);  
         }
 
@@ -580,8 +597,8 @@ direct_abstract_declarator:
 
 initializer:
     assignment_expression
-    | LEFT_CURLY initializer_list RIGHT_CURLY
-    | LEFT_CURLY initializer_list COMMA RIGHT_CURLY
+    | add_left_curly initializer_list add_right_curly
+    | add_left_curly initializer_list COMMA add_right_curly
     ;
 
 initializer_list:
@@ -606,8 +623,8 @@ labeled_statement:
 	;
 
 compound_statement:
-    LEFT_CURLY RIGHT_CURLY
-    | LEFT_CURLY declaration_statement_list RIGHT_CURLY
+    add_left_curly add_right_curly
+    | add_left_curly declaration_statement_list add_right_curly
     ;
 
 declaration_statement_list:
@@ -668,22 +685,22 @@ external_declaration:
 function_definition:
     declaration_specifiers declarator declaration_list compound_statement {
         char functionType[256];  
-        sprintf(functionType, "Function(%s)", $1);  
+        snprintf(functionType, sizeof(functionType), "Function(%s)", $1);  
         addParseSymbol($2, functionType);
     }
     | declaration_specifiers declarator compound_statement {
         char functionType[256];  
-        sprintf(functionType, "Function(%s)", $1);  
+        snprintf(functionType, sizeof(functionType), "Function(%s)", $1);  
         addParseSymbol($2, functionType);
     }
     | declarator declaration_list compound_statement {
         char functionType[256];  
-        sprintf(functionType, "Function(%s)", "int"); // Default return type
+        snprintf(functionType, sizeof(functionType), "Function(%s)", "int"); // Default return type
         addParseSymbol($1, functionType);
     }
     | declarator compound_statement {
         char functionType[256];  
-        sprintf(functionType, "Function(%s)", "int"); // Default return type
+        snprintf(functionType, sizeof(functionType), "Function(%s)", "int"); // Default return type
         addParseSymbol($1, functionType);
     }
     ;
@@ -692,6 +709,16 @@ skip_until_semicolon:
     SEMICOLON   // Stop at semicolon and reset error handling
     | error 
     | skip_until_semicolon error  // Consume any unexpected token
+    ;
+
+add_left_curly:
+    LEFT_CURLY {symbolTable.enterScope();}
+    | error
+    ;
+
+add_right_curly:
+    RIGHT_CURLY {symbolTable.exitScope();}
+    | error
     ;
 
 %%
@@ -715,8 +742,12 @@ int main(int argc, char **argv) {
     }
 
     yyin = file;
+#ifdef DEBUG
+    yydebug=1;
+#endif
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
+    has_error |= symbolTable.has_error();
     if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;
