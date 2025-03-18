@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parser.tab.h"
+#include "symbol_table.h"
+#include "ast.h"
+#include "expression.h"
 
 #ifdef ENABLE_MAIN
     #define RETURN_IF_NOT_MAIN(x)  // Expands to nothing
@@ -271,15 +274,15 @@ NEWLINE        \n
 {PROTECTED}           { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PROTECTED); }
 {ASSEMBLY_DIRECTIVE}  { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ASSEMBLY_DIRECTIVE); }
 
-{IDENTIFIER}          { yylval.strval = strdup(yytext); if(!checkIdentifierLength(yytext)){yyerror("Identifier exceeds maximum length (32 characters):"); return(ERROR);} if(is_typedef){addToSymbolTable(yytext, "type_name"); is_typedef=0;} else addToSymbolTable(yytext, "identifier"); updateColumn(yyleng); if(check_type_name(yytext))return(TYPE_NAME); RETURN_IF_NOT_MAIN(IDENTIFIER); }
-{H_CONSTANT}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "hexadecimal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }
-{O_CONSTANT}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "octal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }
-{I_CONSTANT}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "integer_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }
-{F_CONSTANT}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
-{HEX_F_CONSTANT}      { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "hexadecimal_float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
-{O_F_CONSTANT}      { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "hexadecimal_float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
-{CHAR_CONSTANT}       { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "char_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CHAR_CONSTANT); }
-{STRING_LITERAL}      { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "string_literal"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STRING_LITERAL); }
+{IDENTIFIER}          { Identifier* id = new Identifier(yytext, line_no, column_no); yylval.identifier = id; if(!checkIdentifierLength(yytext)){yyerror("Identifier exceeds maximum length (32 characters):"); return(ERROR);} if(is_typedef){addToSymbolTable(yytext, "type_name"); is_typedef=0;} else addToSymbolTable(yytext, "identifier"); updateColumn(yyleng); if(check_type_name(yytext))return(TYPE_NAME); RETURN_IF_NOT_MAIN(IDENTIFIER); }
+{H_CONSTANT}          { Constant* c = new Constant(yytext, line_no, column_no); yylval.constant = c; addToSymbolTable(yytext, "hexadecimal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }
+{O_CONSTANT}          { Constant* c = new Constant(yytext, line_no, column_no); yylval.constant = c;  addToSymbolTable(yytext, "octal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }
+{I_CONSTANT}          { Constant* c = new Constant(yytext, line_no, column_no); yylval.constant = c;  addToSymbolTable(yytext, "integer_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }
+{F_CONSTANT}          { Constant* c = new Constant(yytext, line_no, column_no); yylval.constant = c;  addToSymbolTable(yytext, "float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
+{HEX_F_CONSTANT}      { Constant* c = new Constant(yytext, line_no, column_no); yylval.constant = c;  addToSymbolTable(yytext, "hexadecimal_float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
+{O_F_CONSTANT}      { Constant* c = new Constant(yytext, line_no, column_no); yylval.constant = c; addToSymbolTable(yytext, "hexadecimal_float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
+{CHAR_CONSTANT}       { Constant* c = new Constant(yytext, line_no, column_no); yylval.constant = c; addToSymbolTable(yytext, "char_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CHAR_CONSTANT); }
+{STRING_LITERAL}      { StringLiteral* s = new StringLiteral(yytext,line_no,column_no); yylval.string_literal = s; addToSymbolTable(yytext, "string_literal"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STRING_LITERAL); }
 
 {RIGHT_ASSIGN}        { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_ASSIGN); }
 {LEFT_ASSIGN}         { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_ASSIGN); }

@@ -4,6 +4,8 @@
 #include <string.h>
 #include "parser.tab.h" 
 #include "symbol_table.h" 
+#include "ast.h"
+#include "expression.h"
 
 // External declarations 
 extern int yylex();
@@ -31,7 +33,7 @@ void addParseSymbol(const char *token, const char *type) {
     if (parseSymbolCount >= MAX_PARSE_SYMBOLS) return;
 
     symbolTable.insert(token, type, 1000);
-    // symbolTable.print();
+    // symbolTable.print(); 
 
     parseSymbolTable[parseSymbolCount].token = strdup(token);
     parseSymbolTable[parseSymbolCount].type = strdup(type);
@@ -60,13 +62,23 @@ void printParseSymbolTable() {
 
 /* Token definitions */
 %union {
+    Node * node;
+	Terminal * terminal;
+    Identifier * identifier;
+    Constant *constant;
+	StringLiteral *string_literal;
+    Expression* expression;
     int intval;
     char* strval;
 }
+
+%token <identifier> IDENTIFIER
+%token <constant> I_CONSTANT F_CONSTANT CHAR_CONSTANT
+%token <string_literal> STRING_LITERAL
+%type <expression> expression assignment_expression primary_expression
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
-%token <strval> IDENTIFIER I_CONSTANT F_CONSTANT STRING_LITERAL CHAR_CONSTANT
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token <strval> RIGHT_OP LEFT_OP INC_OP DEC_OP INHERITANCE_OP PTR_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN DOT QUESTION
@@ -79,6 +91,7 @@ void printParseSymbolTable() {
 %nonassoc ELSE 
 %nonassoc LOW_PREC
 %nonassoc HIGH_PREC
+%type <node> translation_unit external_declaration 
 %debug
 %start translation_unit
 
@@ -92,11 +105,11 @@ error_case:
     ;
 
 primary_expression:
-    IDENTIFIER
-    | I_CONSTANT
-    | F_CONSTANT
-    | CHAR_CONSTANT
-    | STRING_LITERAL
+    IDENTIFIER {$$ = create_primary_expression($1);}
+    | I_CONSTANT {$$ = create_primary_expression($1);}
+    | F_CONSTANT {$$ = create_primary_expression($1);}
+    | CHAR_CONSTANT {$$ = create_primary_expression($1);}
+    | STRING_LITERAL {$$ = create_primary_expression($1);}
     ;
 
 postfix_expression:
@@ -257,8 +270,7 @@ declaration:
                 varName++; 
                 varName++;
             }
-
-            addParseSymbol(varName, fullType);
+            symbolTable.insert(varName, fullType, 1000);
             token = strtok(NULL, ", ");
         }
     }
@@ -334,13 +346,13 @@ type_specifier:
 
 struct_or_union_specifier:
     struct_or_union IDENTIFIER add_left_curly struct_declaration_list add_right_curly  {
-        addParseSymbol($2, $1); 
-        $$ = strdup($2);
+        symbolTable.insert($2->value, $1, 1000);
+        $$ = strdup($2->value);
     }
 	| struct_or_union add_left_curly struct_declaration_list add_right_curly    {
         char name[256];
         snprintf(name, sizeof(name), "anonymous_%s", $1);
-        addParseSymbol(name, $1);
+        symbolTable.insert(name, $1, 1000);
         $$ = strdup("unidentified");
     }
 	| struct_or_union IDENTIFIER {
@@ -360,15 +372,15 @@ struct_declaration_list:
 
 class_specifier:
     CLASS IDENTIFIER add_left_curly class_declaration_list add_right_curly {
-        addParseSymbol($2, $1);
+        symbolTable.insert($2, $1, 1000);
         $$ = strdup($2);
     }
     | CLASS IDENTIFIER INHERITANCE_OP init_declarator_list add_left_curly class_declaration_list add_right_curly {
-        addParseSymbol($2, $1);
+        symbolTable.insert($2, $1, 1000);
         $$ = strdup($2);
     }
     | CLASS add_left_curly class_declaration_list add_right_curly {
-        addParseSymbol("anonymous_class", "class");
+        symbolTable.insert("anonymous_class", "class", 1000);
         $$ = strdup("anonymous_class");
     }
     | CLASS IDENTIFIER {
@@ -410,7 +422,7 @@ struct_declaration:
 
             snprintf(fullType, sizeof(fullType), "%s%.*s", type, starCount, "****************");
 
-            addParseSymbol(varName, fullType); 
+            symbolTable.insert(varName, fullType, 1000);
             token = strtok(NULL, ", ");
         }
     }
@@ -446,11 +458,11 @@ struct_declarator:
 enum_specifier:
     ENUM add_left_curly enumerator_list add_right_curly                 { $$ = strdup("unidentified");}
 	| ENUM IDENTIFIER add_left_curly enumerator_list add_right_curly    {
-        addParseSymbol($2, "enum");
+        symbolTable.insert($2, "enum", 1000);
         $$ = strdup($2);
     }
 	| ENUM IDENTIFIER  {
-        addParseSymbol($2, "enum");
+        symbolTable.insert($2, "enum", 1000);
         $$ = strdup($2);
     }                                        
 	;
@@ -462,10 +474,10 @@ enumerator_list:
 
 enumerator:
     IDENTIFIER {
-        addParseSymbol($1, "int");  
+        symbolTable.insert($1, "int", 1000);  
     }
     | IDENTIFIER ASSIGN conditional_expression {
-        addParseSymbol($1, "int");  
+        symbolTable.insert($1, "int", 1000);
     }
     ;
 
@@ -561,7 +573,7 @@ parameter_declaration:
         }
 
         $$ = fullType;
-        addParseSymbol(varName, fullType);  
+        symbolTable.insert(varName, fullType, 1000); 
     }
 	| declaration_specifiers abstract_declarator
 	| declaration_specifiers                        { $$ = strdup($1); }
@@ -683,23 +695,23 @@ external_declaration:
 function_definition:
     declaration_specifiers declarator declaration_list compound_statement {
         char functionType[256];  
-        snprintf(functionType, sizeof(functionType), "Function(%s)", $1);  
-        addParseSymbol($2, functionType);
+        snprintf(functionType, sizeof(functionType), "Function(%s)", $1); 
+        symbolTable.insert($2, functionType, 1000);
     }
     | declaration_specifiers declarator compound_statement {
         char functionType[256];  
         snprintf(functionType, sizeof(functionType), "Function(%s)", $1);  
-        addParseSymbol($2, functionType);
+        symbolTable.insert($2, functionType, 1000);
     }
     | declarator declaration_list compound_statement {
         char functionType[256];  
         snprintf(functionType, sizeof(functionType), "Function(%s)", "int"); // Default return type
-        addParseSymbol($1, functionType);
+        symbolTable.insert($1, functionType, 1000);
     }
     | declarator compound_statement {
         char functionType[256];  
         snprintf(functionType, sizeof(functionType), "Function(%s)", "int"); // Default return type
-        addParseSymbol($1, functionType);
+        symbolTable.insert($1, functionType, 1000);
     }
     ;
 

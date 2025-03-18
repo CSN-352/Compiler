@@ -13,12 +13,13 @@ class Expression : public NonTerminal{
 };
 
 class PrimaryExpression : public Expression{
-    public: 
-        Expression* create_primary_expression(Identifier* x);
-        Expression* create_primary_expression(Constant* x);
-        Expression* create_primary_expression(StringLiteral* x);
-        Expression* create_primary_expression(Expression* x);
+        
 };
+
+Expression* create_primary_expression(Identifier* x);
+Expression* create_primary_expression(Constant* x);
+Expression* create_primary_expression(StringLiteral* x);
+Expression* create_primary_expression(Expression* x);
 
 class UnaryExpression : public Expression {
     public:
