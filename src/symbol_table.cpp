@@ -3,9 +3,27 @@
 #include <unordered_map>
 #include <list>
 #include <iomanip>
+#include <algorithm>
+#include <assert.h>
+#include <ast.h>
+#include <sstream>
+#include <expression.h>
+#include <vector>
+// #include <y.tab.h>
+#include <iostream>
+#include <vector>
+#include <utility>
+#include <iterator>
 using namespace std;
 
 extern void yyerror(const char* msg);
+
+// std::vector<Types> defined_types;
+extern unsigned int line_no;
+
+//##############################################################################
+//################################## SYMBOLTABLE ######################################
+//##############################################################################
 
 SymbolTable::SymbolTable() { currentScope = 0; }
 
@@ -159,3 +177,358 @@ Constant :: Constant(string value, unsigned int line_no, unsigned int column_no)
 StringLiteral :: StringLiteral(string value, unsigned int line_no, unsigned int column_no) : Terminal("CONSTANT", value, line_no, column_no) {}
 
 SymbolTable symbolTable;
+
+
+//##############################################################################
+//################################## TYPE ######################################
+//##############################################################################
+
+Type::Type() {
+    typeIndex = -1;
+    ptr_level = -1;
+    is_const = false;
+
+    is_pointer = false;
+    is_array = false;
+    array_dim = 0;
+
+    is_function = false;
+    num_args = 0;
+}
+
+Type::Type( int idx, int p_lvl, bool is_con ) {
+    typeIndex = idx;
+    is_const = is_con;
+
+    ptr_level = p_lvl;
+    is_pointer = ptr_level > 0 ? true : false;
+
+    is_array = false;
+    array_dim = 0;
+
+    is_function = false;
+    num_args = 0;
+    is_defined = false;
+}
+bool Type::isPrimitive() {
+    if ( typeIndex >= 0 && typeIndex <= VOID_T ) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+// std::string Type::get_name() {
+//     std::stringstream ss;
+//     ss << defined_types[typeIndex].name;
+
+//     if ( is_array ) {
+//         ss << " ";
+//         for ( unsigned int i = 0; i < array_dim; i++ ) {
+//             if ( array_dims[i] != 0 ) {
+//                 ss << "[" << array_dims[i] << "]";
+//             } else {
+//                 ss << "[]";
+//             }
+//         }
+//     } else if ( is_pointer ) {
+
+//         for ( int i = 0; i < ptr_level; i++ ) {
+//             ss << "*";
+//         }
+//     } else if ( is_function ) {
+//         if ( num_args == 0 ) {
+//             ss << "( )";
+//         } else if ( num_args == 1 ) {
+//             ss << "( ";
+//             for ( auto it = arg_types.begin(); it != arg_types.end(); it++ ) {
+//                 ss << ( *it ).get_name();
+//             }
+//             ss << " )";
+//         } else {
+//             ss << "( ";
+//             auto it = arg_types.begin();
+//             ss << ( *it ).get_name();
+//             for ( auto it = arg_types.begin() + 1; it != arg_types.end();
+//                   it++ ) {
+//                 ss << ", " << ( *it ).get_name();
+//             }
+//             ss << " )";
+//         }
+//     }
+//     return ss.str();
+// }
+
+// size_t Type::get_size() {
+//     if ( is_array ) {
+//         unsigned int p = 1;
+//         for ( unsigned int i = 0; i < array_dim; i++ ) {
+//             p *= array_dims[i];
+//         }
+//         size_t sz;
+//         if ( isPrimitive() ) {
+//             sz = defined_types[typeIndex].size;
+//         } else {
+//             if ( defined_types[typeIndex].struct_definition != nullptr ) {
+//                 sz = defined_types[typeIndex].struct_definition->get_size();
+//             } else {
+//                 error_msg( "Size of " + defined_types[typeIndex].name +
+//                                " isn't known",
+//                            line_no );
+//                 exit( 0 );
+//             }
+//         }
+//         return sz * p;
+
+//     } else if ( ptr_level > 0 || is_function ) {
+//         return WORD_SIZE;
+//     } else if ( !isPrimitive() ) {
+//         if ( defined_types[typeIndex].struct_definition != nullptr ) {
+//             return defined_types[typeIndex].struct_definition->get_size();
+//         } else {
+//             error_msg( "Size of " + defined_types[typeIndex].name +
+//                            " isn't known",
+//                        line_no );
+//             exit( 0 );
+//         }
+//     }
+
+//     else {
+//         return defined_types[typeIndex].size;
+//     }
+// }
+
+bool Type::isInt() {
+    if ( typeIndex >= U_CHAR_T && typeIndex <= LONG_LONG_T ) {
+        if ( ptr_level == 0 ) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+bool Type::isChar() {
+    if ( typeIndex == U_CHAR_T || typeIndex == CHAR_T ) {
+        if ( ptr_level == 0 ) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+bool Type::isFloat() {
+    if ( typeIndex >= 10 && typeIndex <= 12 && ptr_level == 0 )
+        return true;
+    else
+        return false;
+}
+bool Type::isIntorFloat() {
+    if ( typeIndex <= 12 && ptr_level == 0 )
+        return true;
+    else
+        return false;
+}
+
+bool Type::isUnsigned() {
+    if ( typeIndex == 0 || typeIndex == 2 || typeIndex == 4 ||
+         typeIndex == 6 || typeIndex == 8 ) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool Type::isPointer() {
+    if ( ptr_level ) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void Type::make_signed() {
+    if ( typeIndex == 0 || typeIndex == 2 || typeIndex == 4 ||
+        typeIndex == 6 || typeIndex == 8 ) {
+        typeIndex += 1;
+    }
+}
+
+void Type::make_unsigned() {
+    if ( typeIndex == 1 || typeIndex == 3 || typeIndex == 5 ||
+         typeIndex == 7 || typeIndex == 9) {
+        typeIndex -= 1;
+    }
+}
+
+bool Type::isVoid() {
+    if ( typeIndex == VOID_T ) {
+        if ( ptr_level == 0 || is_array ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Type::is_invalid() {
+
+    if ( typeIndex == -1 ) {
+        return true;
+    }
+
+    return false;
+}
+
+bool Type::is_ea() {
+	
+	if ( is_array ) {
+		return true;
+	} else if ( !isPrimitive() && ptr_level == 0 ) {
+		return true;
+	} else {
+		return false;
+	}
+
+    return false;
+}
+
+bool operator!=( Type &obj1, Type &obj2 ) {
+	return !(obj1 == obj2);
+}
+bool operator==( Type &obj1, Type &obj2 ) {
+
+    if ( obj1.typeIndex != obj2.typeIndex ) {
+        return false;
+    } else if ( obj1.is_array == true && obj2.is_array == true ) {
+        if ( obj1.array_dim != obj2.array_dim ) {
+            return false;
+        } else {
+            for ( unsigned int i = 0; i < obj1.array_dim; i++ ) {
+                if ( obj1.array_dims[i] == 0 || obj2.array_dims[i] == 0 ||
+                     obj1.array_dims[i] == obj2.array_dims[i] ) {
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    } else if ( obj1.is_array != obj2.is_array ) {
+        if ( obj1.ptr_level == 1 && obj2.ptr_level == 1 ) {
+            return true;
+        } else {
+            return false;
+        }
+    } else if ( obj1.is_pointer == true && obj2.is_pointer == true ) {
+        return obj1.ptr_level == obj2.ptr_level;
+
+    } else if ( obj1.is_pointer != obj2.is_pointer ) {
+        return false;
+    } else if ( obj1.is_function == true && obj2.is_function == true ) {
+        if ( obj1.num_args != obj2.num_args ) {
+            return false;
+        } else {
+            for ( unsigned int i = 0; i < obj1.num_args; i++ ) {
+                if ( obj1.arg_types[i] == obj2.arg_types[i] ) {
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+    } else if ( obj1.is_function != obj2.is_function ) {
+        return false;
+    }
+
+    else {
+        return true;
+    }
+
+    return false;
+}
+
+
+//##############################################################################
+//############################## ERROR MESSAGE #################################
+//##############################################################################
+
+void error_msg( std::string str, unsigned int ln, unsigned int column ) {
+
+	// if ( column <= 0 ) {
+	// 	error_msg(str,ln);
+	// 	return;
+	// }
+
+    // if ( ln == ( code.size() + 1 ) || ln == 0) {
+
+    // std::cout << "\nLine: " << line_no << ":" << column << " \033[1;31mERROR:\033[0m " << str << "\n";
+    //     std::cout << "\t" << text.str();
+    // } else {
+    // std::cout << "\nLine: " << ln << ":" << column << " \033[1;31mERROR:\033[0m " << str << "\n";
+    //     std::cout << "\t" << code[ln - 1];
+    // }
+    // error_flag = 1;
+
+    // printf( "\033[1;31m\n\t%*s\n\033[0m", column, "^" );
+}
+
+void error_msg( std::string str, unsigned int ln ) {
+
+    // if ( ln == ( code.size() + 1 ) || ln == 0) {
+
+    // std::cout << "\nLine: " << line_no << " \033[1;31mERROR:\033[0m " << str << "\n";
+    //     std::cout << "\t" << text.str();
+    // } else {
+    // std::cout << "\nLine: " << ln << " \033[1;31mERROR:\033[0m " << str << "\n";
+    //     std::cout << "\t" << code[ln - 1];
+    // }
+    // std::cout << "\n";
+	// error_flag = 1;
+
+    // // printf( "\n\t%*s\n", column, "^" );
+}
+
+void warning_msg( std::string str, unsigned int ln,
+                  unsigned int column ) {
+	// if ( column <= 0 ) {
+	// 	warning_msg(str,ln);
+	// 	return;
+	// }
+
+    // if ( ln == ( code.size() + 1 ) || ln == 0) {
+    // std::cout << "\nLine: "
+    //           << line_no << ":" << column << " \033[1;35mWARNING:\033[0m " << str << "\n";
+
+    //     std::cout << "\t" << text.str();
+    // } else {
+    // std::cout << "\nLine: "
+    //           << ln << ":" << column << " \033[1;35mWARNING:\033[0m " << str << "\n";
+    //     std::cout << "\t" << code[ln - 1];
+    // }
+
+    // printf( "\033[1;35m\n\t%*s\n\033[0m", column, "^" );
+}
+
+void warning_msg( std::string str, unsigned int ln ) {
+
+    // if ( ln == ( code.size() + 1 ) || ln == 0) {
+
+	//     std::cout << "\nLine: " << line_num << " \033[1;35mWARNING:\033[0m " << str << "\n";
+    //     std::cout << "\t" << text.str();
+    // } else {
+	//     std::cout << "\nLine: " << ln << " \033[1;35mWARNING:\033[0m " << str << "\n";
+    //     std::cout << "\t" << code[ln - 1];
+    // }
+    // std::cout << "\n";
+
+    // // printf( "\n\t%*s\n", column, "^" );
+}

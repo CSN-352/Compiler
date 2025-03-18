@@ -20,4 +20,19 @@ class PrimaryExpression : public Expression{
         Expression* create_primary_expression(Expression* x);
 };
 
+class UnaryExpression : public Expression {
+    public:
+      Expression *op1;
+      std::string op;
+  
+      UnaryExpression() {
+          op1 = nullptr;
+          op = "";
+      }
+};
+
+Expression *create_unary_expression( Terminal * op,Expression *ue ); // INC_OP, DEC_OP, SIZEOF
+Expression *create_unary_expression_cast( Node *n_op, Expression *ce );
+
+
 #endif
