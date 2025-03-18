@@ -25,7 +25,7 @@ Expression :: Expression() : NonTerminal(0, 0, "") {}
 extern unsigned int line_no;
 extern unsigned int column_no;
 
-Expression* PrimaryExpression :: create_primary_expression(Identifier* x){
+Expression* create_primary_expression(Identifier* x){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION IDENTIFIER";
     P->line_no = x->line_no;
@@ -42,7 +42,7 @@ Expression* PrimaryExpression :: create_primary_expression(Identifier* x){
     return P;
 }
 
-Expression* PrimaryExpression :: create_primary_expression(Constant* x){
+Expression* create_primary_expression(Constant* x){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION CONSTANT";
     P->line_no = x->line_no;
@@ -52,7 +52,7 @@ Expression* PrimaryExpression :: create_primary_expression(Constant* x){
     return P;
 }
 
-Expression* PrimaryExpression :: create_primary_expression(StringLiteral* x){
+Expression* create_primary_expression(StringLiteral* x){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION STRING LITERAL";
     P->line_no = x->line_no;
@@ -62,7 +62,7 @@ Expression* PrimaryExpression :: create_primary_expression(StringLiteral* x){
     return P;
 }
 
-Expression* PrimaryExpression :: create_primary_expression(Expression* x){
+Expression* create_primary_expression(Expression* x){
     return x;
 }
 
