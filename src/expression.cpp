@@ -67,7 +67,100 @@ Expression* PrimaryExpression :: create_primary_expression(Expression* x){
 }
 
 
+Expression *create_postfix_expr_arr( Expression *pe, Expression *e ) {
+    PostfixExpression *P = new PostfixExpression();
+    if ( dynamic_cast<PostfixExpression *>( pe ) ) {
+        P->pe = dynamic_cast<PostfixExpression *>( pe );
+    } else {
+        P->pe = nullptr;
+    }
+    P->exp = e;
+    P->name = "ARRAY ACCESS";
 
+    if ( pe->type.is_invalid() || e->type.is_invalid() ) {
+        P->type = ERROR_TYPE;
+        return P;
+    }
+
+    if (  ! e->type.isInt() ) {
+        // Error
+        string error_msg = "Line no: " + to_string(line_no) + " Array index must be of type integer";
+        // error_msg( "Array index must be of type integer", line_num );
+        yyerror(error_msg.c_str());
+        P->type = ERROR_TYPE;
+        return P;
+    }
+
+//    create_new_save_live();
+	if ( pe->type.is_array ) {
+		P->type = pe->type;
+		P->type.ptr_level--;
+		P->type.array_dim--;
+		P->type.array_dims.erase( P->type.array_dims.begin() );
+		P->type.is_const = false;
+	
+		// Address * t1;
+		// if ( e->res->type == CON ) {
+		// 	long off = std::stol(e->res->name)*P->type.get_size();
+		// 	t1 = new_3const( off, INT3 );
+		// } else {
+		// 	t1 = new_temp();
+		// 	emit( t1, "*", e->res, new_3const( P->type.get_size() , INT3 ));
+		// }
+
+		if ( P->type.ptr_level == 0 ) {
+			P->type.is_pointer = false;
+		}
+		if ( P->type.array_dim == 0 ) {
+			P->type.is_array = 0;
+		}
+		
+		// P->res = new_mem(P->type);
+		// emit( P->res, "+", pe->res, t1 );
+		
+	} else if ( pe->type.is_pointer ) {
+		P->type = pe->type;
+		P->type.ptr_level--;
+		P->type.is_const = false;
+		if ( P->type.ptr_level == 0 ) {
+			P->type.is_pointer = false;
+		}
+
+		// Address * t1;
+		// if ( e->res->type == CON ) {
+		// 	unsigned long long off = std::stol(e->res->name)*P->type.get_size();
+		// 	t1 = new_3const(off, INT3);
+		// } else {
+		// 	t1 = new_temp();
+		// 	emit( t1, "*", e->res, new_3const( P->type.get_size() , INT3));
+		// }
+		
+		// P->res = new_mem(P->type);
+
+
+		// if (pe->res->type == MEM ) {
+		// 	// Dereference the pointer
+		// 	Address * t2 = new_mem(pe->type);
+		// 	emit(t2, "()", pe->res, nullptr);
+		// 	emit( P->res, "+", t2, t1 );
+
+		// } else {
+		// 	emit( P->res, "+", pe->res, t1 );
+		// }
+
+	} else {
+        string error_msg = "Line no: " + to_string(line_no) + "Subscripted value is neither array nor pointer";
+		// error_msg( "Subscripted value is neither array nor pointer",
+		// 		   line_num );
+        yyerror(error_msg.c_str());
+		P->type = ERROR_TYPE;
+	}
+
+    P->add_children( pe, e );
+    P->line_no = pe->line_no;
+    P->column_no = pe->column_no;
+    return P;
+}
 
 Expression *create_unary_expression( Terminal *op, Expression *ue ) {
     UnaryExpression *U = new UnaryExpression();
