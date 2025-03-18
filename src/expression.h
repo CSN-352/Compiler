@@ -7,15 +7,17 @@ using namespace std;
 
 class Expression : public NonTerminal{
     public:
-        string type;
+        Type type;
         int operand_cnt;
         Expression();
 };
 
 class PrimaryExpression : public Expression{
     public: 
-        Expression* create_primary_expression_identifier(string x);
-        Expression* create_primary_expression(string x);
+        Expression* create_primary_expression(Identifier* x);
+        Expression* create_primary_expression(Constant* x);
+        Expression* create_primary_expression(StringLiteral* x);
+        Expression* create_primary_expression(Expression* x);
 };
 
 #endif
