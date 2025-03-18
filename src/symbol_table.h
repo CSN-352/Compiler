@@ -19,7 +19,7 @@ public:
 class SymbolTable
 {
 private:
-    std::unordered_map<std::string, std::list<Symbol>> table;
+    std::unordered_map<std::string, std::list<Symbol*>> table;
     int currentScope;
     bool error;
 

@@ -5,14 +5,13 @@
 #include <iomanip>
 using namespace std;
 
-extern void yyerror(const char *msg);
+extern void yyerror(const char* msg);
 
 SymbolTable::SymbolTable() { currentScope = 0; }
 
 void SymbolTable::enterScope()
 {
 	currentScope++;
-	error = false;
 }
 
 void SymbolTable::set_error() { error = true; }
@@ -26,49 +25,78 @@ void SymbolTable::exitScope()
 
 	for (auto it = table.begin(); it != table.end();)
 	{
-		it->second.remove_if([this](Symbol& s)
-		    { return s.scope == currentScope; });
+		for (auto symIt = it->second.begin(); symIt != it->second.end();)
+		{
+			if ((*symIt)->scope == currentScope)
+			{
+				delete *symIt;
+				symIt = it->second.erase(symIt);
+			}
+			else
+			{
+				++symIt;
+			}
+		}
 		if (it->second.empty())
 			it = table.erase(it);
 		else
 			++it;
 	}
-	currentScope--;
+	if (currentScope > 0)
+		currentScope--;
 }
 
 void SymbolTable::insert(string name, string type, int memoryAddr)
 {
-	if (lookup(name))
+	for (const Symbol* sym : table[name])
 	{
-		string error_msg = "Symbol '" + name + "' already declared in this scope.";
-		yyerror(error_msg.c_str());
-        set_error();
-		return;
+		if (sym->scope == currentScope)
+		{
+			string error_msg = "Symbol '" + name + "' already declared in this scope.";
+			yyerror(error_msg.c_str());
+			set_error();
+			return;
+		}
 	}
-	table[name].push_front(Symbol(name, type, currentScope, memoryAddr));
+
+	Symbol* sym = new Symbol(name, type, currentScope, memoryAddr);
+	table[name].push_front(sym);
 }
 
-bool SymbolTable::lookup(std::string name)
+bool SymbolTable::lookup(string name)
 {
 	auto it = table.find(name);
 	if (it == table.end())
 		return false;
 
-	for (const Symbol& sym : it->second)
+	for (const Symbol* sym : it->second)
 	{
-		if (sym.scope <= currentScope)
+		if (sym->scope <= currentScope)
 			return true;
 	}
 	return false;
 }
 
-Symbol* SymbolTable::getSymbol(std::string name)
+Symbol* SymbolTable::getSymbol(string name)
 {
 	auto it = table.find(name);
 	if (it == table.end() || it->second.empty())
 		return nullptr;
 
-	return &(it->second.front());
+	Symbol* sym = nullptr;
+
+	for (Symbol* _sym : it->second)
+	{
+		if (_sym->scope <= currentScope)
+		{
+			if (sym == nullptr || _sym->scope > sym->scope)
+			{
+				sym = _sym;
+			}
+		}
+	}
+
+	return sym;
 }
 
 void SymbolTable::update(string name, string newType)
@@ -96,7 +124,7 @@ void SymbolTable::remove(string name)
 	{
 		string error_msg = "Symbol '" + name + "' not found.";
 		yyerror(error_msg.c_str());
-        set_error();
+		set_error();
 	}
 }
 
@@ -112,12 +140,12 @@ void SymbolTable::print()
 
 	for (const auto& entry : table)
 	{
-		for (const auto& symbol : entry.second)
+		for (const auto symbol : entry.second)
 		{
-			cout << "| " << setw(20) << left << symbol.name
-			     << "| " << setw(26) << left << symbol.type
-			     << "| " << setw(8) << left << symbol.scope
-			     << "| " << setw(12) << left << symbol.memoryAddr << " |\n";
+			cout << "| " << setw(20) << left << symbol->name
+			     << "| " << setw(26) << left << symbol->type
+			     << "| " << setw(8) << left << symbol->scope
+			     << "| " << setw(12) << left << symbol->memoryAddr << " |\n";
 		}
 	}
 
