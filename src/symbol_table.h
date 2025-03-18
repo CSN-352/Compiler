@@ -122,9 +122,4 @@ class Type {
 
 extern Type ERROR_TYPE;
 
-void error_msg( std::string str, unsigned int line_num, unsigned int column );
-void error_msg( std::string str, unsigned int line_num );
-void warning_msg( std::string str, unsigned int line_num, unsigned int column );
-void warning_msg( std::string str, unsigned int line_num );
-
 #endif

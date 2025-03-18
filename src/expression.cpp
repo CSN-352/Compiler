@@ -84,8 +84,10 @@ Expression *create_unary_expression( Terminal *op, Expression *ue ) {
 
     if ( u_op == "++" || u_op == "--" ) {
         if ( ueT.is_const == true ) {
-            error_msg( "Invalid operand " + u_op + " with constant type",
-                       op->line_no, op->column_no );
+            string error_msg = "Line no:" + to_string(line_no) + " Column no:" + to_string(column_no) + " Invalid operand "+ u_op + " with constant type";
+            // error_msg( "Invalid operand " + u_op + " with constant type",
+            //            op->line_no, op->column_no );
+            yyerror(error_msg.c_str());
             U->type = ERROR_TYPE;
             return U;
         }
@@ -108,9 +110,11 @@ Expression *create_unary_expression( Terminal *op, Expression *ue ) {
 			// inc_value = new_3const( 1.0, FLOAT3 );
 		} else {
 			// Incorrect type throw error
-			error_msg( "Invalid operand " + u_op + " with type " +
-						   ue->type.get_name(),
-					   op->line_no, op->column_no );
+            string error_msg = "Line no:" + to_string(line_no) + " Column no:" + to_string(column_no) + " Invalid operand "+ u_op + " with type";
+			// error_msg( "Invalid operand " + u_op + " with type " +
+			// 			   ue->type.get_name(),
+			// 		   op->line_no, op->column_no );
+            yyerror(error_msg.c_str());
 			// delete U->res;
 			// U->res = nullptr;
 			U->type = ERROR_TYPE;
