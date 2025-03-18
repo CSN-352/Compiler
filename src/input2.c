@@ -1,8 +1,7 @@
-struct A
-{
+struct A {
     int x;
 }
 
-int main(){
+int main() {
     
 }
