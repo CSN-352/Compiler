@@ -22,7 +22,6 @@ private:
     std::unordered_map<std::string, std::list<Symbol>> table;
     int currentScope;
     bool error;
-    void set_error();
 
 public:
     SymbolTable();
@@ -34,6 +33,7 @@ public:
     void update(std::string name, std::string newType);
     void remove(std::string name);
     void print();
+    void set_error();
     bool has_error();
 };
 
