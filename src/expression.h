@@ -38,15 +38,15 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
 
 class PostfixExpression : public Expression{
     public:
-        Expression* base_expression; //The expression being modified
         vector<Expression*> arguments;
         Terminal* op;
         Identifier* member_name;
 
-        PostfixExpression(Expression* base) : Expression(), name("POSTFIX EXPRESSION"), base_expression(base) {}
+        PostfixExpression() : Expression(), name("POSTFIX EXPRESSION") {}
 };
 
 Expression* create_postfix_expression(Expression* x);
 Expression* create_postfix_expression(Expression* x, Terminal* op);
+Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id);
 
 #endif

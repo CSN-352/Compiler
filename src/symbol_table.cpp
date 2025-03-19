@@ -172,7 +172,14 @@ void SymbolTable::print()
 
 Identifier :: Identifier(string value, unsigned int line_no, unsigned int column_no) : Terminal("IDENTIFIER", value, line_no, column_no) {}
 
-Constant :: Constant(string value, unsigned int line_no, unsigned int column_no) : Terminal("CONSTANT", value, line_no, column_no) {}
+Constant :: Constant(string value, unsigned int line_no, unsigned int column_no){
+    Terminal("CONSTANT", value, line_no, column_no);
+    constant_type = set_constant_type(value);
+} 
+
+Type Constant :: set_constant_type(string value){
+    
+}
 
 StringLiteral :: StringLiteral(string value, unsigned int line_no, unsigned int column_no) : Terminal("CONSTANT", value, line_no, column_no) {}
 

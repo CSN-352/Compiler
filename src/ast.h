@@ -42,6 +42,4 @@ class Terminal : public Node{
         Terminal(string name, string value, unsigned int line_no, unsigned int column_no);
 };
 
-Node* create_terminal(string name, string value, unsigned int line_no, unsigned int column_no);
-
 #endif

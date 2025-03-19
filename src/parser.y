@@ -75,7 +75,7 @@ void printParseSymbolTable() {
 %token <identifier> IDENTIFIER
 %token <constant> I_CONSTANT F_CONSTANT CHAR_CONSTANT
 %token <string_literal> STRING_LITERAL
-%token <terminal> INC_OP DEC_OP
+%token <terminal> INC_OP DEC_OP PTR_OP DOT
 %type <expression> expression assignment_expression primary_expression argument_expression_list
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME

@@ -297,10 +297,10 @@ NEWLINE        \n
 
 {RIGHT_OP}            { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_OP); }
 {LEFT_OP}             { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_OP); }
-{INC_OP}              { yylval.terminal = create_terminal("INC_OP",yytext,line_no, column_no); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INC_OP); }
-{DEC_OP}              { yylval.terminal = create_terminal("DEC_OP",yytext,line_no,column_no); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DEC_OP); }
+{INC_OP}              { Terminal* t = new Terminal("INC_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INC_OP); }
+{DEC_OP}              { Terminal* t = new Terminal("INC_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DEC_OP); }
 {INHERITANCE_OP}      { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INHERITANCE_OP); }
-{PTR_OP}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PTR_OP); }
+{PTR_OP}              { Terminal* t = new Terminal("PTR_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PTR_OP); }
 {LOGICAL_AND}         { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LOGICAL_AND); }
 {LOGICAL_OR}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LOGICAL_OR); }
 {LE_OP}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LE_OP); }
@@ -318,7 +318,7 @@ NEWLINE        \n
 {RIGHT_PAREN}         { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_PAREN); }
 {LEFT_SQUARE}        { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_SQUARE); }
 {RIGHT_SQUARE}       { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_SQUARE); }
-{DOT}                 { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DOT); }
+{DOT}                 { Terminal* t = new Terminal("DOT",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DOT); }
 {ELLIPSIS}            { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ELLIPSIS); }
 
 

@@ -30,7 +30,6 @@ Expression* create_primary_expression(Identifier* x){
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->identifier = x;
-    P->add_children(x);
     Symbol* sym = symbolTable.getSymbol(x->value);
     if(sym) P->type = sym->type;
     else {
@@ -49,7 +48,6 @@ Expression* create_primary_expression(Constant* x){
     P->column_no = x->column_no;
     P->constant = x;
     P->type = x->get_constant_type();
-    P->add_children(x);
     return P;
 }
 
@@ -60,7 +58,6 @@ Expression* create_primary_expression(StringLiteral* x){
     P->column_no = x->column_no;
     P->string_literal = x;
     P->type = Type(CHAR_T, 1, true);
-    P->add_children(x);
     return P;
 }
 
@@ -82,13 +79,44 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
 }
 
 Expression* create_postfix_expression(Expression* x){
-    return expression;
+    return x;
 }
 
 Expression* create_postfix_expression(Expression* x, Terminal* op){
-    PostfixExpression* P = new PostfixExpression(x);
+    PostfixExpression* P = new PostfixExpression();
+    P->add_children(x);
     P->op = op;
-    if(op->name = "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
+    if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
     else P->name = "POSTFIX EXPRESSION DEC OP";
+    if(x->type.is_const){
+        P->type = ERROR_TYPE;
+        string error_msg = "Invalid operator " + op->value + " at line  " + to_string(op->line_no) + ", column " + to_string(op->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return P;
+    }
+    else if(x->type.isInt()){
+        P->type = x->type;
+    }
+    else if(x->type.isFloat()){
+        P->type = x->type;
+    }
+    else if(x->type.is_pointer){
+        P->type = x_.type;
+    }
+    else{
+        P->type = ERROR_TYPE;
+        string error_msg = "Invalid operator " + op->value + " at line  " + to_string(op->line_no) + ", column " + to_string(op->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return P;
+    }
+}
+
+Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id){
+    PostfixExpression* P = new PostfixExpression();
+    P->add_children(x);
+    P->member_name = id;
+    if()
 }
 
