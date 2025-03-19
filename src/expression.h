@@ -3,17 +3,23 @@
 
 #include "ast.h"
 #include "symbol_table.h"
+#include <vector>
 using namespace std;
 
 class Expression : public NonTerminal{
     public:
         Type type;
         int operand_cnt;
-        Expression();
+
+        Expression() : NonTerminal("EXPRESSION") operand_cnt(0) {}
 };
 
 class PrimaryExpression : public Expression{
-    
+    public:
+        Identifier* identifier;
+        Constant* constant;
+        StringLiteral* string_literal;
+        PrimaryExpression : Expression() name("PRIMARY EXPRESSION"), identifier(nullptr), constant(nullptr), string_literal(nullptr) {}
 };
 
 Expression* create_primary_expression(Identifier* x);
@@ -21,43 +27,26 @@ Expression* create_primary_expression(Constant* x);
 Expression* create_primary_expression(StringLiteral* x);
 Expression* create_primary_expression(Expression* x);
 
-class ArgumentExprList : public Expression {
+class ArgumentExpressionList : public Expression{
     public:
-      std::vector <Expression * > args;
-  
-      ArgumentExprList() {};
+      vector <Expression*> arguments;
+      ArgumentExpressionList() : Expression(), name("ARGUMENT EXPRESSION LIST") {};
   };
   
-class PostfixExpression : public Expression {
-    public:
-      PostfixExpression *pe;
-      Expression *exp;
-      Identifier *id;
-      ArgumentExprList *ae_list;
-      std::string op;
-  
-      PostfixExpression() {
-          pe = nullptr;
-          exp = nullptr;
-          id = nullptr;
-          ae_list = nullptr;
-          op = "";
-      };
-  };
+ArgumentExpressionList* create_argument_expression_list(Expression* x);
+ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* args_expr_list, Expression* x);
 
-class UnaryExpression : public Expression {
+class PostfixExpression : public Expression{
     public:
-      Expression *op1;
-      std::string op;
-  
-      UnaryExpression() {
-          op1 = nullptr;
-          op = "";
-      }
+        Expression* base_expression; //The expression being modified
+        vector<Expression*> arguments;
+        Terminal* op;
+        Identifier* member_name;
+
+        PostfixExpression(Expression* base) : Expression(), name("POSTFIX EXPRESSION"), base_expression(base) {}
 };
 
-Expression *create_unary_expression( Terminal * op,Expression *ue ); // INC_OP, DEC_OP, SIZEOF
-Expression *create_unary_expression_cast( Node *n_op, Expression *ce );
-
+Expression* create_postfix_expression(Expression* x);
+Expression* create_postfix_expression(Expression* x, Terminal* op);
 
 #endif

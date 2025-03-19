@@ -6,7 +6,6 @@
 #include <list>
 #include "ast.h"
 
-
 class Expression;
 class PrimaryExpression;
 class Type;
@@ -33,7 +32,7 @@ class Symbol
 {
 public:
     std::string name;
-    std::string type;
+    Type type;
     int scope;
     int memoryAddr;
 
@@ -51,10 +50,10 @@ public:
     SymbolTable();
     void enterScope();
     void exitScope();
-    void insert(std::string name, std::string type, int memoryAddr);
+    void insert(std::string name, Type type, int memoryAddr);
     bool lookup(std::string name);
     Symbol* getSymbol(std::string name);
-    void update(std::string name, std::string newType);
+    void update(std::string name, Type newType);
     void remove(std::string name);
     void print();
     void set_error();

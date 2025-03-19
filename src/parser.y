@@ -75,12 +75,13 @@ void printParseSymbolTable() {
 %token <identifier> IDENTIFIER
 %token <constant> I_CONSTANT F_CONSTANT CHAR_CONSTANT
 %token <string_literal> STRING_LITERAL
-%type <expression> expression assignment_expression primary_expression
+%token <terminal> INC_OP DEC_OP
+%type <expression> expression assignment_expression primary_expression argument_expression_list
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
-%token <strval> RIGHT_OP LEFT_OP INC_OP DEC_OP INHERITANCE_OP PTR_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
+%token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP PTR_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN DOT QUESTION
 %token <strval> NOT BITWISE_NOT BITWISE_XOR BITWISE_OR BITWISE_AND MINUS PLUS MULTIPLY DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
@@ -112,12 +113,16 @@ primary_expression:
     | STRING_LITERAL {$$ = create_primary_expression($1);}
     ;
 
+argument_expression_list:
+    assignment_expression {$$ = create_argument_expression_list($1);}
+    | argument_expression_list COMMA assignment_expression {$$ = create_argument_expression_list($1, $3);}
+    ;
+
 postfix_expression:
-    primary_expression
-    | LEFT_PAREN expression RIGHT_PAREN
-    | postfix_expression LEFT_PAREN expression RIGHT_PAREN
-    | postfix_expression LEFT_PAREN RIGHT_PAREN 
+    primary_expression 
     | postfix_expression LEFT_SQUARE expression RIGHT_SQUARE
+    | postfix_expression LEFT_PAREN argument_expression_list RIGHT_PAREN
+    | postfix_expression LEFT_PAREN RIGHT_PAREN 
     | postfix_expression DOT IDENTIFIER
     | postfix_expression PTR_OP IDENTIFIER
     | postfix_expression INC_OP
@@ -347,7 +352,7 @@ type_specifier:
 struct_or_union_specifier:
     struct_or_union IDENTIFIER add_left_curly struct_declaration_list add_right_curly  {
         symbolTable.insert($2->value, $1, 1000);
-        $$ = strdup($2->value);
+        $$ = $2->value;
     }
 	| struct_or_union add_left_curly struct_declaration_list add_right_curly    {
         char name[256];
