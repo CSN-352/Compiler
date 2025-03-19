@@ -87,6 +87,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     P->add_children(x);
     P->op = op;
     if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
+    if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
     else P->name = "POSTFIX EXPRESSION DEC OP";
     if(x->type.is_const){
         P->type = ERROR_TYPE;
@@ -102,7 +103,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
         P->type = x->type;
     }
     else if(x->type.is_pointer){
-        P->type = x_.type;
+        P->type = x->type;
     }
     else{
         P->type = ERROR_TYPE;
@@ -117,6 +118,6 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
     PostfixExpression* P = new PostfixExpression();
     P->add_children(x);
     P->member_name = id;
-    if()
+    return x;
 }
 

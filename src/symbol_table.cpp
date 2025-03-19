@@ -64,7 +64,7 @@ void SymbolTable::exitScope()
 		currentScope--;
 }
 
-void SymbolTable::insert(string name, string type, int memoryAddr)
+void SymbolTable::insert(string name, Type type, int memoryAddr)
 {
 	for (const Symbol* sym : table[name])
 	{
@@ -117,7 +117,7 @@ Symbol* SymbolTable::getSymbol(string name)
 	return sym;
 }
 
-void SymbolTable::update(string name, string newType)
+void SymbolTable::update(string name, Type newType)
 {
 	Symbol* sym = getSymbol(name);
 	if (sym)
@@ -161,7 +161,8 @@ void SymbolTable::print()
 		for (const auto symbol : entry.second)
 		{
 			cout << "| " << setw(20) << left << symbol->name
-			     << "| " << setw(26) << left << symbol->type
+			     << "| " << setw(26) << left << symbol->type.typeIndex
+                 // Aren ~ maine add kiya hai .typeIndex (isko change krna hai according to Type class)
 			     << "| " << setw(8) << left << symbol->scope
 			     << "| " << setw(12) << left << symbol->memoryAddr << " |\n";
 		}

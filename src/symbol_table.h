@@ -36,7 +36,7 @@ public:
     int scope;
     int memoryAddr;
 
-    Symbol(std::string n, std::string t, int s, int m) : name(n), type(t), scope(s), memoryAddr(m) {}
+    Symbol(std::string n, Type t, int s, int m) : name(n), type(t), scope(s), memoryAddr(m) {}
 };
 
 class SymbolTable
