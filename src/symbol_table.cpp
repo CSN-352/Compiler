@@ -379,8 +379,7 @@ bool operator==(Type &obj1, Type &obj2)
 
 Identifier ::Identifier(string value, unsigned int line_no, unsigned int column_no)
     : Terminal("IDENTIFIER", value, line_no, column_no)
-{
-}
+{}
 
 // ##############################################################################
 // ################################## CONSTANT ######################################
@@ -655,8 +654,5 @@ void SymbolTable::print()
     cout << "----------------------------------------------------------------------------\n";
 }
 
-Identifier ::Identifier(string value, unsigned int line_no, unsigned int column_no) : Terminal("IDENTIFIER", value, line_no, column_no) {}
-
-StringLiteral ::StringLiteral(string value, unsigned int line_no, unsigned int column_no) : Terminal("CONSTANT", value, line_no, column_no) {}
 
 SymbolTable symbolTable;

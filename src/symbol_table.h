@@ -78,7 +78,7 @@ class Constant : public Terminal{
     public:
         Type constant_type;
         Type set_constant_type(string value);
-        Type get_constant_type() {return constant_type;}
+        Type get_constant_type();
         string convert_to_decimal();
         Constant(string name, string value, unsigned int line_no, unsigned int column_no);
 };
