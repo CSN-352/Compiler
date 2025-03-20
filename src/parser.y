@@ -16,7 +16,7 @@ extern FILE *yyin;
 int has_error=0;
 
 void yyerror(const char *msg);
-
+/*
 #define MAX_PARSE_SYMBOLS 10000
 
 typedef struct {
@@ -29,14 +29,14 @@ ParseSymbol parseSymbolTable[MAX_PARSE_SYMBOLS];
 int parseSymbolCount = 0;
 
 // Function to add an entry to the parser symbol table
-void addParseSymbol(const char *token, const char *type) {
+void addParseSymbol(const char *token, Type type) {
     if (parseSymbolCount >= MAX_PARSE_SYMBOLS) return;
 
     symbolTable.insert(token, type, 1000);
     // symbolTable.print(); 
 
     parseSymbolTable[parseSymbolCount].token = strdup(token);
-    parseSymbolTable[parseSymbolCount].type = strdup(type);
+    parseSymbolTable[parseSymbolCount].type = type;
     parseSymbolCount++;
 }
 
@@ -55,19 +55,26 @@ void printParseSymbolTable() {
 
     printf("--------------------------------------------------------------\n");
 }
-
+*/
 
 
 %} 
 
+%code requires {
+    #include "ast.h"
+    #include "expression.h"
+    #include "symbol_table.h"
+}
+
 /* Token definitions */
 %union {
-    Node * node;
-	Terminal * terminal;
-    Identifier * identifier;
-    Constant *constant;
-	StringLiteral *string_literal;
+    Node* node;
+	Terminal* terminal;
+    Identifier* identifier;
+    Constant* constant;
+	StringLiteral* string_literal;
     Expression* expression;
+    ArgumentExpressionList* argument_expression_list;
     int intval;
     char* strval;
 }
@@ -76,13 +83,14 @@ void printParseSymbolTable() {
 %token <constant> I_CONSTANT F_CONSTANT CHAR_CONSTANT
 %token <string_literal> STRING_LITERAL
 %token <terminal> INC_OP DEC_OP PTR_OP DOT
-%type <expression> expression assignment_expression primary_expression argument_expression_list
+%type <expression> expression assignment_expression primary_expression 
+%type <argument_expression_list> argument_expression_list
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
-%token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP PTR_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
-%token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN DOT QUESTION
+%token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
+%token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
 %token <strval> NOT BITWISE_NOT BITWISE_XOR BITWISE_OR BITWISE_AND MINUS PLUS MULTIPLY DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
@@ -241,79 +249,27 @@ expression:
 
 declaration:
     declaration_specifiers SEMICOLON                           
-    | declaration_specifiers init_declarator_list SEMICOLON  {
-        char *type = strdup($1);
-        char *variables = strdup($2);
-
-        char formattedType[256];
-
-        if (strncmp(type, "enum ", 5) == 0) {
-            snprintf(formattedType, sizeof(formattedType), "enum(%s)", type + 5);  
-        } else if (strncmp(type, "struct ", 7) == 0) {
-            snprintf(formattedType, sizeof(formattedType), "struct(%s)", type + 7); 
-        } else if (strncmp(type, "class ", 6) == 0) {   // Handle class type
-            snprintf(formattedType, sizeof(formattedType), "class(%s)", type + 6);  
-        } else {
-            strcpy(formattedType, type); 
-        }
-
-        char *token = strtok(variables, ", ");
-        while (token != NULL) {
-            char fullType[512];
-            char *varName = token;
-            int starCount = 0;
-
-            while (*varName == '*') {
-                starCount++;
-                varName++; 
-            }
-            snprintf(fullType, sizeof(fullType), "%s%.*s", formattedType, 
-                std::min(starCount, 16), "****************");
-
-            while (*varName == '[' && *(varName + 1) == ']') {
-                strcat(fullType, "[]");
-                varName++; 
-                varName++;
-            }
-            symbolTable.insert(varName, fullType, 1000);
-            token = strtok(NULL, ", ");
-        }
-    }
+    | declaration_specifiers init_declarator_list SEMICOLON  
     | error_case skip_until_semicolon SEMICOLON
     ;
 
 declaration_specifiers:
-    storage_class_specifier {$$ = strdup($1);}   
-    | storage_class_specifier declaration_specifiers {
-        char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
-        snprintf(newType, sizeof(newType), "%s %s", $1, $2);
-        $$ = newType;
-    }
-	| type_specifier %prec HIGH_PREC                                    {$$ = strdup($1);}                                             
-	| type_specifier declaration_specifiers %prec LOW_PREC  {
-        char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
-        snprintf(newType, sizeof(newType), "%s %s", $1, $2);
-        $$ = newType;
-    }
-	| type_qualifier    {$$ = strdup($1);}   
-	| type_qualifier declaration_specifiers {
-        char *newType = (char *)malloc(strlen($1) + strlen($2) + 2);
-        snprintf(newType, sizeof(newType), "%s %s", $1, $2);
-        $$ = newType;
-    }
+    storage_class_specifier 
+    | storage_class_specifier declaration_specifiers 
+	| type_specifier %prec HIGH_PREC                                                                       
+	| type_specifier declaration_specifiers %prec LOW_PREC  
+	| type_qualifier    
+	| type_qualifier declaration_specifiers 
     ;
 
 init_declarator_list:
-    init_declarator {$$ = strdup($1);}
-    | init_declarator_list COMMA init_declarator {
-        $$ = (char *)malloc(strlen($1) + strlen($3) + 3);  
-        sprintf($$, "%s, %s", $1, $3);  
-    }
+    init_declarator 
+    | init_declarator_list COMMA init_declarator 
     ;
 
 init_declarator:
-    declarator {$$ = strdup($1);}
-    | declarator ASSIGN initializer {$$ = strdup($1);}
+    declarator 
+    | declarator ASSIGN initializer
     ;
 
 storage_class_specifier:
@@ -335,34 +291,15 @@ type_specifier:
 	| SIGNED  
 	| UNSIGNED 
     | TYPE_NAME
-	| struct_or_union_specifier  {
-        $$ = (char *)malloc(strlen($1) + strlen("struct ") + 1);
-        sprintf($$, "struct %s", $1);
-    }
-	| enum_specifier  {
-        $$ = (char *)malloc(strlen($1) + strlen("enum ") + 1);
-        sprintf($$, "enum %s", $1);
-    }
-    | class_specifier {
-        $$ = (char *)malloc(strlen($1) + strlen("class ") + 1);
-        sprintf($$, "class %s", $1);
-    }
+	| struct_or_union_specifier  
+	| enum_specifier  
+    | class_specifier 
 	;
 
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER add_left_curly struct_declaration_list add_right_curly  {
-        symbolTable.insert($2->value, $1, 1000);
-        $$ = $2->value;
-    }
-	| struct_or_union add_left_curly struct_declaration_list add_right_curly    {
-        char name[256];
-        snprintf(name, sizeof(name), "anonymous_%s", $1);
-        symbolTable.insert(name, $1, 1000);
-        $$ = strdup("unidentified");
-    }
-	| struct_or_union IDENTIFIER {
-        $$ = strdup($2);
-    }                                                 
+    struct_or_union IDENTIFIER add_left_curly struct_declaration_list add_right_curly  
+	| struct_or_union add_left_curly struct_declaration_list add_right_curly    
+	| struct_or_union IDENTIFIER                      
 	;
 
 struct_or_union:
@@ -376,21 +313,10 @@ struct_declaration_list:
     ;
 
 class_specifier:
-    CLASS IDENTIFIER add_left_curly class_declaration_list add_right_curly {
-        symbolTable.insert($2, $1, 1000);
-        $$ = strdup($2);
-    }
-    | CLASS IDENTIFIER INHERITANCE_OP init_declarator_list add_left_curly class_declaration_list add_right_curly {
-        symbolTable.insert($2, $1, 1000);
-        $$ = strdup($2);
-    }
-    | CLASS add_left_curly class_declaration_list add_right_curly {
-        symbolTable.insert("anonymous_class", "class", 1000);
-        $$ = strdup("anonymous_class");
-    }
-    | CLASS IDENTIFIER {
-        $$ = strdup($2);
-    }
+    CLASS IDENTIFIER add_left_curly class_declaration_list add_right_curly 
+    | CLASS IDENTIFIER INHERITANCE_OP init_declarator_list add_left_curly class_declaration_list add_right_curly 
+    | CLASS add_left_curly class_declaration_list add_right_curly 
+    | CLASS IDENTIFIER 
     ;
 
 class_declaration_list:
@@ -404,54 +330,25 @@ class_declaration:
     ;
 
 access_specifier:
-    PUBLIC  { $$ = strdup("public"); }
-    | PRIVATE { $$ = strdup("private"); }
-    | PROTECTED { $$ = strdup("protected"); }
+    PUBLIC  
+    | PRIVATE 
+    | PROTECTED 
     ;
 
 struct_declaration:
-    specifier_qualifier_list struct_declarator_list SEMICOLON {
-        char *type = strdup($1);
-        char *variables = strdup($2);
-
-        char *token = strtok(variables, ", ");
-        while (token != NULL) {
-            char fullType[512];
-            char *varName = token;
-            int starCount = 0;
-
-            while (*varName == '*') {
-                starCount++;
-                varName++; // Move past '*'
-            }
-
-            snprintf(fullType, sizeof(fullType), "%s%.*s", type, starCount, "****************");
-
-            symbolTable.insert(varName, fullType, 1000);
-            token = strtok(NULL, ", ");
-        }
-    }
+    specifier_qualifier_list struct_declarator_list SEMICOLON 
     ;
 
 specifier_qualifier_list:
-    type_specifier specifier_qualifier_list {
-        $$ = (char *)malloc(strlen($1) + strlen($2) + 2);
-        sprintf($$, "%s %s", $1, $2); // Append qualifier to type
-    }
-	| type_specifier                                { $$ = strdup($1);}
-	| type_qualifier specifier_qualifier_list {
-        $$ = (char *)malloc(strlen($1) + strlen($2) + 2);
-        sprintf($$, "%s %s", $1, $2); // Append qualifier to type
-    }     
-	| type_qualifier                                { $$ = strdup($1);}
+    type_specifier specifier_qualifier_list 
+	| type_specifier                                
+	| type_qualifier specifier_qualifier_list 
+	| type_qualifier                                
 	;
 
 struct_declarator_list:
-    struct_declarator { $$ = strdup($1); }
-	| struct_declarator_list COMMA struct_declarator {
-        $$ = (char *)malloc(strlen($1) + strlen($3) + 3);
-        sprintf($$, "%s, %s", $1, $3);
-    }
+    struct_declarator 
+	| struct_declarator_list COMMA struct_declarator 
 	;
 
 struct_declarator:
@@ -461,15 +358,9 @@ struct_declarator:
 	;
 
 enum_specifier:
-    ENUM add_left_curly enumerator_list add_right_curly                 { $$ = strdup("unidentified");}
-	| ENUM IDENTIFIER add_left_curly enumerator_list add_right_curly    {
-        symbolTable.insert($2, "enum", 1000);
-        $$ = strdup($2);
-    }
-	| ENUM IDENTIFIER  {
-        symbolTable.insert($2, "enum", 1000);
-        $$ = strdup($2);
-    }                                        
+    ENUM add_left_curly enumerator_list add_right_curly                 
+	| ENUM IDENTIFIER add_left_curly enumerator_list add_right_curly    
+	| ENUM IDENTIFIER                        
 	;
 
 enumerator_list:
@@ -478,82 +369,40 @@ enumerator_list:
     ;
 
 enumerator:
-    IDENTIFIER {
-        symbolTable.insert($1, "int", 1000);  
-    }
-    | IDENTIFIER ASSIGN conditional_expression {
-        symbolTable.insert($1, "int", 1000);
-    }
+    IDENTIFIER
+    | IDENTIFIER ASSIGN conditional_expression 
     ;
 
 type_qualifier:
-    CONST  { $$ = strdup($1); }
-    | VOLATILE  { $$ = strdup($1); }
+    CONST  
+    | VOLATILE  
     ;
 
 declarator:
-    pointer direct_declarator {
-        char *fullType = (char *)malloc(strlen($1) + strlen($2) + 1);
-        snprintf(fullType, sizeof(fullType), "%s%s", $1, $2); 
-        $$ = fullType;
-    }
-    | direct_declarator  { $$ = strdup($1);}
+    pointer direct_declarator 
+    | direct_declarator  
     ;
 
 direct_declarator:
-    IDENTIFIER  {
-        $$ = strdup($1);  // Store variable name
-    }
-    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {
-        // Append "[]" for each array dimension
-        $$ = (char *)malloc(strlen($1) + 3);
-        sprintf($$, "[]%s", $1);
-    }
-	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {
-        // Handle unsized arrays (e.g., `char str[]`)
-        $$ = (char *)malloc(strlen($1) + 3);
-        sprintf($$, "[]%s", $1);
-    }
-    | LEFT_PAREN declarator RIGHT_PAREN {
-        $$ = strdup($2);
-    }
-    | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {
-        // Handle normal function declaration
-        $$ = (char *)malloc(strlen($1) + 10);
-        sprintf($$, "%s", $1);
-    }
-    | direct_declarator LEFT_PAREN identifier_list RIGHT_PAREN {
-        $$ = (char *)malloc(strlen($1) + 10);
-        sprintf($$, "%s", $1);
-    } 
-    | direct_declarator LEFT_PAREN RIGHT_PAREN {
-        $$ = (char *)malloc(strlen($1) + 10);
-        sprintf($$, "%s", $1);
-    }
+    IDENTIFIER  
+    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE 
+	| direct_declarator LEFT_SQUARE RIGHT_SQUARE 
+    | LEFT_PAREN declarator RIGHT_PAREN 
+    | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN 
+    | direct_declarator LEFT_PAREN identifier_list RIGHT_PAREN 
+    | direct_declarator LEFT_PAREN RIGHT_PAREN 
     ;
 
 pointer:
-    MULTIPLY { $$ = strdup("*"); }
-    | MULTIPLY type_qualifier_list { 
-        $$ = (char *)malloc(strlen("* ") + strlen($2) + 1);
-        sprintf($$, "* %s", $2); 
-    }
-    | MULTIPLY pointer { 
-        $$ = (char *)malloc(strlen($2) + 2);
-        sprintf($$, "*%s", $2);  
-    }
-    | MULTIPLY type_qualifier_list pointer { 
-        $$ = (char *)malloc(strlen($3) + strlen($2) + 3);
-        sprintf($$, "* %s %s", $2, $3);  
-    }
+    MULTIPLY 
+    | MULTIPLY type_qualifier_list 
+    | MULTIPLY pointer 
+    | MULTIPLY type_qualifier_list pointer 
     ;
 
 type_qualifier_list:
-    type_qualifier  { $$ = strdup($1); }
-    | type_qualifier_list type_qualifier  { 
-        $$ = (char *)malloc(strlen($1) + strlen($2) + 2);
-        sprintf($$, "%s %s", $1, $2);  
-    }
+    type_qualifier  
+    | type_qualifier_list type_qualifier  
     ;
 
 parameter_type_list:
@@ -567,21 +416,9 @@ parameter_list:
     ;
 
 parameter_declaration:
-    declaration_specifiers declarator { 
-        char *fullType = strdup($1);  
-        char *varName = strdup($2);   
-       
-        if ($2[0] == '*') {  
-            fullType = (char *)malloc(strlen($1) + 2);
-            snprintf(fullType, sizeof(fullType), "%s*", $1);
-            varName = strdup($2 + 1);  
-        }
-
-        $$ = fullType;
-        symbolTable.insert(varName, fullType, 1000); 
-    }
+    declaration_specifiers declarator 
 	| declaration_specifiers abstract_declarator
-	| declaration_specifiers                        { $$ = strdup($1); }
+	| declaration_specifiers                        
 	;
 
 identifier_list:
@@ -698,26 +535,10 @@ external_declaration:
 	;
 
 function_definition:
-    declaration_specifiers declarator declaration_list compound_statement {
-        char functionType[256];  
-        snprintf(functionType, sizeof(functionType), "Function(%s)", $1); 
-        symbolTable.insert($2, functionType, 1000);
-    }
-    | declaration_specifiers declarator compound_statement {
-        char functionType[256];  
-        snprintf(functionType, sizeof(functionType), "Function(%s)", $1);  
-        symbolTable.insert($2, functionType, 1000);
-    }
-    | declarator declaration_list compound_statement {
-        char functionType[256];  
-        snprintf(functionType, sizeof(functionType), "Function(%s)", "int"); // Default return type
-        symbolTable.insert($1, functionType, 1000);
-    }
-    | declarator compound_statement {
-        char functionType[256];  
-        snprintf(functionType, sizeof(functionType), "Function(%s)", "int"); // Default return type
-        symbolTable.insert($1, functionType, 1000);
-    }
+    declaration_specifiers declarator declaration_list compound_statement 
+    | declaration_specifiers declarator compound_statement 
+    | declarator declaration_list compound_statement 
+    | declarator compound_statement 
     ;
 
 skip_until_semicolon:
@@ -763,7 +584,7 @@ int main(int argc, char **argv) {
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     has_error |= symbolTable.has_error();
-    if(!has_error)printParseSymbolTable();
+    // if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;
 }

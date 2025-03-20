@@ -28,60 +28,6 @@ enum PrimitiveTypes {
     VOID_T = 13,
 };
 
-class Symbol
-{
-public:
-    std::string name;
-    Type type;
-    int scope;
-    int memoryAddr;
-
-    Symbol(std::string n, Type t, int s, int m) : name(n), type(t), scope(s), memoryAddr(m) {}
-};
-
-class SymbolTable
-{
-private:
-    std::unordered_map<std::string, std::list<Symbol*>> table;
-    int currentScope;
-    bool error;
-
-public:
-    SymbolTable();
-    void enterScope();
-    void exitScope();
-    void insert(std::string name, Type type, int memoryAddr);
-    bool lookup(std::string name);
-    Symbol* getSymbol(std::string name);
-    void update(std::string name, Type newType);
-    void remove(std::string name);
-    void print();
-    void set_error();
-    bool has_error();
-};
-
-class Identifier : public Terminal{
-    public:
-        Identifier(string value, unsigned int line_no, unsigned int column_no);
-};
-
-class Constant : public Terminal{
-    public:
-        Type constant_type;
-        Type set_constant_type(string value);
-        Type get_constant_type() {return constant_type;}
-        string convert_to_decimal();
-        Constant(string value, unsigned int line_no, unsigned int column_no);
-};
-
-class StringLiteral : public Terminal{
-    public:
-        StringLiteral(string value,unsigned int line_no, unsigned int column_no);
-};
-
-extern SymbolTable symbolTable;
-
-
 class Type {
     public:
       int typeIndex;
@@ -122,5 +68,61 @@ class Type {
 };
 
 extern Type ERROR_TYPE;
+
+class Symbol
+{
+public:
+    std::string name;
+    Type type;
+    int scope;
+    int memoryAddr;
+
+    Symbol(std::string n, Type t, int s, int m) : name(n), type(t), scope(s), memoryAddr(m) {}
+};
+
+class SymbolTable
+{
+private:
+    std::unordered_map<std::string, std::list<Symbol*> > table;
+    int currentScope;
+    bool error;
+
+public:
+    SymbolTable();
+    void enterScope();
+    void exitScope();
+    void insert(std::string name, Type type, int memoryAddr);
+    bool lookup(std::string name);
+    Symbol* getSymbol(std::string name);
+    void update(std::string name, Type newType);
+    void remove(std::string name);
+    void print();
+    void set_error();
+    bool has_error();
+};
+
+class Identifier : public Terminal{
+    public:
+        Identifier(string value, unsigned int line_no, unsigned int column_no);
+};
+
+class Constant : public Terminal{
+    public:
+        Type constant_type;
+        Type set_constant_type(string value);
+        Type get_constant_type() {return constant_type;}
+        string convert_to_decimal();
+        Constant(string value, unsigned int line_no, unsigned int column_no);
+};
+
+class StringLiteral : public Terminal{
+    public:
+        StringLiteral(string value,unsigned int line_no, unsigned int column_no);
+};
+
+extern SymbolTable symbolTable;
+
+
+
 
 #endif

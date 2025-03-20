@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <type_traits>
 using namespace std;
 
 // Utility function to check if class T is derived from class B (for implicit type casting)
@@ -10,6 +11,9 @@ template<typename B, typename T>
 constexpr bool instanceof(const T*) {
     return std::is_base_of<B, T>::value;
 }
+class Node;
+class NonTemrinal;
+class Terminal;
 
 // AST Node
 class Node{
