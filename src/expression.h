@@ -6,6 +6,13 @@
 #include <vector>
 using namespace std;
 
+class Expression;
+class PrimaryExpression;
+class ArgumentExpressionList;
+class PostfixExpression;
+class UnaryExpression;
+class CastExpression;
+
 class Expression : public NonTerminal{
     public:
         Type type;
@@ -60,7 +67,13 @@ Expression* create_postfix_expression(Expression* x, Terminal* op);
 class UnaryExpression : public Expression{
     public:
         Terminal* op;
+        UnaryExpression* unary_expression;
+        CastExpression* cast_expression;
 
+};
+
+class CastExpression : public Expression{
+    
 };
 
 #endif
