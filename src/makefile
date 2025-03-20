@@ -23,7 +23,7 @@ YFLAGS = -d -v
 DEBUG ?= 0
 CC = gcc
 CXX = g++ -std=c++17
-CFLAGS = -ll -I$(SRC_DIR)
+CFLAGS = -lfl -I$(SRC_DIR)
 ifeq ($(DEBUG),1)
     CFLAGS += -DDEBUG
 endif

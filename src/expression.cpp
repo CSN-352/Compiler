@@ -116,6 +116,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
         symbolTable.set_error();
         return P;
     }
+    return P;
 }
 
 // Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id){

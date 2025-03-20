@@ -79,15 +79,16 @@ void printParseSymbolTable() {
     char* strval;
 }
 
-%token <terminal> BITWISE_NOT NOT BITWISE_AND PLUS MINUS MULTIPLY 
+%token <terminal> BITWISE_NOT NOT BITWISE_AND PLUS MINUS MULTIPLY SIZEOF
 %token <identifier> IDENTIFIER
 %token <constant> I_CONSTANT F_CONSTANT CHAR_CONSTANT
 %token <string_literal> STRING_LITERAL
 %token <terminal> INC_OP DEC_OP PTR_OP DOT
-%type <expression> expression assignment_expression primary_expression postfix_expression
+%type <terminal> unary_operator
+%type <expression> expression assignment_expression primary_expression postfix_expression unary_expression
 %type <argument_expression_list> argument_expression_list
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
-%token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
+%token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
@@ -142,7 +143,7 @@ unary_expression:
     postfix_expression
     | INC_OP unary_expression
     | DEC_OP unary_expression
-    | unary_operator cast_expression {$$ = $1}
+    | unary_operator cast_expression 
     | SIZEOF unary_expression
     | SIZEOF LEFT_PAREN type_name RIGHT_PAREN
     ;

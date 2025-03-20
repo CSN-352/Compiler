@@ -234,7 +234,6 @@ WHITESPACE     [ \t\v\f\r]+
 NEWLINE        \n
 
 %%
-
 {AUTO}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AUTO); }
 {BREAK}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BREAK); }
 {CASE}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CASE); }
@@ -257,7 +256,7 @@ NEWLINE        \n
 {RETURN}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RETURN); }
 {SHORT}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SHORT); }
 {SIGNED}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SIGNED); }
-{SIZEOF}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SIZEOF); }
+{SIZEOF}              { Terminal* t = new Terminal("PTR_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SIZEOF); }
 {STATIC}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STATIC); }
 {STRUCT}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STRUCT); }
 {SWITCH}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SWITCH); }
@@ -273,7 +272,6 @@ NEWLINE        \n
 {PUBLIC}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PUBLIC); }
 {PROTECTED}           { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PROTECTED); }
 {ASSEMBLY_DIRECTIVE}  { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ASSEMBLY_DIRECTIVE); }
-
 {IDENTIFIER}          { Identifier* id = new Identifier(yytext, line_no, column_no); yylval.identifier = id; if(!checkIdentifierLength(yytext)){yyerror("Identifier exceeds maximum length (32 characters):"); return(ERROR);} if(is_typedef){addToSymbolTable(yytext, "type_name"); is_typedef=0;} else addToSymbolTable(yytext, "identifier"); updateColumn(yyleng); if(check_type_name(yytext))return(TYPE_NAME); RETURN_IF_NOT_MAIN(IDENTIFIER); }
 {H_CONSTANT}          { Constant* c = new Constant("I_CONSTANT", yytext, line_no, column_no); yylval.constant = c; addToSymbolTable(yytext, "hexadecimal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }
 {O_CONSTANT}          { Constant* c = new Constant("I_CONSTANT", yytext, line_no, column_no); yylval.constant = c;  addToSymbolTable(yytext, "octal_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }

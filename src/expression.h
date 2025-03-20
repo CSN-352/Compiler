@@ -35,7 +35,7 @@ class ArgumentExpressionList : public Expression{
       ArgumentExpressionList() : Expression() {
         name = "ARGUMENT EXPRESSION LIST";
       };
-  };
+};
   
 ArgumentExpressionList* create_argument_expression_list(Expression* x);
 ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* args_expr_list, Expression* x);
@@ -60,6 +60,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op);
 class UnaryExpression : public Expression{
     public:
         Terminal* op;
+
 };
 
 #endif
