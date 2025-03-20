@@ -27,6 +27,7 @@ extern unsigned int column_no;
 Expression* create_primary_expression(Identifier* x){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION IDENTIFIER";
+    P->add_children(x);
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->identifier = x;
@@ -44,6 +45,7 @@ Expression* create_primary_expression(Identifier* x){
 Expression* create_primary_expression(Constant* x){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION CONSTANT";
+    P->add_children(x);
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->constant = x;
@@ -54,6 +56,7 @@ Expression* create_primary_expression(Constant* x){
 Expression* create_primary_expression(StringLiteral* x){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION STRING LITERAL";
+    P->add_children(x);
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->string_literal = x;
@@ -85,6 +88,7 @@ Expression* create_postfix_expression(Expression* x){
 Expression* create_postfix_expression(Expression* x, Terminal* op){
     PostfixExpression* P = new PostfixExpression();
     P->add_children(x);
+    P->base_expression = dynamic_cast<PostfixExpression *>(x);
     P->op = op;
     if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
     if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
@@ -114,10 +118,15 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     }
 }
 
-Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id){
-    PostfixExpression* P = new PostfixExpression();
-    P->add_children(x);
-    P->member_name = id;
-    return x;
-}
+// Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id){
+//     PostfixExpression* P = new PostfixExpression();
+//     P->add_children(x);
+//     P->member_name = id;
+//     if(x->type.is_error()){
+//         P->type = ERROR_TYPE;
+//         return P;
+//     }
+    
+//     return x;
+// }
 

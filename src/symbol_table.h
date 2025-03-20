@@ -55,6 +55,7 @@ class Type {
       bool isIntorFloat();
       bool isUnsigned();
       bool isPointer();
+      bool is_error();
       void make_signed();
       void make_unsigned();
       bool isVoid();

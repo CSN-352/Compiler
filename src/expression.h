@@ -20,7 +20,7 @@ class PrimaryExpression : public Expression{
         Constant* constant;
         StringLiteral* string_literal;
         PrimaryExpression() : Expression(), identifier(nullptr), constant(nullptr), string_literal(nullptr) {
-            name = "Primary Expression";
+            name = "PRIMARY EXPRESSION";
         }
 };
 
@@ -42,9 +42,11 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
 
 class PostfixExpression : public Expression{
     public:
+        PostfixExpression* base_expression;
         vector<Expression*> arguments;
         Terminal* op;
         Identifier* member_name;
+        Expression* expression;
 
         PostfixExpression() : Expression() {
             name = "POSTFIX EXPRESSION";
@@ -53,6 +55,11 @@ class PostfixExpression : public Expression{
 
 Expression* create_postfix_expression(Expression* x);
 Expression* create_postfix_expression(Expression* x, Terminal* op);
-Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id);
+//Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id);
+
+class UnaryExpression : public Expression{
+    public:
+        Terminal* op;
+}
 
 #endif

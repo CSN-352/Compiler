@@ -133,8 +133,8 @@ postfix_expression:
     | postfix_expression LEFT_PAREN RIGHT_PAREN 
     | postfix_expression DOT IDENTIFIER
     | postfix_expression PTR_OP IDENTIFIER
-    | postfix_expression INC_OP
-    | postfix_expression DEC_OP
+    | postfix_expression INC_OP {$$ = create_postfix_expression($1,$2);}
+    | postfix_expression DEC_OP {$$ = create_postfix_expression($1,$2);}
     ;
 
 unary_expression:
