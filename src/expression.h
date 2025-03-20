@@ -60,6 +60,6 @@ Expression* create_postfix_expression(Expression* x, Terminal* op);
 class UnaryExpression : public Expression{
     public:
         Terminal* op;
-}
+};
 
 #endif

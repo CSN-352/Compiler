@@ -23,7 +23,7 @@ YFLAGS = -d -v
 DEBUG ?= 0
 CC = gcc
 CXX = g++ -std=c++17
-CFLAGS = -lfl -I$(SRC_DIR)
+CFLAGS = -ll -I$(SRC_DIR)
 ifeq ($(DEBUG),1)
     CFLAGS += -DDEBUG
 endif
@@ -40,7 +40,7 @@ $(YACC_C_FILE) $(YACC_H_FILE): $(YACC_FILE) | $(BUILD_DIR)
 
 # Generate lex.yy.c (force output in build/)
 $(LEX_C_FILE): $(LEX_FILE) $(YACC_H_FILE) | $(BUILD_DIR)
-	$(LEX) --c++ -o $(LEX_C_FILE) $(LEX_FILE)
+	$(LEX) -o $(LEX_C_FILE) $(LEX_FILE)
 
 # Compile symbol_table.cpp into symbol_table.o
 $(SYMBOL_TABLE_O_FILE): $(SRC_DIR)/symbol_table.cpp $(SRC_DIR)/symbol_table.h | $(BUILD_DIR)

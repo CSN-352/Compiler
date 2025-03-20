@@ -17,6 +17,8 @@ unsigned int line_no = 1;  // Line number tracker
 unsigned int column_no = 1; // Column number tracker
 int is_typedef=0;
 extern void yyerror(const char* msg);
+extern "C" int yylex();  // Lexical analyzer function
+extern FILE *yyin;   // Input file
 
 // Symbol table structure
 // #define MAX_SYMBOLS 10000
@@ -30,8 +32,6 @@ extern void yyerror(const char* msg);
 // Symbol symbolTable[MAX_SYMBOLS];
 // int symbolCount = 0;
 
-extern int yylex();  // Lexical analyzer function
-extern FILE *yyin;   // Input file
 
 // Function to handle errors
 //void report_error(const char *msg, const char *symbol) {
