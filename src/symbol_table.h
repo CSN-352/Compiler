@@ -49,25 +49,43 @@ class Type {
       Type( int idx, int p_lvl, bool is_con );
       bool is_const;
       bool isPrimitive();
-      std::string get_name();
       bool isInt();
+      bool isChar();
       bool isFloat();
       bool isIntorFloat();
       bool isUnsigned();
       bool isPointer();
-      bool isVoid();
-      bool isChar();
-      bool is_invalid();
       void make_signed();
       void make_unsigned();
-      size_t get_size();
+      bool isVoid();
+      bool is_invalid();
       bool is_ea();
+      std::string get_name();
+      size_t get_size();
   
       friend bool operator==( Type &obj1, Type &obj2 );
       friend bool operator!=( Type &obj1, Type &obj2 );
 };
 
 extern Type ERROR_TYPE;
+class Identifier : public Terminal{
+    public:
+        Identifier(string value, unsigned int line_no, unsigned int column_no);
+};
+
+class Constant : public Terminal{
+    public:
+        Type constant_type;
+        Type set_constant_type(string value);
+        Type get_constant_type() {return constant_type;}
+        string convert_to_decimal();
+        Constant(string name, string value, unsigned int line_no, unsigned int column_no);
+};
+
+class StringLiteral : public Terminal{
+    public:
+        StringLiteral(string value,unsigned int line_no, unsigned int column_no);
+};
 
 class Symbol
 {
@@ -101,28 +119,6 @@ public:
     bool has_error();
 };
 
-class Identifier : public Terminal{
-    public:
-        Identifier(string value, unsigned int line_no, unsigned int column_no);
-};
-
-class Constant : public Terminal{
-    public:
-        Type constant_type;
-        Type set_constant_type(string value);
-        Type get_constant_type() {return constant_type;}
-        string convert_to_decimal();
-        Constant(string name, string value, unsigned int line_no, unsigned int column_no);
-};
-
-class StringLiteral : public Terminal{
-    public:
-        StringLiteral(string value,unsigned int line_no, unsigned int column_no);
-};
-
 extern SymbolTable symbolTable;
-
-
-
 
 #endif
