@@ -8,7 +8,7 @@
 #include "expression.h"
 
 // External declarations 
-extern int yylex();
+extern "C" int yylex();
 extern int yyparse();
 extern int yylineno;
 extern YYSTYPE yylval;
