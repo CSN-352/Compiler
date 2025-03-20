@@ -79,19 +79,21 @@ void printParseSymbolTable() {
     char* strval;
 }
 
+%token <terminal> BITWISE_NOT NOT BITWISE_AND PLUS MINUS MULTIPLY 
 %token <identifier> IDENTIFIER
 %token <constant> I_CONSTANT F_CONSTANT CHAR_CONSTANT
 %token <string_literal> STRING_LITERAL
 %token <terminal> INC_OP DEC_OP PTR_OP DOT
 %type <expression> expression assignment_expression primary_expression 
 %type <argument_expression_list> argument_expression_list
+%type <terminal> unary_operator
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
-%token <strval> NOT BITWISE_NOT BITWISE_XOR BITWISE_OR BITWISE_AND MINUS PLUS MULTIPLY DIVIDE MOD LESS GREATER
+%token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
 %type <strval> enum_specifier init_declarator_list init_declarator declarator direct_declarator pointer specifier_qualifier_list struct_declarator_list
@@ -141,18 +143,18 @@ unary_expression:
     postfix_expression
     | INC_OP unary_expression
     | DEC_OP unary_expression
-    | unary_operator cast_expression
+    | unary_operator cast_expression {$$ = $1}
     | SIZEOF unary_expression
     | SIZEOF LEFT_PAREN type_name RIGHT_PAREN
     ;
 
 unary_operator:
-    BITWISE_AND
-    | MULTIPLY
-    | PLUS
-    | MINUS
-    | NOT
-    | BITWISE_NOT
+    BITWISE_AND {$$ = $1;}
+    | MULTIPLY {$$ = $1;}
+    | PLUS  {$$ = $1;}
+    | MINUS {$$ = $1;}
+    | NOT   {$$ = $1;}
+    | BITWISE_NOT   {$$ = $1;}
     ;
 
 cast_expression: 
