@@ -112,7 +112,7 @@ class Constant : public Terminal{
         Type set_constant_type(string value);
         Type get_constant_type() {return constant_type;}
         string convert_to_decimal();
-        Constant(string value, unsigned int line_no, unsigned int column_no);
+        Constant(string name, string value, unsigned int line_no, unsigned int column_no);
 };
 
 class StringLiteral : public Terminal{

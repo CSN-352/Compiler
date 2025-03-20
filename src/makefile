@@ -17,13 +17,13 @@ SYMBOL_TABLE_O_FILE = $(BUILD_DIR)/symbol_table.o
 AST_O_FILE = $(BUILD_DIR)/ast.o
 EXPRESSION_O_FILE = $(BUILD_DIR)/expression.o
 # Compiler and flags
-LEX = lex
+LEX = flex
 YACC = bison
 YFLAGS = -d -v
 DEBUG ?= 0
 CC = gcc
-CXX = g++ -std=c++11
-CFLAGS = -ll -I$(SRC_DIR)
+CXX = g++ -std=c++17
+CFLAGS = -lfl -I$(SRC_DIR)
 ifeq ($(DEBUG),1)
     CFLAGS += -DDEBUG
 endif
