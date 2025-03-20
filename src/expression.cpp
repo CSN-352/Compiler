@@ -21,7 +21,7 @@ extern void yyerror(const char *msg);
 using namespace std;
 
 Type ERROR_TYPE;
-ERROR_TYPE.typeIndex = -1;
+//ERROR_TYPE.typeIndex = -1;
 extern unsigned int line_no;
 extern unsigned int column_no;
 
@@ -175,5 +175,13 @@ UnaryExpression :: UnaryExpression() : Expression() {
     op = nullptr;
     cast_expression = nullptr;
     name = "UNARY EXPRESSION";
+}
+
+// ##############################################################################
+// ################################## CAST EXPRESSION ######################################
+// ##############################################################################
+CastExpression :: CastExpression(): Expression(){
+    base_expression = nullptr;
+    type_name = NULL;
 }
 

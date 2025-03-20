@@ -14,6 +14,8 @@
 #include <vector>
 #include <utility>
 #include <iterator>
+#include "ast.h"
+#include "expression.h"
 using namespace std;
 
 extern void yyerror(const char *msg);
@@ -374,21 +376,210 @@ bool operator==(Type &obj1, Type &obj2)
 }
 
 // ##############################################################################
-// ################################## TYPE NAME ######################################
+// ################################## DIRECT ABSTRACT DECLARATOR ######################################
+// ##############################################################################
+
+DirectAbstractDeclarator :: DirectAbstractDeclarator() : NonTerminal("DIRECT ABSTRACT DECLARATOR"){
+    base_expression = nullptr;
+    abstract_declarator = nullptr;
+    is_function = false;
+    parameters = nullptr;   
+}
+
+DirectAbstractDeclarator* create_direct_abstract_declarator(AbstractDeclarator* x){
+    DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
+    P->abstract_declarator = x;
+    return P;
+}
+
+DirectAbstractDeclarator* create_direct_abstract_declarator(ConditionalExpression* x){
+    DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
+    P->array_dimensions.push_back(x);
+    return P;
+}
+
+DirectAbstractDeclarator* create_direct_abstract_declarator(ParameterTypeList* p){
+    DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
+    P->is_function = true;
+    P->parameters = p;
+    return P;
+}
+
+DirectAbstractDeclarator* create_direct_abstract_declarator(DirectAbstractDeclarator* x, ParameterTypeList* p){
+    DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
+    P->base_expression = x;
+    P->is_function = true;
+    P->parameters = p;
+    return P;
+}
+
+// ##############################################################################
+// ################################## SPECIFIER QUALIFIER LIST ######################################
 // ##############################################################################
 
 SpecifierQualifierList :: SpecifierQualifierList() : NonTerminal("SPECIFIER QUALIFIER LIST") {}
 
-SpecifierQualifierList :: SpecifierQualifierList(vector<TypeSpecifier*> ts){
-    //Insert Logic Here
+SpecifierQualifierList :: SpecifierQualifierList(vector<TypeSpecifier*> ts) : NonTerminal("SPECIFIER QUALIFIER LIST") {
+    is_const = false;
+    type_index = -1;
+
+    int isUnsigned = 0;
+    int isLong = 0;
+    int isShort = 0;
+    int isInt = 0;
+    int isChar = 0;
+    int isDouble = 0;
+    int isFloat = 0;
+    int isVoid =0;
+    int isStruct =0;
+    int isEnum =0;
+    int isUnion =0;
+    for (int i = 0; i < ts.size(); i++) {
+        if (ts[i]->type_specifier == Tokens::UNSIGNED)
+        { 
+            isUnsigned = 1;
+        }
+        else if (ts[i]->type_specifier == Tokens::SHORT) {
+            isShort++;
+        }
+        else if (ts[i]->type_specifier == Tokens::INT)
+        {
+            isInt++;
+        }
+        else if (ts[i]->type_specifier == Tokens::LONG)
+        {
+            isLong++;
+        }
+        else if (ts[i]->type_specifier == Tokens::CHAR)
+        {
+            isChar++;
+        }
+
+        else if (ts[i]->type_specifier == Tokens::DOUBLE)
+        {
+            isDouble++;
+        }
+        else if (ts[i]->type_specifier == Tokens::FLOAT)
+        {
+            isFloat++;
+        }
+
+        else if (ts[i]->type_specifier == Tokens::VOID)
+        {
+            isVoid++;
+        }
+        else if (ts[i]->type_specifier == Tokens::ENUM)
+        {
+            isEnum++;
+        }
+        else if (ts[i]->type_specifier == Tokens::UNION)
+        {
+            isUnion++;
+        }
+        else if (ts[i]->type_specifier == Tokens::STRUCT)
+        {
+            isStruct++;
+        } else {
+            string error_msg = "Invalid type";
+            yyerror(error_msg.c_str());
+            type_index = Tokens::ERROR;
+            return;
+        }
+    }
+    if (ts.size() == 3) {
+        if ((isLong >= 2) && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_LONG_LONG_T;
+        }
+    } else if (ts.size() == 2) {
+        if ((isLong >= 2) && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::LONG_LONG_T;
+        }
+        else if ((isLong == 1) && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_LONG_T;
+        }
+        else if (isInt && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_INT_T;
+        }
+        else if (isShort && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_SHORT_T;
+        }
+        else if (isInt && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_INT_T;
+        }
+        else if (isChar&& isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_CHAR_T;
+        }
+        else if (isLong && isDouble)
+        {
+            type_index = PrimitiveTypes::LONG_DOUBLE_T;
+        }
+    }
+    else if (ts.size() == 1)
+    {
+        if ((isLong == 1) && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::LONG_T;
+        }
+        else if (isInt && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::INT_T;
+        }
+        
+        else if (isShort && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::SHORT_T;
+        }
+        else if (isInt && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::INT_T;
+        }
+        else if (isChar && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::CHAR_T;
+        }
+        else if (isFloat && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::FLOAT_T;
+        }
+        else if (isDouble && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::DOUBLE_T;
+        }
+    } else {
+        string error_msg = "No type passed: ";
+        yyerror(error_msg.c_str());
+        type_index = Tokens::ERROR;
+        return;
+    }
 }
+
+// ##############################################################################
+// ################################## TYPE NAME ######################################
+// ##############################################################################
 
 TypeName :: TypeName() : NonTerminal("TYPE NAME") {}
 
-TypeName :: TypeName(SpecifierQualifierList* sql, AbstractDeclarator* ad){
+TypeName :: TypeName(SpecifierQualifierList* sql, AbstractDeclarator* ad) : NonTerminal("TYPE NAME") {
     this->specifier_qualifier_list = sql;
     this->abstract_declarator = ad;
+    if(sql->type_index == -1){
+        string error_msg = "Invalid type name"; //add line_no and column no later
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }
+    else{
+        if(ad == NULL) this->type = Type(sql->type_index, 0, false);
+        else{
 
+        }
+    }
 }
 
 // ##############################################################################
@@ -398,6 +589,50 @@ TypeName :: TypeName(SpecifierQualifierList* sql, AbstractDeclarator* ad){
 Identifier ::Identifier(string value, unsigned int line_no, unsigned int column_no)
     : Terminal("IDENTIFIER", value, line_no, column_no)
 {}
+
+//##############################################################################
+//############################ DIRECT DECLARATOR ###############################
+//##############################################################################
+
+DirectDeclarator ::DirectDeclarator() 
+    : Non_Terminal( "direct_declarator" ), identifier( nullptr )
+{}
+
+DirectDeclarator *create_dir_declarator_id( //DIRECT_DECLARATOR_TYPE type,
+    Identifier *identifier ) {
+    //assert( type == ID );
+    DirectDeclarator *dd = new DirectDeclarator();
+    //dd->type = type;
+    assert( identifier != nullptr );
+    dd->identifier = identifier;
+    dd->add_children( identifier );
+    return dd;
+}
+//##############################################################################
+//############################ DECLARATOR ###############################
+//##############################################################################
+
+Declarator ::Declarator( DirectDeclarator *dd )
+    : Non_Terminal( "declarator" ), direct_declarator( dd ),
+      init_expr( nullptr ), eq( nullptr ) {
+    if ( dd == nullptr ) {
+        id = nullptr;
+    } else {
+        assert( dd->id != nullptr );
+        id = dd->id;
+    }
+};
+
+Declarator *create_declarator( // Pointer *pointer,
+    DirectDeclarator *direct_declarator ) {
+    if ( direct_declarator == NULL ) {
+        return NULL;
+    }
+        Declarator *d = new Declarator( direct_declarator );
+        d->add_children( direct_declarator );
+    return d;
+}
+
 
 // ##############################################################################
 // ################################## CONSTANT ######################################

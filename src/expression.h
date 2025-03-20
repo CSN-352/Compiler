@@ -50,7 +50,6 @@ class PostfixExpression : public Expression{
         Terminal* op;
         Identifier* member_name;
         Expression* expression;
-
         PostfixExpression();
 };
 
@@ -63,13 +62,18 @@ class UnaryExpression : public Expression{
         Terminal* op;
         UnaryExpression* unary_expression;
         CastExpression* cast_expression;
-
         UnaryExpression();
 };
 
 class CastExpression : public Expression{
     public:
         CastExpression* base_expression;
+        TypeName* type_name;
+        CastExpression();
+};
+
+class ConditionalExpression : public Expression{
+
 };
 
 #endif

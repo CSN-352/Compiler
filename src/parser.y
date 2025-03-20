@@ -75,6 +75,9 @@ void printParseSymbolTable() {
 	StringLiteral* string_literal;
     Expression* expression;
     ArgumentExpressionList* argument_expression_list;
+    DirectAbstractDeclarator* direct_abstract_declarator;
+    AbstractDeclarator* abstract_declarator;
+    ParameterTypeList* parameter_type_list;
     TypeName* type_name;
     int intval;
     char* strval;
@@ -86,9 +89,12 @@ void printParseSymbolTable() {
 %token <string_literal> STRING_LITERAL
 %token <terminal> INC_OP DEC_OP PTR_OP DOT
 %type <terminal> unary_operator
-%type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression
+%type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression
 %type <argument_expression_list> argument_expression_list
 %type <type_name> type_name
+%type <direct_abstract_declarator> direct_abstract_declarator
+%type <abstract_declarator> abstract_declarator
+%type <parameter_type_list> parameter_type_list
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
@@ -388,7 +394,7 @@ declarator:
     ;
 
 direct_declarator:
-    IDENTIFIER  
+    IDENTIFIER  { $$ = create_dir_declarator_id( $1 ); }
     | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE 
 	| direct_declarator LEFT_SQUARE RIGHT_SQUARE 
     | LEFT_PAREN declarator RIGHT_PAREN 
@@ -442,13 +448,15 @@ abstract_declarator:
 	;
 
 direct_abstract_declarator:
-    LEFT_PAREN abstract_declarator RIGHT_PAREN
-    | LEFT_SQUARE conditional_expression RIGHT_SQUARE
-	| LEFT_SQUARE RIGHT_SQUARE
-	| LEFT_PAREN RIGHT_PAREN
-	| LEFT_PAREN parameter_type_list RIGHT_PAREN
-	| direct_abstract_declarator LEFT_PAREN RIGHT_PAREN
-	| direct_abstract_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN
+    LEFT_PAREN abstract_declarator RIGHT_PAREN {$$ = create_direct_abstract_declarator($2);}
+    | LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_abstract_declarator($1);}
+	| LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_abstract_declarator(NULL);}
+	| LEFT_PAREN RIGHT_PAREN 
+	| LEFT_PAREN parameter_type_list RIGHT_PAREN 
+    | direct_abstract_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE
+    | direct_abstract_declarator LEFT_SQUARE RIGHT_SQUARE 
+	| direct_abstract_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_abstract_declarator($1, nullptr);}
+	| direct_abstract_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_abstract_declarator($1,$3);}
 	;
 
 initializer:

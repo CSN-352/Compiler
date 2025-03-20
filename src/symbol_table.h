@@ -5,10 +5,12 @@
 #include <unordered_map>
 #include <list>
 #include "ast.h"
+#include "expression.h"
 
 class Expression;
 class PrimaryExpression;
 class Type;
+class Identifier;
 
 enum PrimitiveTypes {
     ERROR_T = -1,
@@ -28,49 +30,66 @@ enum PrimitiveTypes {
     VOID_T = 13,
 };
 
-class Type {
-    public:
-      int typeIndex;
-  
-      bool is_pointer;
-      int ptr_level;
-  
-      bool is_array;
-      unsigned int array_dim;
-      std::vector<unsigned int> array_dims;
-  
-      bool is_function;
-      unsigned int num_args;
-      std::vector<Type> arg_types;
-      bool is_defined;
-  
-      Type();
-  
-      Type( int idx, int p_lvl, bool is_con );
-      bool is_const;
-      bool isPrimitive();
-      bool isInt();
-      bool isChar();
-      bool isFloat();
-      bool isIntorFloat();
-      bool isUnsigned();
-      bool isPointer();
-      bool is_error();
-      void make_signed();
-      void make_unsigned();
-      bool isVoid();
-      bool is_invalid();
-      bool is_ea();
-      std::string get_name();
-      size_t get_size();
-  
-      friend bool operator==( Type &obj1, Type &obj2 );
-      friend bool operator!=( Type &obj1, Type &obj2 );
+enum Tokens
+{
+    ERROR = -1,
+    UNSIGNED = 0,
+    SHORT = 1,
+    INT = 2,
+    LONG = 3,
+    CHAR = 4,
+    DOUBLE = 5,
+    FLOAT = 6,
+    VOID = 7,
+    ENUM = 8,
+    UNION = 9,
+    STRUCT = 10,
+};
+
+class Type
+{
+public:
+    int typeIndex;
+
+    bool is_pointer;
+    int ptr_level;
+
+    bool is_array;
+    unsigned int array_dim;
+    std::vector<unsigned int> array_dims;
+
+    bool is_function;
+    unsigned int num_args;
+    std::vector<Type> arg_types;
+    bool is_defined;
+
+    Type();
+
+    Type(int idx, int p_lvl, bool is_con);
+    bool is_const;
+    bool isPrimitive();
+    bool isInt();
+    bool isChar();
+    bool isFloat();
+    bool isIntorFloat();
+    bool isUnsigned();
+    bool isPointer();
+    bool is_error();
+    void make_signed();
+    void make_unsigned();
+    bool isVoid();
+    bool is_invalid();
+    bool is_ea();
+    std::string get_name();
+    size_t get_size();
+
+    friend bool operator==(Type &obj1, Type &obj2);
+    friend bool operator!=(Type &obj1, Type &obj2);
 };
 
 extern Type ERROR_TYPE;
 
-typedef enum direct_declartor_enum {
+typedef enum direct_declarator_enum {
     IDENTIFIER,
     DECLARATOR,
     ARRAY,
@@ -105,13 +124,17 @@ class DirectDeclarator : public NonTerminal{
 class Declarator : NonTerminal{
     public:
         Identifier* identifier;
-        Pointer* pointer;
+        // Pointer* pointer;
         DirectDeclarator* direct_declarator;
-        Expression* initialising_expression;
-        Terminal* eq;
-        int get_pointer_level();
-        Declarator();
-        Declarator(Pointer* p, DirectDeclarator* direct_declarator);
+        // Expression* initialising_expression;
+        // Terminal* eq;
+        // int get_pointer_level();
+        Declarator(DirectDeclarator *direct_declarator);
+        // Declarator(Pointer* p, DirectDeclarator* direct_declarator);
+};
+
+class ParameterTypeList : public NonTerminal{
+
 };
 
 class DeclaratorList : public NonTerminal{
@@ -119,6 +142,27 @@ class DeclaratorList : public NonTerminal{
         vector<Declarator*> declarator_list;
         DeclaratorList();
 };
+
+class AbstractDeclarator : public NonTerminal{
+
+};
+
+class DirectAbstractDeclarator : public NonTerminal{
+    public:
+        DirectAbstractDeclarator* base_expression;
+        AbstractDeclarator* abstract_declarator;
+        bool is_function; // Flag to check if it's a function
+        ParameterTypeList* parameters; // Stores function parameters if applicable
+        vector<ConditionalExpression* > array_dimensions; // Stores array dimensions if applicable
+
+        DirectAbstractDeclarator();
+        
+};
+
+DirectAbstractDeclarator* create_direct_abstract_declarator(AbstractDeclarator* x);
+DirectAbstractDeclarator* create_direct_abstract_declarator(ConditionalExpression* x);
+DirectAbstractDeclarator* create_direct_abstract_declarator(ParameterTypeList* p);
+DirectAbstractDeclarator* create_direct_abstract_declarator(DirectAbstractDeclarator* x, ParameterTypeList* p);
 
 class StructDefinition{
     public:
@@ -158,15 +202,16 @@ class EnumeratorList : public NonTerminal{
 };
 
 class TypeSpecifier : public Terminal{
-    int type_specifier;
-    Identifier* identifier;
-    StructDeclarationList* struct_declaration_list;
-    EnumeratorList* enumerator_list;
-    int type_index;
+    public: 
+        int type_specifier;
+        Identifier* identifier;
+        StructDeclarationList* struct_declaration_list;
+        EnumeratorList* enumerator_list;
+        int type_index;
 
-    TypeSpecifier(int type_specifier, unsigned int line_no, unsigned int column_no);
-    TypeSpecifier(int type_specifier, Identifier* identifier, StructDeclarationList* struct_declaration_list);
-    TypeSpecifier(int type_specifier, Identifier* identifier, EnumeratorList* enumerator_list);
+        TypeSpecifier(int type_specifier, unsigned int line_no, unsigned int column_no);
+        TypeSpecifier(int type_specifier, Identifier* identifier, StructDeclarationList* struct_declaration_list);
+        TypeSpecifier(int type_specifier, Identifier* identifier, EnumeratorList* enumerator_list);
 
 };
 
@@ -180,10 +225,6 @@ class SpecifierQualifierList : public NonTerminal{
         SpecifierQualifierList(vector<TypeSpecifier*> ts);
 };
 
-class AbstractDeclarator :public NonTerminal{
-
-};
-
 class TypeName : public NonTerminal{
     public:
         SpecifierQualifierList* specifier_qualifier_list;
@@ -192,6 +233,10 @@ class TypeName : public NonTerminal{
         TypeName();
         TypeName(SpecifierQualifierList* sql, AbstractDeclarator* ad);
 };
+
+//##############################################################################
+//################################ IDENTIFIER ##################################
+//##############################################################################
 
 class Identifier : public Terminal{
     public:
