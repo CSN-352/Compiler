@@ -69,6 +69,130 @@ class Type {
 };
 
 extern Type ERROR_TYPE;
+
+typedef enum direct_declartor_enum {
+    IDENTIFIER,
+    DECLARATOR,
+    ARRAY,
+    FUNCTION,
+    NUM_DIRECT_DECLARATORS
+
+} DIRECT_DECLARATOR_TYPE;
+
+class TypeQualifierList : public NonTerminal{
+    vector<int> type_qualifier_list;
+    TypeQualifierList();
+    //~TypeQualifierList();
+};
+
+class Pointer : public NonTerminal{
+    public:
+        TypeQualifierList* type_qualifier_list;
+        Pointer *pointer;
+        Pointer();
+        Pointer( TypeQualifierList *type_qualifier_list, Pointer *pointer );
+};
+
+class DirectDeclarator : public NonTerminal{
+    public:
+        // DIRECT_DECLARATOR_TYPE direct_declarator_type;
+        Identifier* identifier;
+        // vector<unsigned int> array_dimensions;
+        // ParameterTypeList* parameter_list;
+        DirectDeclarator();
+};
+
+class Declarator : NonTerminal{
+    public:
+        Identifier* identifier;
+        Pointer* pointer;
+        DirectDeclarator* direct_declarator;
+        Expression* initialising_expression;
+        Terminal* eq;
+        int get_pointer_level();
+        Declarator();
+        Declarator(Pointer* p, DirectDeclarator* direct_declarator);
+};
+
+class DeclaratorList : public NonTerminal{
+    public:
+        vector<Declarator*> declarator_list;
+        DeclaratorList();
+};
+
+class StructDefinition{
+    public:
+        unordered_map<string,Type> struct_members;
+        int is_union;
+        int is_struct;
+        StructDefinition();
+        Type get_member_type();
+};
+
+class StructDeclaration : public NonTerminal{
+    public:
+        SpecifierQualifierList* specifier_qualifier_list;
+        DeclaratorList* declarator_list;
+
+        StructDeclaration(SpecifierQualifierList* specifier_qualifier_list, DeclaratorList* declarator_list);
+        void add_to_struct_definition(StructDefinition* );
+};
+
+class StructDeclarationList : public NonTerminal{
+    public:
+        vector<StructDeclaration*> struct_declaration_list;
+        StructDeclarationList();
+};
+
+class Enumerator : public NonTerminal{
+    public:
+        Identifier* identifier;
+        Node* initializer_expression;
+        Enumerator(Identifier* identifier, Node* initializer_expression);
+};
+
+class EnumeratorList : public NonTerminal{
+    public:
+        vector<Enumerator*> enumerator_list;
+        EnumeratorList();
+};
+
+class TypeSpecifier : public Terminal{
+    int type_specifier;
+    Identifier* identifier;
+    StructDeclarationList* struct_declaration_list;
+    EnumeratorList* enumerator_list;
+    int type_index;
+
+    TypeSpecifier(int type_specifier, unsigned int line_no, unsigned int column_no);
+    TypeSpecifier(int type_specifier, Identifier* identifier, StructDeclarationList* struct_declaration_list);
+    TypeSpecifier(int type_specifier, Identifier* identifier, EnumeratorList* enumerator_list);
+
+};
+
+class SpecifierQualifierList : public NonTerminal{
+    public:
+        vector<TypeSpecifier*> type_specifiers;
+        vector<int> type_qualifiers;
+        bool is_const;
+        int type_index;
+        SpecifierQualifierList();
+        SpecifierQualifierList(vector<TypeSpecifier*> ts);
+};
+
+class AbstractDeclarator :public NonTerminal{
+
+};
+
+class TypeName : public NonTerminal{
+    public:
+        SpecifierQualifierList* specifier_qualifier_list;
+        AbstractDeclarator* abstract_declarator;
+        Type type;
+        TypeName();
+        TypeName(SpecifierQualifierList* sql, AbstractDeclarator* ad);
+};
+
 class Identifier : public Terminal{
     public:
         Identifier(string value, unsigned int line_no, unsigned int column_no);
@@ -96,7 +220,7 @@ public:
     int scope;
     int memoryAddr;
 
-    Symbol(std::string n, Type t, int s, int m) : name(n), type(t), scope(s), memoryAddr(m) {}
+    Symbol(string n, Type t, int s, int m) : name(n), type(t), scope(s), memoryAddr(m) {}
 };
 
 class SymbolTable

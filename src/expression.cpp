@@ -21,8 +21,23 @@ extern void yyerror(const char *msg);
 using namespace std;
 
 Type ERROR_TYPE;
+ERROR_TYPE.typeIndex = -1;
 extern unsigned int line_no;
 extern unsigned int column_no;
+
+// ##############################################################################
+// ################################## EXPRESSION ######################################
+// ##############################################################################
+
+Expression :: Expression() : NonTerminal("EXPRESSION"), operand_cnt(0) {}
+
+// ##############################################################################
+// ################################## PRIMARY EXPRESSIOn ######################################
+// ##############################################################################
+
+PrimaryExpression :: PrimaryExpression() : Expression(), identifier(nullptr), constant(nullptr), string_literal(nullptr) {
+    name = "PRIMARY EXPRESSION";
+}
 
 Expression* create_primary_expression(Identifier* x){
     PrimaryExpression* P = new PrimaryExpression();
@@ -68,6 +83,14 @@ Expression* create_primary_expression(Expression* x){
     return x;
 }
 
+// ##############################################################################
+// ################################## ARGUMENT EXPRESSION LIST ######################################
+// ##############################################################################
+
+ArgumentExpressionList :: ArgumentExpressionList() : Expression() {
+    name = "ARGUMENT EXPRESSION LIST";
+};
+
 ArgumentExpressionList* create_argument_expression_list(Expression* x){
     ArgumentExpressionList* P = new ArgumentExpressionList();
     P->arguments.push_back(x);
@@ -79,6 +102,18 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
     args_expr_list->arguments.push_back(x);
     args_expr_list->add_children(x);
     return args_expr_list;
+}
+
+// ##############################################################################
+// ################################## POSTFIX EXPRESSION ######################################
+// ##############################################################################
+
+PostfixExpression :: PostfixExpression() : Expression() {
+    base_expression = nullptr;
+    op = nullptr;
+    member_name = nullptr;
+    expression = nullptr;
+    name = "POSTFIX EXPRESSION";
 }
 
 Expression* create_postfix_expression(Expression* x){
@@ -130,4 +165,15 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     
 //     return x;
 // }
+
+// ##############################################################################
+// ################################## UNARY EXPRESSION ######################################
+// ##############################################################################
+
+UnaryExpression :: UnaryExpression() : Expression() {
+    unary_expression = nullptr;
+    op = nullptr;
+    cast_expression = nullptr;
+    name = "UNARY EXPRESSION";
+}
 

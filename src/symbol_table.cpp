@@ -374,6 +374,24 @@ bool operator==(Type &obj1, Type &obj2)
 }
 
 // ##############################################################################
+// ################################## TYPE NAME ######################################
+// ##############################################################################
+
+SpecifierQualifierList :: SpecifierQualifierList() : NonTerminal("SPECIFIER QUALIFIER LIST") {}
+
+SpecifierQualifierList :: SpecifierQualifierList(vector<TypeSpecifier*> ts){
+    //Insert Logic Here
+}
+
+TypeName :: TypeName() : NonTerminal("TYPE NAME") {}
+
+TypeName :: TypeName(SpecifierQualifierList* sql, AbstractDeclarator* ad){
+    this->specifier_qualifier_list = sql;
+    this->abstract_declarator = ad;
+
+}
+
+// ##############################################################################
 // ################################## IDENTIFIER ######################################
 // ##############################################################################
 

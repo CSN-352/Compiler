@@ -75,6 +75,7 @@ void printParseSymbolTable() {
 	StringLiteral* string_literal;
     Expression* expression;
     ArgumentExpressionList* argument_expression_list;
+    TypeName* type_name;
     int intval;
     char* strval;
 }
@@ -85,8 +86,9 @@ void printParseSymbolTable() {
 %token <string_literal> STRING_LITERAL
 %token <terminal> INC_OP DEC_OP PTR_OP DOT
 %type <terminal> unary_operator
-%type <expression> expression assignment_expression primary_expression postfix_expression unary_expression
+%type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression
 %type <argument_expression_list> argument_expression_list
+%type <type_name> type_name
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE

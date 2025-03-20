@@ -18,7 +18,7 @@ class Expression : public NonTerminal{
         Type type;
         int operand_cnt;
 
-        Expression() : NonTerminal("EXPRESSION"), operand_cnt(0) {}
+        Expression();
 };
 
 class PrimaryExpression : public Expression{
@@ -26,9 +26,7 @@ class PrimaryExpression : public Expression{
         Identifier* identifier;
         Constant* constant;
         StringLiteral* string_literal;
-        PrimaryExpression() : Expression(), identifier(nullptr), constant(nullptr), string_literal(nullptr) {
-            name = "PRIMARY EXPRESSION";
-        }
+        PrimaryExpression();
 };
 
 Expression* create_primary_expression(Identifier* x);
@@ -39,9 +37,7 @@ Expression* create_primary_expression(Expression* x);
 class ArgumentExpressionList : public Expression{
     public:
       vector <Expression*> arguments;
-      ArgumentExpressionList() : Expression() {
-        name = "ARGUMENT EXPRESSION LIST";
-      };
+      ArgumentExpressionList();
 };
   
 ArgumentExpressionList* create_argument_expression_list(Expression* x);
@@ -55,9 +51,7 @@ class PostfixExpression : public Expression{
         Identifier* member_name;
         Expression* expression;
 
-        PostfixExpression() : Expression() {
-            name = "POSTFIX EXPRESSION";
-        }
+        PostfixExpression();
 };
 
 Expression* create_postfix_expression(Expression* x);
@@ -70,10 +64,12 @@ class UnaryExpression : public Expression{
         UnaryExpression* unary_expression;
         CastExpression* cast_expression;
 
+        UnaryExpression();
 };
 
 class CastExpression : public Expression{
-    
+    public:
+        CastExpression* base_expression;
 };
 
 #endif
