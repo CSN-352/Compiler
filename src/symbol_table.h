@@ -106,11 +106,11 @@ public:
 
     bool is_array;
     unsigned int array_dim;
-    std::vector<unsigned int> array_dims;
+    vector<ConditionalExpression*> array_dims;
 
     bool is_function;
     unsigned int num_args;
-    std::vector<Type> arg_types;
+    vector<Type> arg_types;
     bool is_defined;
 
     Type();
@@ -163,7 +163,7 @@ class DeclarationList : public NonTerminal{
 };
 
 class Declaration : public NonTerminal{
-    //Implement after DeclarationSpecifiers, InitDeclaratorList
+    //Implement after InitDeclaratorList
 };
 
 class InitializerList : public NonTerminal{
@@ -202,7 +202,7 @@ DeclarationSpecifiers* create_declaration_specifiers(DeclarationSpecifiers* x, S
 
 
 class Pointer : public NonTerminal{
-    // Implement Now
+    // Fully Implemented
     public:
         TypeQualifierList* type_qualifier_list;
         int pointer_level;
@@ -217,7 +217,7 @@ class InitDeclaratorList : public NonTerminal{
 };
 
 class InitDeclarator : public NonTerminal{
-    // Implement Declarator, Initializer
+    // Implement after Declarator, Initializer
 };
 
 class DirectDeclarator : public NonTerminal{
@@ -261,6 +261,7 @@ ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, Ab
 ParameterDeclaration* create_paramater_declaration(DeclarationSpecifiers* ds, Declarator* d);
 
 class ParameterList : public NonTerminal{
+    // Fully Implemented
     public:
         vector<ParameterDeclaration*> parameter_declarations;
         ParameterList();
@@ -271,6 +272,7 @@ ParameterList* create_parameter_list(ParameterList* p, ParameterDeclaration* pd)
 
 
 class ParameterTypeList : public NonTerminal{
+    // Fully Implemented
     public:
         ParameterList* paramater_list;
         bool is_variadic;
@@ -286,6 +288,7 @@ class DeclaratorList : public NonTerminal{
 };
 
 class AbstractDeclarator : public NonTerminal{
+    // Fully Implemented
     public:
         Pointer* pointer;
         DirectAbstractDeclarator* direct_abstract_declarator;
@@ -295,13 +298,13 @@ class AbstractDeclarator : public NonTerminal{
 AbstractDeclarator* create_abstract_declarator(Pointer* p, DirectAbstractDeclarator* dad);
 
 class DirectAbstractDeclarator : public NonTerminal{
+    // Fully Implemented
     public:
         AbstractDeclarator* abstract_declarator;
         bool is_function; // Flag to check if it's a function
         bool is_array; // Flag to check if it's an array
-        vector<ParameterTypeList*> parameters; // Stores function parameters if applicable
+        ParameterTypeList* parameters; // Stores function parameters if applicable
         vector<ConditionalExpression* > array_dimensions; // Stores array dimensions if applicable
-
         DirectAbstractDeclarator();
         
 };
@@ -309,8 +312,8 @@ class DirectAbstractDeclarator : public NonTerminal{
 DirectAbstractDeclarator* create_direct_abstract_declarator(AbstractDeclarator* x);
 DirectAbstractDeclarator* create_direct_abstract_declarator_array(Expression* c);
 DirectAbstractDeclarator* create_direct_abstract_declarator_function(ParameterTypeList* p);
-//DirectAbstractDeclarator* create_direct_abstract_declarator_array(DirectAbstractDeclarator* x, Expression* c);
-//DirectAbstractDeclarator* create_direct_abstract_declarator_function(DirectAbstractDeclarator* x, ParameterTypeList* p);
+DirectAbstractDeclarator* create_direct_abstract_declarator_array(DirectAbstractDeclarator* x, Expression* c);
+DirectAbstractDeclarator* create_direct_abstract_declarator_function(DirectAbstractDeclarator* x, ParameterTypeList* p);
 
 class StructDefinition{
     public:
@@ -397,6 +400,7 @@ class TypeSpecifier : public Terminal{
 };
 
 class SpecifierQualifierList : public NonTerminal{
+    // Fully Implemented
     public:
         vector<TypeSpecifier*> type_specifiers;
         vector<int> type_qualifiers;
@@ -411,14 +415,15 @@ SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* 
 SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, int tq);
 
 class TypeName : public NonTerminal{
-    //ImplementNow
+    //Fully Implemented
     public:
         SpecifierQualifierList* specifier_qualifier_list;
         AbstractDeclarator* abstract_declarator;
         Type type;
         TypeName();
-        TypeName(SpecifierQualifierList* sql, AbstractDeclarator* ad);
 };
+
+TypeName* create_type_name(SpecifierQualifierList* sql, AbstractDeclarator* ad);
 
 //##############################################################################
 //################################ IDENTIFIER ##################################

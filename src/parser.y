@@ -452,8 +452,8 @@ identifier_list:
 	;
 
 type_name:
-    specifier_qualifier_list
-	| specifier_qualifier_list abstract_declarator
+    specifier_qualifier_list {$$ = create_type_name($1,nullptr);}
+	| specifier_qualifier_list abstract_declarator {$$ = create_type_name($1,$2);}
 	;
 
 abstract_declarator:
@@ -468,10 +468,10 @@ direct_abstract_declarator:
 	| LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_abstract_declarator_array(nullptr);}
 	| LEFT_PAREN RIGHT_PAREN {$$ = create_direct_abstract_declarator_function(nullptr);}
 	| LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_abstract_declarator_function($2);}
-    // | direct_abstract_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_abstract_declarator_array($1,$3);}
-    // | direct_abstract_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_abstract_declarator_array($1,nullptr);}
-	// | direct_abstract_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_abstract_declarator_function($1, nullptr);}
-	// | direct_abstract_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_abstract_declarator_function($1,$3);}
+    | LEFT_SQUARE conditional_expression RIGHT_SQUARE direct_abstract_declarator {$$ = create_direct_abstract_declarator_array($4,$2);}
+    | LEFT_SQUARE RIGHT_SQUARE direct_abstract_declarator {$$ = create_direct_abstract_declarator_array($3,nullptr);}
+	| LEFT_PAREN RIGHT_PAREN direct_abstract_declarator{$$ = create_direct_abstract_declarator_function($3, nullptr);}
+	| LEFT_PAREN parameter_type_list RIGHT_PAREN direct_abstract_declarator {$$ = create_direct_abstract_declarator_function($4,$2);}
 	;
 
 initializer:

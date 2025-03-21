@@ -617,6 +617,8 @@ ParameterDeclaration :: ParameterDeclaration(DeclarationSpecifiers* ds) : NonTer
     declarations_specifiers = ds;
     declarator = nullptr;
     abstract_declarator = nullptr;
+    Type type;
+    void set_type();
 }
 
 // ##############################################################################
@@ -673,6 +675,7 @@ AbstractDeclarator* create_abstract_declarator(Pointer* p, DirectAbstractDeclara
 
 DirectAbstractDeclarator :: DirectAbstractDeclarator() : NonTerminal("DIRECT ABSTRACT DECLARATOR"){
     abstract_declarator = nullptr;
+    parameters = nullptr;
     is_function = false;
     is_array = false;
 }
@@ -699,26 +702,44 @@ DirectAbstractDeclarator* create_direct_abstract_declarator_array(Expression* c)
 DirectAbstractDeclarator* create_direct_abstract_declarator_function(ParameterTypeList* p){
     DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
     P->is_function = true;
-    P->parameters.push_back(p);
+    P->parameters = p;
     return P;
 }
 
-// DirectAbstractDeclarator* create_direct_abstract_declarator_array(DirectAbstractDeclarator* x, Expression* c){
-//     ConditionalExpression* c_cast = dynamic_cast<ConditionalExpression*>(c);
-//     if(c==nullptr || c->type.isInt()) x->array_dimensions.push_back(c_cast);
-//     else{
-//         string error_msg = "Array size must be an integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
-// 		yyerror(error_msg.c_str());
-//         symbolTable.set_error();
-//     }   
-//     return x;
-// }
+DirectAbstractDeclarator* create_direct_abstract_declarator_array(DirectAbstractDeclarator* x, Expression* c){
+    if(x->is_function || (x->abstract_declarator && x->abstract_declarator->direct_abstract_declarator && x->abstract_declarator->direct_abstract_declarator->is_function)){
+        string error_msg = "Type name cannot be an array of functions " + to_string(c->line_no) + ", column " + to_string(c->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return x;
+    }
+    ConditionalExpression* c_cast = dynamic_cast<ConditionalExpression*>(c);
+    if(c==nullptr || c->type.isInt()) x->array_dimensions.push_back(c_cast);
+    else{
+        string error_msg = "Array size must be an integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }   
+    return x;
+}
 
-// DirectAbstractDeclarator* create_direct_abstract_declarator_function(DirectAbstractDeclarator* x, ParameterTypeList* p){
-//     x->is_function = true;
-//     x->parameters.push_back(p);
-//     return x;
-// }
+DirectAbstractDeclarator* create_direct_abstract_declarator_function(DirectAbstractDeclarator* x, ParameterTypeList* p){
+    if(x->is_function || (x->abstract_declarator && x->abstract_declarator->direct_abstract_declarator && x->abstract_declarator->direct_abstract_declarator->is_function)){
+        string error_msg = "Type name cannot be a function returning a function " + to_string(p->line_no) + ", column " + to_string(p->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return x;
+    }
+    if(x->is_array || (x->abstract_declarator && x->abstract_declarator->direct_abstract_declarator && x->abstract_declarator->direct_abstract_declarator->is_array)){
+        string error_msg = "Type name cannot be a function returning an array " + to_string(p->line_no) + ", column " + to_string(p->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return x;
+    }
+    x->is_function = true;
+    x->parameters = p;
+    return x;
+}
 
 // ##############################################################################
 // ################################## SPECIFIER QUALIFIER LIST ######################################
@@ -908,22 +929,52 @@ SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* 
 // ################################## TYPE NAME ######################################
 // ##############################################################################
 
-TypeName :: TypeName() : NonTerminal("TYPE NAME") {}
+TypeName :: TypeName() : NonTerminal("TYPE NAME") {
+    specifier_qualifier_list = nullptr;
+    abstract_declarator = nullptr;
+}
 
-TypeName :: TypeName(SpecifierQualifierList* sql, AbstractDeclarator* ad) : NonTerminal("TYPE NAME") {
-    this->specifier_qualifier_list = sql;
-    this->abstract_declarator = ad;
+TypeName* create_type_name(SpecifierQualifierList* sql, AbstractDeclarator* ad){
+    TypeName* P = new TypeName();
+    P->specifier_qualifier_list = sql;
+    P->abstract_declarator = ad;
     if(sql->type_index == -1){
-        string error_msg = "Invalid type name"; //add line_no and column no later
-		yyerror(error_msg.c_str());
-        symbolTable.set_error();
+        P->type = ERROR_TYPE;
+        return P;
     }
+    if(ad == nullptr) P->type = Type(sql->type_index, 0, sql->is_const);
     else{
-        if(ad == NULL) this->type = Type(sql->type_index, 0, false);
+        if(ad->direct_abstract_declarator == nullptr){
+            int pointer_level = 0;
+            if(ad->pointer != nullptr) pointer_level += ad->pointer->pointer_level;
+            P->type = Type(sql->type_index, pointer_level, sql->is_const);
+        }
         else{
-
+            DirectAbstractDeclarator* dad = ad->direct_abstract_declarator;
+            int pointer_level = ad->pointer->pointer_level;
+            while(dad != nullptr && dad->abstract_declarator != nullptr){
+                if(dad->abstract_declarator->pointer != nullptr) pointer_level += dad->abstract_declarator->pointer->pointer_level;
+                dad = dad->abstract_declarator->direct_abstract_declarator;
+            }
+            P->type = Type(sql->type_index, pointer_level, sql->is_const);
+            if(dad->is_array){
+                P->type.is_array = true;
+                P->type.array_dim = dad->array_dimensions.size();
+                P->type.array_dims.insert(P->type.array_dims.begin(), dad->array_dimensions.begin(), dad->array_dimensions.end());
+            }
+            else if(dad->is_function){
+                P->type.is_function = true;
+                vector<Type> arg_types;
+                vector<ParameterDeclaration*> parameters = dad->parameters->paramater_list->parameter_declarations;
+                for(int i=0;i<parameters.size();i++){
+                    arg_types.push_back(parameters[i]->type);
+                }
+                P->type.arg_types = arg_types;
+                P->type.num_args = arg_types.size();
+            }
         }
     }
+    return P;
 }
 
 // ##############################################################################
