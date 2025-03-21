@@ -83,6 +83,10 @@ void printParseSymbolTable() {
     TypeName* type_name;
     SpecifierQualifierList* specifier_qualifier_list;
     TypeSpecifier* type_specifier;
+    Pointer* pointer;
+    TypeQualifierList* type_qualifier_list;
+    DeclarationSpecifiers* declaration_specifiers;
+    ParameterDeclaration* parameter_declaration;
     int intval;
     char* strval;
 }
@@ -102,19 +106,24 @@ void printParseSymbolTable() {
 %type <direct_declarator> direct_declarator
 %type <parameter_list> parameter_list
 %type <type_specifier> type_specifier
-%type <strval> type_qualifier
+%type <intval> type_qualifier storage_class_specifier
 %type <specifier_qualifier_list> specifier_qualifier_list
-%token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
-%token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
-%token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
+%type <pointer> pointer
+%type <type_qualifier_list> type_qualifier_list;
+%type <declaration_specifiers> declaration_specifiers
+%type <parameter_declaration> parameter_declaration;
+%token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
+%token <strval> BREAK CASE CHAR CONTINUE DEFAULT DO DOUBLE ELSE ENUM FLOAT FOR GOTO
+%token <strval> IF INT LONG RETURN SHORT SIGNED STRUCT SWITCH UNION UNSIGNED TYPE_NAME
+%token <strval> VOID WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
-%type <strval> error_case struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier
-%type <strval> enum_specifier init_declarator_list init_declarator declarator pointer struct_declarator_list
-%type <strval> struct_declarator type_qualifier_list parameter_declaration class_declaration class_declaration_list class_specifier access_specifier
+%type <strval> error_case struct_or_union struct_or_union_specifier declaration
+%type <strval> enum_specifier init_declarator_list init_declarator declarator struct_declarator_list
+%type <strval> struct_declarator class_declaration class_declaration_list class_specifier access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
 %nonassoc LOW_PREC
@@ -273,9 +282,9 @@ declaration:
     ;
 
 declaration_specifiers:
-    storage_class_specifier declaration_specifiers 
-	| specifier_qualifier_list                                                                      
-	| declaration_specifiers specifier_qualifier_list
+    storage_class_specifier declaration_specifiers {$$ = create_declaration_specifiers($2,$1);}
+	| specifier_qualifier_list {$$ = create_declaration_specifiers($1);}                                                         
+	| declaration_specifiers specifier_qualifier_list {$$ = create_declaration_specifiers($1,$2);}
     ;
 
 init_declarator_list:
@@ -289,11 +298,11 @@ init_declarator:
     ;
 
 storage_class_specifier:
-    TYPEDEF 
-    | EXTERN
-    | STATIC
-    | AUTO
-    | REGISTER
+    TYPEDEF {$$ = $1;}
+    | EXTERN {$$ = $1;}
+    | STATIC {$$ = $1;}
+    | AUTO {$$ = $1;}
+    | REGISTER {$$ = $1;}
     ;
 
 type_specifier:
@@ -313,8 +322,8 @@ type_specifier:
 	;
 
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER add_left_curly struct_declaration_list add_right_curly  
-	| struct_or_union add_left_curly struct_declaration_list add_right_curly    
+    struct_or_union IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} struct_declaration_list RIGHT_CURLY {symbolTable.exitScope();}  
+	| struct_or_union LEFT_CURLY {symbolTable.enterScope();} struct_declaration_list RIGHT_CURLY {symbolTable.exitScope();}    
 	| struct_or_union IDENTIFIER                      
 	;
 
@@ -329,9 +338,9 @@ struct_declaration_list:
     ;
 
 class_specifier:
-    CLASS IDENTIFIER add_left_curly class_declaration_list add_right_curly 
-    | CLASS IDENTIFIER INHERITANCE_OP init_declarator_list add_left_curly class_declaration_list add_right_curly 
-    | CLASS add_left_curly class_declaration_list add_right_curly 
+    CLASS IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {symbolTable.exitScope();} 
+    | CLASS IDENTIFIER INHERITANCE_OP init_declarator_list LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {symbolTable.exitScope();} 
+    | CLASS LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {symbolTable.exitScope();} 
     | CLASS IDENTIFIER 
     ;
 
@@ -342,7 +351,7 @@ class_declaration_list:
 
 
 class_declaration:
-    access_specifier add_left_curly translation_unit add_right_curly 
+    access_specifier LEFT_CURLY {symbolTable.enterScope();} translation_unit RIGHT_CURLY {symbolTable.exitScope();} 
     ;
 
 access_specifier:
@@ -374,8 +383,8 @@ struct_declarator:
 	;
 
 enum_specifier:
-    ENUM add_left_curly enumerator_list add_right_curly                 
-	| ENUM IDENTIFIER add_left_curly enumerator_list add_right_curly    
+    ENUM LEFT_CURLY {symbolTable.enterScope();} enumerator_list RIGHT_CURLY {symbolTable.exitScope();}                 
+	| ENUM IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} enumerator_list RIGHT_CURLY {symbolTable.exitScope();}    
 	| ENUM IDENTIFIER                        
 	;
 
@@ -410,15 +419,15 @@ direct_declarator:
     ;
 
 pointer:
-    MULTIPLY 
-    | MULTIPLY type_qualifier_list 
-    | MULTIPLY pointer 
-    | MULTIPLY type_qualifier_list pointer 
+    MULTIPLY {$$ = create_pointer(nullptr);}
+    | MULTIPLY type_qualifier_list {$$ = create_pointer($2);}
+    | MULTIPLY pointer {$$ = create_pointer($2,nullptr);}
+    | MULTIPLY type_qualifier_list pointer {$$ = create_pointer($3,$2);}
     ;
 
 type_qualifier_list:
-    type_qualifier  
-    | type_qualifier_list type_qualifier  
+    type_qualifier  {$$ = create_type_qualifier_list($1);}
+    | type_qualifier_list type_qualifier  {$$ = create_type_qualifier_list($1,$2);}
     ;
 
 parameter_type_list:
@@ -427,8 +436,8 @@ parameter_type_list:
     ;
 
 parameter_list:
-    parameter_declaration //{$$ = create_parameter_list(nullptr,$1);}
-    | parameter_list COMMA parameter_declaration //{$$ = create_parameter_list($1,$3);}
+    parameter_declaration {$$ = create_parameter_list($1);}
+    | parameter_list COMMA parameter_declaration {$$ = create_parameter_list($1,$3);}
     ;
 
 parameter_declaration:
@@ -448,9 +457,9 @@ type_name:
 	;
 
 abstract_declarator:
-    pointer
-	| direct_abstract_declarator
-	| pointer direct_abstract_declarator
+    pointer {$$ = create_abstract_declarator($1,nullptr);}
+	| direct_abstract_declarator {$$ = create_abstract_declarator(nullptr,$1);}
+	| pointer direct_abstract_declarator {$$ = create_abstract_declarator($1,$2);}
 	;
 
 direct_abstract_declarator:
@@ -467,8 +476,8 @@ direct_abstract_declarator:
 
 initializer:
     assignment_expression
-    | add_left_curly initializer_list add_right_curly
-    | add_left_curly initializer_list COMMA add_right_curly
+    | LEFT_CURLY {symbolTable.enterScope();} initializer_list RIGHT_CURLY {symbolTable.exitScope();}
+    | LEFT_CURLY {symbolTable.enterScope();} initializer_list COMMA RIGHT_CURLY {symbolTable.exitScope();}
     ;
 
 initializer_list:
@@ -493,8 +502,8 @@ labeled_statement:
 	;
 
 compound_statement:
-    add_left_curly add_right_curly
-    | add_left_curly declaration_statement_list add_right_curly
+    LEFT_CURLY {symbolTable.enterScope();} RIGHT_CURLY {symbolTable.exitScope();}
+    | LEFT_CURLY {symbolTable.enterScope();} declaration_statement_list RIGHT_CURLY {symbolTable.exitScope();}
     ;
 
 declaration_statement_list:
@@ -563,16 +572,6 @@ skip_until_semicolon:
     SEMICOLON   // Stop at semicolon and reset error handling
     | error 
     | skip_until_semicolon error  // Consume any unexpected token
-    ;
-
-add_left_curly:
-    LEFT_CURLY {symbolTable.enterScope();}
-    | error
-    ;
-
-add_right_curly:
-    RIGHT_CURLY {symbolTable.exitScope();}
-    | error
     ;
 
 %%

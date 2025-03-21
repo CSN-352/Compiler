@@ -7,14 +7,47 @@
 #include <list>
 #include "ast.h"
 
-
-class Expression;
+class Expression; 
 class PrimaryExpression;
-class Type;
-class Identifier;
 class ConditionalExpression;
-class SpecifierQualifierList;
+class Type;
+class TypeQualifierList;
+class DeclarationList;
+class Declaration;
+class InitializerList;
+class Initializer;
+class IdentifierList;
+class DeclarationSpecifiers;
+class Pointer;
+class InitDeclaratorList;
+class InitDeclarator;
+class DirectDeclarator;
+class Declarator;
+class ParameterDeclaration;
+class ParameterList;
+class ParameterTypeList;
+class DeclaratorList;
 class AbstractDeclarator;
+class DirectAbstractDeclarator;
+class StructDefinition;
+class StructUnionSpecifier;
+class StructDeclaration;
+class ClassSpecifier;
+class ClassDeclarationList;
+class ClassDeclaration;
+class StructDeclarationList;
+class StructDeclaratorList;
+class EnumSpecifier;
+class Enumerator;
+class EnumeratorList;
+class TypeSpecifier;
+class SpecifierQualifierList;
+class TypeName;
+class Identifier;
+class Constant;
+class StringLiteral;
+class Symbol;
+class SymbolTable;
 
 enum PrimitiveTypes {
     ERROR_T = -1,
@@ -48,6 +81,19 @@ enum Tokens
     ENUM_ = 8,
     UNION_ = 9,
     STRUCT_ = 10,
+};
+
+enum TypeQualifiers{
+    CONST_ = 0,
+    VOLATILE_ = 1
+};
+
+enum StorageClassSpecifiers{
+    TYPEDEF_ = 0,
+    EXTERN_ = 1,
+    STATIC_ = 2,
+    AUTO_ = 3,
+    REGISTER_ = 4
 };
 
 class Type
@@ -103,24 +149,79 @@ extern Type ERROR_TYPE;
 // } DIRECT_DECLARATOR_TYPE;
 
 class TypeQualifierList : public NonTerminal{
-    vector<int> type_qualifier_list;
-    TypeQualifierList();
-    //~TypeQualifierList();
+    // Fully implemented
+    public:
+        vector<int> type_qualifier_list;
+        TypeQualifierList();
 };
+
+TypeQualifierList* create_type_qualifier_list(int tq);
+TypeQualifierList* create_type_qualifier_list(TypeQualifierList* x, int tq);
+
+class DeclarationList : public NonTerminal{
+    //implement after declaration
+};
+
+class Declaration : public NonTerminal{
+    //Implement after DeclarationSpecifiers, InitDeclaratorList
+};
+
+class InitializerList : public NonTerminal{
+    //Implement after initializer
+};
+
+class Initializer : public NonTerminal{
+    //Implement after assignment expression
+};
+
+class IdentifierList : public NonTerminal{
+    // Fully Implemented
+    public:
+        vector<Identifier*> identifiers;
+        IdentifierList();
+};
+
+IdentifierList* create_identifier_list(Identifier* id);
+IdentifierList* create_identifier_list(IdentifierList* x, Identifier* id);
 
 class DeclarationSpecifiers : public NonTerminal{
-
+    // Fully Implemented
+    public:
+        vector<int> storage_class_specifiers;
+        vector<TypeSpecifier*> type_specifiers;
+        vector<int> type_qualifiers;
+        bool is_const;
+        bool type_index;
+        void set_type();
+        DeclarationSpecifiers();
 };
 
+DeclarationSpecifiers* create_declaration_specifiers(SpecifierQualifierList* sql);
+DeclarationSpecifiers* create_declaration_specifiers(DeclarationSpecifiers* x, int sc);
+DeclarationSpecifiers* create_declaration_specifiers(DeclarationSpecifiers* x, SpecifierQualifierList* sql);
+
+
 class Pointer : public NonTerminal{
+    // Implement Now
     public:
         TypeQualifierList* type_qualifier_list;
-        Pointer *pointer;
+        int pointer_level;
         Pointer();
-        Pointer( TypeQualifierList *type_qualifier_list, Pointer *pointer );
+};
+
+Pointer* create_pointer(TypeQualifierList* tql);
+Pointer* create_pointer(Pointer* x, TypeQualifierList* tql);
+
+class InitDeclaratorList : public NonTerminal{
+    //Implement after InitDeclarator
+};
+
+class InitDeclarator : public NonTerminal{
+    // Implement Declarator, Initializer
 };
 
 class DirectDeclarator : public NonTerminal{
+    // Implement after identifier_list and conditional expression
     public:
         // DIRECT_DECLARATOR_TYPE direct_declarator_type;
         Identifier* identifier;
@@ -133,6 +234,7 @@ DirectDeclarator *create_dir_declarator_id( // DIRECT_DECLARATOR_TYPE type,
     Identifier *id );
 
 class Declarator : NonTerminal{
+    // Implement after Pointer and DirectDeclarator
     public:
         Identifier* identifier;
         // Pointer* pointer;
@@ -145,6 +247,7 @@ class Declarator : NonTerminal{
 };
 
 class ParameterDeclaration : public NonTerminal{
+    //Implement after Declaration Specifiers and Declarator
     public:
         DeclarationSpecifiers* declarations_specifiers;
         AbstractDeclarator* abstract_declarator;
@@ -163,8 +266,9 @@ class ParameterList : public NonTerminal{
         ParameterList();
 };
 
-ParameterList* create_paramater_list(ParameterDeclaration* pd);
+ParameterList* create_parameter_list(ParameterDeclaration* pd);
 ParameterList* create_parameter_list(ParameterList* p, ParameterDeclaration* pd);
+
 
 class ParameterTypeList : public NonTerminal{
     public:
@@ -182,8 +286,13 @@ class DeclaratorList : public NonTerminal{
 };
 
 class AbstractDeclarator : public NonTerminal{
-
+    public:
+        Pointer* pointer;
+        DirectAbstractDeclarator* direct_abstract_declarator;
+        AbstractDeclarator();
 };
+
+AbstractDeclarator* create_abstract_declarator(Pointer* p, DirectAbstractDeclarator* dad);
 
 class DirectAbstractDeclarator : public NonTerminal{
     public:
@@ -212,22 +321,53 @@ class StructDefinition{
         Type get_member_type();
 };
 
+class StructUnionSpecifier : public NonTerminal{
+    // Implement after StructDeclarationList
+};
+
 class StructDeclaration : public NonTerminal{
+    // Implement after StructDeclaratorList
     public:
         SpecifierQualifierList* specifier_qualifier_list;
-        DeclaratorList* declarator_list;
+        StructDeclaratorList* declarator_list;
 
         StructDeclaration(SpecifierQualifierList* specifier_qualifier_list, DeclaratorList* declarator_list);
         void add_to_struct_definition(StructDefinition* );
 };
 
+class ClassSpecifier : public NonTerminal{
+    // Implement after ClassDeclarationList, InitDeclaratorList
+};
+
+class ClassDeclarationList : public NonTerminal{
+    // Implement after ClassDeclaration
+};
+
+class ClassDeclaration : public NonTerminal{
+    // Implement after access specifier and TranslationUnit
+};
+
 class StructDeclarationList : public NonTerminal{
+    //Implement after StrcuctDeclaration
     public:
         vector<StructDeclaration*> struct_declaration_list;
         StructDeclarationList();
 };
 
+class StructDeclaratorList : public NonTerminal{
+    // Implement after StructDeclarator
+};
+
+class StructDeclarator : public NonTerminal{
+    // Implement after Declarator, ConditionalExpression
+};
+
+class EnumSpecifier : public NonTerminal{
+    // Implement after EnumeratorList
+};
+
 class Enumerator : public NonTerminal{
+    // Implement after ConditionalExpression
     public:
         Identifier* identifier;
         Node* initializer_expression;
@@ -235,12 +375,14 @@ class Enumerator : public NonTerminal{
 };
 
 class EnumeratorList : public NonTerminal{
+    //Implement after Enumerator
     public:
         vector<Enumerator*> enumerator_list;
         EnumeratorList();
 };
 
 class TypeSpecifier : public Terminal{
+    // Implement after StructUnionSpecifier, EnumSpecifier, ClassSpecifier
     public: 
         int type_specifier;
         Identifier* identifier;
@@ -252,11 +394,6 @@ class TypeSpecifier : public Terminal{
         TypeSpecifier(int type_specifier, Identifier* identifier, StructDeclarationList* struct_declaration_list);
         TypeSpecifier(int type_specifier, Identifier* identifier, EnumeratorList* enumerator_list);
 
-};
-
-enum TypeQualifiers{
-    CONST_ = 0,
-    VOLATILE_ = 1
 };
 
 class SpecifierQualifierList : public NonTerminal{
@@ -271,9 +408,10 @@ class SpecifierQualifierList : public NonTerminal{
 
 SpecifierQualifierList* create_specifier_qualifier_list(TypeSpecifier* t);
 SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, TypeSpecifier* t);
-SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, string tq);
+SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, int tq);
 
 class TypeName : public NonTerminal{
+    //ImplementNow
     public:
         SpecifierQualifierList* specifier_qualifier_list;
         AbstractDeclarator* abstract_declarator;

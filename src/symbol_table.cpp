@@ -376,6 +376,241 @@ bool operator==(Type &obj1, Type &obj2)
 }
 
 // ##############################################################################
+// ################################## TYPE QUALIFIER LIST ######################################
+// ##############################################################################
+TypeQualifierList :: TypeQualifierList() : NonTerminal("TYPE QUALIFIER LIST"){}
+
+TypeQualifierList* create_type_qualifier_list(int tq){
+    TypeQualifierList* P = new TypeQualifierList();
+    P->type_qualifier_list.push_back(tq);
+    return P;
+}
+
+TypeQualifierList* create_type_qualifier_list(TypeQualifierList* x, int tq){
+    x->type_qualifier_list.push_back(tq);
+    return x;
+}
+
+// ##############################################################################
+// ################################## IDENTIFIER LIST ######################################
+// ##############################################################################
+IdentifierList :: IdentifierList() : NonTerminal("IDENTIFIER LIST") {}
+
+IdentifierList* create_identifier_list(Identifier* id){
+    IdentifierList* P = new IdentifierList();
+    P->identifiers.push_back(id);
+    return P;
+}
+
+IdentifierList* create_identifier_list(IdentifierList* x, Identifier* id){
+    x->identifiers.push_back(id);
+    return x;
+}
+
+// ##############################################################################
+// ################################## DECLARATION SPECIFIERS ######################################
+// ##############################################################################
+
+DeclarationSpecifiers :: DeclarationSpecifiers() : NonTerminal("DECLARATION SPECIFIERS"){}
+
+void DeclarationSpecifiers :: set_type() {
+    is_const = false;
+    type_index = -1;
+
+    int isUnsigned = 0;
+    int isLong = 0;
+    int isShort = 0;
+    int isInt = 0;
+    int isChar = 0;
+    int isDouble = 0;
+    int isFloat = 0;
+    int isVoid =0;
+    int isStruct =0;
+    int isEnum =0;
+    int isUnion =0;
+
+    for(int i = 0; i < type_qualifiers.size(); i++){
+        if(type_qualifiers[i] == TypeQualifiers:: CONST_) is_const = true;
+        else if(type_qualifiers[i] == TypeQualifiers :: VOLATILE_) ; //add something later}
+    }
+
+    for (int i = 0; i < type_specifiers.size(); i++) {
+        if (type_specifiers[i]->type_specifier == Tokens::UNSIGNED_)
+        { 
+            isUnsigned = 1;
+        }
+        else if (type_specifiers[i]->type_specifier == Tokens::SHORT_) {
+            isShort++;
+        }
+        else if (type_specifiers[i]->type_specifier == Tokens::INT_)
+        {
+            isInt++;
+        }
+        else if (type_specifiers[i]->type_specifier == Tokens::LONG_)
+        {
+            isLong++;
+        }
+        else if (type_specifiers[i]->type_specifier == Tokens::CHAR_)
+        {
+            isChar++;
+        }
+
+        else if (type_specifiers[i]->type_specifier == Tokens::DOUBLE_)
+        {
+            isDouble++;
+        }
+        else if (type_specifiers[i]->type_specifier == Tokens::FLOAT_)
+        {
+            isFloat++;
+        }
+
+        else if (type_specifiers[i]->type_specifier == Tokens::VOID_)
+        {
+            isVoid++;
+        }
+        else if (type_specifiers[i]->type_specifier == Tokens::ENUM_)
+        {
+            isEnum++;
+        }
+        else if (type_specifiers[i]->type_specifier == Tokens::UNION_)
+        {
+            isUnion++;
+        }
+        else if (type_specifiers[i]->type_specifier == Tokens::STRUCT_)
+        {
+            isStruct++;
+        } else {
+            //string error_msg = "Invalid type";
+            //yyerror(error_msg.c_str());
+            //return;
+        }
+    }
+    if (type_specifiers.size() == 3) {
+        if ((isLong == 2) && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_LONG_LONG_T;
+        }
+    } 
+    else if (type_specifiers.size() == 2) {
+        if ((isLong >= 2) && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::LONG_LONG_T;
+        }
+        else if ((isLong == 1) && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_LONG_T;
+        }
+        else if (isInt && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_INT_T;
+        }
+        else if (isShort && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_SHORT_T;
+        }
+        else if (isInt && isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_INT_T;
+        }
+        else if (isChar&& isUnsigned)
+        {
+            type_index = PrimitiveTypes::U_CHAR_T;
+        }
+        else if (isLong && isDouble)
+        {
+            type_index = PrimitiveTypes::LONG_DOUBLE_T;
+        }
+    }
+    else if (type_specifiers.size() == 1)
+    {
+        if ((isLong == 1) && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::LONG_T;
+        }
+        else if (isInt && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::INT_T;
+        }
+        
+        else if (isShort && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::SHORT_T;
+        }
+        else if (isInt && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::INT_T;
+        }
+        else if (isChar && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::CHAR_T;
+        }
+        else if (isFloat && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::FLOAT_T;
+        }
+        else if (isDouble && !isUnsigned)
+        {
+            type_index = PrimitiveTypes::DOUBLE_T;
+        }
+    } 
+    else {
+        //string error_msg = "No type passed: ";
+        //yyerror(error_msg.c_str());
+        //type_index = Tokens::ERROR_;
+        //return;
+    }
+}
+
+DeclarationSpecifiers* create_declaration_specifiers(SpecifierQualifierList* sql){
+    DeclarationSpecifiers* P = new DeclarationSpecifiers();
+    P->type_specifiers.insert(P->type_specifiers.end(),sql->type_specifiers.begin(), sql->type_specifiers.end());
+    P->set_type();
+    if(P->type_index == -1){
+        string error_msg = "Invalid Type at line " + to_string(P->type_specifiers[0]->line_no) + ", column " + to_string(P->type_specifiers[0]->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }
+    return P;
+}
+
+DeclarationSpecifiers* create_declaration_specifiers(DeclarationSpecifiers* x, int sc){
+    x->storage_class_specifiers.push_back(sc);
+    return x;
+}
+
+DeclarationSpecifiers* create_declaration_specifiers(DeclarationSpecifiers* x, SpecifierQualifierList* sql){
+    x->type_specifiers.insert(x->type_specifiers.end(),sql->type_specifiers.begin(), sql->type_specifiers.end());
+    x->set_type();
+    if(x->type_index == -1){
+        string error_msg = "Invalid Type at line " + to_string(x->type_specifiers[0]->line_no) + ", column " + to_string(x->type_specifiers[0]->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }
+    return x;    
+}
+
+// ##############################################################################
+// ################################## POINTER ######################################
+// ##############################################################################
+Pointer :: Pointer(): NonTerminal("POINTER"){
+    pointer_level = 0;
+    type_qualifier_list = nullptr;
+}
+
+Pointer* create_pointer(TypeQualifierList* tql){
+    Pointer* P = new Pointer();
+    P->pointer_level++;
+    P->type_qualifier_list = tql;
+    return P;
+}
+
+Pointer* create_pointer(Pointer* x, TypeQualifierList* tql){
+    x->pointer_level++;
+    x->type_qualifier_list = tql;
+    return x;
+}
+
+// ##############################################################################
 // ################################## PARAMETER DECLARATION ######################################
 // ##############################################################################
 ParameterDeclaration :: ParameterDeclaration(DeclarationSpecifiers* ds) : NonTerminal("PARAMETER DECLARATION"){
@@ -389,7 +624,7 @@ ParameterDeclaration :: ParameterDeclaration(DeclarationSpecifiers* ds) : NonTer
 // ##############################################################################
 ParameterList :: ParameterList() : NonTerminal("PARAMETER LIST"){}
 
-ParameterList* create_paramater_list(ParameterDeclaration* pd){
+ParameterList* create_parameter_list(ParameterDeclaration* pd){
     ParameterList* P = new ParameterList();
     P->parameter_declarations.push_back(pd);
     return P;
@@ -413,6 +648,22 @@ ParameterTypeList* create_parameter_type_list(ParameterList* p, bool var){
     ParameterTypeList* P = new ParameterTypeList();
     P->paramater_list = p;
     P->is_variadic = var;
+    return P;
+}
+
+// ##############################################################################
+// ################################## ABSTRACT DECLARATOR ######################################
+// ##############################################################################
+
+AbstractDeclarator :: AbstractDeclarator() : NonTerminal("ABSTRACT DECLARATOR"){
+    pointer = nullptr;
+    direct_abstract_declarator = nullptr;
+}
+
+AbstractDeclarator* create_abstract_declarator(Pointer* p, DirectAbstractDeclarator* dad){
+    AbstractDeclarator* P = new AbstractDeclarator();
+    P->pointer = p;
+    P->direct_abstract_declarator = dad;
     return P;
 }
 
@@ -647,9 +898,8 @@ SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* 
     return s;
 }
 
-SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, string tq){
-    if(tq == "CONST")s->type_qualifiers.push_back(0);
-    else s->type_qualifiers.push_back(1);
+SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, int tq){
+    s->type_qualifiers.push_back(tq);
     s->set_type();
     return s;
 }
@@ -735,7 +985,7 @@ Declarator *create_declarator( // Pointer *pointer,
 Constant ::Constant(string name, string value, unsigned int line_no, unsigned int column_no)
     : Terminal(name, value, line_no, column_no)
 {
-    Type *t = new Type(-1, 0, true);
+    Type *t = new Type(-1, 0, false);
     this->set_constant_type(value);
 }
 
