@@ -78,8 +78,11 @@ void printParseSymbolTable() {
     ArgumentExpressionList* argument_expression_list;
     DirectAbstractDeclarator* direct_abstract_declarator;
     AbstractDeclarator* abstract_declarator;
+    ParameterList* parameter_list;
     ParameterTypeList* parameter_type_list;
     TypeName* type_name;
+    SpecifierQualifierList* specifier_qualifier_list;
+    TypeSpecifier* type_specifier;
     int intval;
     char* strval;
 }
@@ -97,6 +100,10 @@ void printParseSymbolTable() {
 %type <abstract_declarator> abstract_declarator
 %type <parameter_type_list> parameter_type_list
 %type <direct_declarator> direct_declarator
+%type <parameter_list> parameter_list
+%type <type_specifier> type_specifier
+%type <strval> type_qualifier
+%type <specifier_qualifier_list> specifier_qualifier_list
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
@@ -105,8 +112,8 @@ void printParseSymbolTable() {
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
-%type <strval> error_case type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
-%type <strval> enum_specifier init_declarator_list init_declarator declarator pointer specifier_qualifier_list struct_declarator_list
+%type <strval> error_case struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier
+%type <strval> enum_specifier init_declarator_list init_declarator declarator pointer struct_declarator_list
 %type <strval> struct_declarator type_qualifier_list parameter_declaration class_declaration class_declaration_list class_specifier access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
@@ -266,12 +273,9 @@ declaration:
     ;
 
 declaration_specifiers:
-    storage_class_specifier 
-    | storage_class_specifier declaration_specifiers 
-	| type_specifier %prec HIGH_PREC                                                                       
-	| type_specifier declaration_specifiers %prec LOW_PREC  
-	| type_qualifier    
-	| type_qualifier declaration_specifiers 
+    storage_class_specifier declaration_specifiers 
+	| specifier_qualifier_list                                                                      
+	| declaration_specifiers specifier_qualifier_list
     ;
 
 init_declarator_list:
@@ -352,10 +356,10 @@ struct_declaration:
     ;
 
 specifier_qualifier_list:
-    type_specifier specifier_qualifier_list 
-	| type_specifier                                
-	| type_qualifier specifier_qualifier_list 
-	| type_qualifier                                
+    type_specifier {$$ = create_specifier_qualifier_list($1);}
+    | specifier_qualifier_list type_specifier {$$ = create_specifier_qualifier_list($1,$2);}                      
+	| type_qualifier specifier_qualifier_list {$$ = create_specifier_qualifier_list($2,$1);}
+    | specifier_qualifier_list type_qualifier {$$ = create_specifier_qualifier_list($1,$2);}                  
 	;
 
 struct_declarator_list:
@@ -386,8 +390,8 @@ enumerator:
     ;
 
 type_qualifier:
-    CONST  
-    | VOLATILE  
+    CONST  {$$ = $1;}
+    | VOLATILE  {$$ = $1;}
     ;
 
 declarator:
@@ -418,13 +422,13 @@ type_qualifier_list:
     ;
 
 parameter_type_list:
-    parameter_list
-    | parameter_list COMMA ELLIPSIS
+    parameter_list {$$ = create_parameter_type_list($1,false);}
+    | parameter_list COMMA ELLIPSIS {$$ = create_parameter_type_list($1,true);}
     ;
 
 parameter_list:
-    parameter_declaration
-    | parameter_list COMMA parameter_declaration
+    parameter_declaration //{$$ = create_parameter_list(nullptr,$1);}
+    | parameter_list COMMA parameter_declaration //{$$ = create_parameter_list($1,$3);}
     ;
 
 parameter_declaration:
@@ -451,14 +455,14 @@ abstract_declarator:
 
 direct_abstract_declarator:
     LEFT_PAREN abstract_declarator RIGHT_PAREN {$$ = create_direct_abstract_declarator($2);}
-    | LEFT_SQUARE conditional_expression RIGHT_SQUARE // {$$ = create_direct_abstract_declarator($1);}
-	| LEFT_SQUARE RIGHT_SQUARE // {$$ = create_direct_abstract_declarator(NULL);}
-	| LEFT_PAREN RIGHT_PAREN 
-	| LEFT_PAREN parameter_type_list RIGHT_PAREN 
-    | direct_abstract_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE
-    | direct_abstract_declarator LEFT_SQUARE RIGHT_SQUARE 
-	| direct_abstract_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_abstract_declarator($1, nullptr);}
-	| direct_abstract_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_abstract_declarator($1,$3);}
+    | LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_abstract_declarator_array($2);}
+	| LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_abstract_declarator_array(nullptr);}
+	| LEFT_PAREN RIGHT_PAREN {$$ = create_direct_abstract_declarator_function(nullptr);}
+	| LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_abstract_declarator_function($2);}
+    // | direct_abstract_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_abstract_declarator_array($1,$3);}
+    // | direct_abstract_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_abstract_declarator_array($1,nullptr);}
+	// | direct_abstract_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_abstract_declarator_function($1, nullptr);}
+	// | direct_abstract_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_abstract_declarator_function($1,$3);}
 	;
 
 initializer:

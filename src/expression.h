@@ -1,10 +1,9 @@
 #ifndef EXPRESSION_H
 #define EXPRESSION_H
 
+#include <vector>
 #include "symbol_table.h"
 #include "ast.h"
-
-#include <vector>
 using namespace std;
 
 class Expression;
@@ -13,7 +12,6 @@ class ArgumentExpressionList;
 class PostfixExpression;
 class UnaryExpression;
 class CastExpression;
-// class Type;
 class Identifier;
 class Constant;
 class StringLiteral;

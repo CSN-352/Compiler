@@ -5,7 +5,6 @@
 #include <vector>
 #include <unordered_map>
 #include <list>
-// #include "expression.h"
 #include "ast.h"
 
 
@@ -15,6 +14,7 @@ class Type;
 class Identifier;
 class ConditionalExpression;
 class SpecifierQualifierList;
+class AbstractDeclarator;
 
 enum PrimitiveTypes {
     ERROR_T = -1,
@@ -108,6 +108,10 @@ class TypeQualifierList : public NonTerminal{
     //~TypeQualifierList();
 };
 
+class DeclarationSpecifiers : public NonTerminal{
+
+};
+
 class Pointer : public NonTerminal{
     public:
         TypeQualifierList* type_qualifier_list;
@@ -140,9 +144,36 @@ class Declarator : NonTerminal{
         // Declarator(Pointer* p, DirectDeclarator* direct_declarator);
 };
 
-class ParameterTypeList : public NonTerminal{
-
+class ParameterDeclaration : public NonTerminal{
+    public:
+        DeclarationSpecifiers* declarations_specifiers;
+        AbstractDeclarator* abstract_declarator;
+        Declarator* declarator;
+        Type type;
+        Type set_type(DeclarationSpecifiers* ds);
+        ParameterDeclaration(DeclarationSpecifiers* ds);
 };
+
+ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, AbstractDeclarator* d);
+ParameterDeclaration* create_paramater_declaration(DeclarationSpecifiers* ds, Declarator* d);
+
+class ParameterList : public NonTerminal{
+    public:
+        vector<ParameterDeclaration*> parameter_declarations;
+        ParameterList();
+};
+
+ParameterList* create_paramater_list(ParameterDeclaration* pd);
+ParameterList* create_parameter_list(ParameterList* p, ParameterDeclaration* pd);
+
+class ParameterTypeList : public NonTerminal{
+    public:
+        ParameterList* paramater_list;
+        bool is_variadic;
+        ParameterTypeList();
+};
+
+ParameterTypeList* create_parameter_type_list(ParameterList* p, bool var);
 
 class DeclaratorList : public NonTerminal{
     public:
@@ -156,10 +187,10 @@ class AbstractDeclarator : public NonTerminal{
 
 class DirectAbstractDeclarator : public NonTerminal{
     public:
-        DirectAbstractDeclarator* base_expression;
         AbstractDeclarator* abstract_declarator;
         bool is_function; // Flag to check if it's a function
-        ParameterTypeList* parameters; // Stores function parameters if applicable
+        bool is_array; // Flag to check if it's an array
+        vector<ParameterTypeList*> parameters; // Stores function parameters if applicable
         vector<ConditionalExpression* > array_dimensions; // Stores array dimensions if applicable
 
         DirectAbstractDeclarator();
@@ -167,9 +198,10 @@ class DirectAbstractDeclarator : public NonTerminal{
 };
 
 DirectAbstractDeclarator* create_direct_abstract_declarator(AbstractDeclarator* x);
-DirectAbstractDeclarator* create_direct_abstract_declarator(ConditionalExpression* x);
-DirectAbstractDeclarator* create_direct_abstract_declarator(ParameterTypeList* p);
-DirectAbstractDeclarator* create_direct_abstract_declarator(DirectAbstractDeclarator* x, ParameterTypeList* p);
+DirectAbstractDeclarator* create_direct_abstract_declarator_array(Expression* c);
+DirectAbstractDeclarator* create_direct_abstract_declarator_function(ParameterTypeList* p);
+//DirectAbstractDeclarator* create_direct_abstract_declarator_array(DirectAbstractDeclarator* x, Expression* c);
+//DirectAbstractDeclarator* create_direct_abstract_declarator_function(DirectAbstractDeclarator* x, ParameterTypeList* p);
 
 class StructDefinition{
     public:
@@ -222,15 +254,24 @@ class TypeSpecifier : public Terminal{
 
 };
 
+enum TypeQualifiers{
+    CONST_ = 0,
+    VOLATILE_ = 1
+};
+
 class SpecifierQualifierList : public NonTerminal{
     public:
         vector<TypeSpecifier*> type_specifiers;
         vector<int> type_qualifiers;
         bool is_const;
         int type_index;
+        void set_type();
         SpecifierQualifierList();
-        SpecifierQualifierList(vector<TypeSpecifier*> ts);
 };
+
+SpecifierQualifierList* create_specifier_qualifier_list(TypeSpecifier* t);
+SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, TypeSpecifier* t);
+SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, string tq);
 
 class TypeName : public NonTerminal{
     public:

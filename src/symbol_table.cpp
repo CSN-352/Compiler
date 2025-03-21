@@ -151,7 +151,7 @@ bool Type::isPrimitive()
 
 bool Type::isInt()
 {
-    if (typeIndex >= U_CHAR_T && typeIndex <= LONG_LONG_T)
+    if (typeIndex > U_CHAR_T && typeIndex <= LONG_LONG_T)
     {
         if (ptr_level == 0)
         {
@@ -376,14 +376,54 @@ bool operator==(Type &obj1, Type &obj2)
 }
 
 // ##############################################################################
+// ################################## PARAMETER DECLARATION ######################################
+// ##############################################################################
+ParameterDeclaration :: ParameterDeclaration(DeclarationSpecifiers* ds) : NonTerminal("PARAMETER DECLARATION"){
+    declarations_specifiers = ds;
+    declarator = nullptr;
+    abstract_declarator = nullptr;
+}
+
+// ##############################################################################
+// ################################## PARAMETER LIST ######################################
+// ##############################################################################
+ParameterList :: ParameterList() : NonTerminal("PARAMETER LIST"){}
+
+ParameterList* create_paramater_list(ParameterDeclaration* pd){
+    ParameterList* P = new ParameterList();
+    P->parameter_declarations.push_back(pd);
+    return P;
+}
+
+ParameterList* create_parameter_list(ParameterList* p, ParameterDeclaration* pd){
+    p->parameter_declarations.push_back(pd);
+    return p;
+}
+
+// ##############################################################################
+// ################################## PARAMETER TYPE LIST ######################################
+// ##############################################################################
+
+ParameterTypeList :: ParameterTypeList() : NonTerminal("PARAMETER TYPE LIST"){
+    paramater_list = nullptr;
+    is_variadic = false;
+}
+
+ParameterTypeList* create_parameter_type_list(ParameterList* p, bool var){
+    ParameterTypeList* P = new ParameterTypeList();
+    P->paramater_list = p;
+    P->is_variadic = var;
+    return P;
+}
+
+// ##############################################################################
 // ################################## DIRECT ABSTRACT DECLARATOR ######################################
 // ##############################################################################
 
 DirectAbstractDeclarator :: DirectAbstractDeclarator() : NonTerminal("DIRECT ABSTRACT DECLARATOR"){
-    base_expression = nullptr;
     abstract_declarator = nullptr;
     is_function = false;
-    parameters = nullptr;   
+    is_array = false;
 }
 
 DirectAbstractDeclarator* create_direct_abstract_declarator(AbstractDeclarator* x){
@@ -392,26 +432,42 @@ DirectAbstractDeclarator* create_direct_abstract_declarator(AbstractDeclarator* 
     return P;
 }
 
-DirectAbstractDeclarator* create_direct_abstract_declarator(ConditionalExpression* x){
+DirectAbstractDeclarator* create_direct_abstract_declarator_array(Expression* c){
     DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
-    P->array_dimensions.push_back(x);
+    ConditionalExpression* c_cast = dynamic_cast<ConditionalExpression*>(c);
+    P->is_array = true;
+    if(c==nullptr || c->type.isInt()) P->array_dimensions.push_back(c_cast);
+    else{
+        string error_msg = "Array size must be an integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }    
     return P;
 }
 
-DirectAbstractDeclarator* create_direct_abstract_declarator(ParameterTypeList* p){
+DirectAbstractDeclarator* create_direct_abstract_declarator_function(ParameterTypeList* p){
     DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
     P->is_function = true;
-    P->parameters = p;
+    P->parameters.push_back(p);
     return P;
 }
 
-DirectAbstractDeclarator* create_direct_abstract_declarator(DirectAbstractDeclarator* x, ParameterTypeList* p){
-    DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
-    P->base_expression = x;
-    P->is_function = true;
-    P->parameters = p;
-    return P;
-}
+// DirectAbstractDeclarator* create_direct_abstract_declarator_array(DirectAbstractDeclarator* x, Expression* c){
+//     ConditionalExpression* c_cast = dynamic_cast<ConditionalExpression*>(c);
+//     if(c==nullptr || c->type.isInt()) x->array_dimensions.push_back(c_cast);
+//     else{
+//         string error_msg = "Array size must be an integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
+// 		yyerror(error_msg.c_str());
+//         symbolTable.set_error();
+//     }   
+//     return x;
+// }
+
+// DirectAbstractDeclarator* create_direct_abstract_declarator_function(DirectAbstractDeclarator* x, ParameterTypeList* p){
+//     x->is_function = true;
+//     x->parameters.push_back(p);
+//     return x;
+// }
 
 // ##############################################################################
 // ################################## SPECIFIER QUALIFIER LIST ######################################
@@ -419,7 +475,7 @@ DirectAbstractDeclarator* create_direct_abstract_declarator(DirectAbstractDeclar
 
 SpecifierQualifierList :: SpecifierQualifierList() : NonTerminal("SPECIFIER QUALIFIER LIST") {}
 
-SpecifierQualifierList :: SpecifierQualifierList(vector<TypeSpecifier*> ts) : NonTerminal("SPECIFIER QUALIFIER LIST") {
+void SpecifierQualifierList :: set_type() {
     is_const = false;
     type_index = -1;
 
@@ -434,64 +490,70 @@ SpecifierQualifierList :: SpecifierQualifierList(vector<TypeSpecifier*> ts) : No
     int isStruct =0;
     int isEnum =0;
     int isUnion =0;
-    for (int i = 0; i < ts.size(); i++) {
-        if (ts[i]->type_specifier == Tokens::UNSIGNED_)
+
+    for(int i = 0; i < type_qualifiers.size(); i++){
+        if(type_qualifiers[i] == TypeQualifiers:: CONST_) is_const = true;
+        else if(type_qualifiers[i] == TypeQualifiers :: VOLATILE_) ; //add something later}
+    }
+
+    for (int i = 0; i < type_specifiers.size(); i++) {
+        if (type_specifiers[i]->type_specifier == Tokens::UNSIGNED_)
         { 
             isUnsigned = 1;
         }
-        else if (ts[i]->type_specifier == Tokens::SHORT_) {
+        else if (type_specifiers[i]->type_specifier == Tokens::SHORT_) {
             isShort++;
         }
-        else if (ts[i]->type_specifier == Tokens::INT_)
+        else if (type_specifiers[i]->type_specifier == Tokens::INT_)
         {
             isInt++;
         }
-        else if (ts[i]->type_specifier == Tokens::LONG_)
+        else if (type_specifiers[i]->type_specifier == Tokens::LONG_)
         {
             isLong++;
         }
-        else if (ts[i]->type_specifier == Tokens::CHAR_)
+        else if (type_specifiers[i]->type_specifier == Tokens::CHAR_)
         {
             isChar++;
         }
 
-        else if (ts[i]->type_specifier == Tokens::DOUBLE_)
+        else if (type_specifiers[i]->type_specifier == Tokens::DOUBLE_)
         {
             isDouble++;
         }
-        else if (ts[i]->type_specifier == Tokens::FLOAT_)
+        else if (type_specifiers[i]->type_specifier == Tokens::FLOAT_)
         {
             isFloat++;
         }
 
-        else if (ts[i]->type_specifier == Tokens::VOID_)
+        else if (type_specifiers[i]->type_specifier == Tokens::VOID_)
         {
             isVoid++;
         }
-        else if (ts[i]->type_specifier == Tokens::ENUM_)
+        else if (type_specifiers[i]->type_specifier == Tokens::ENUM_)
         {
             isEnum++;
         }
-        else if (ts[i]->type_specifier == Tokens::UNION_)
+        else if (type_specifiers[i]->type_specifier == Tokens::UNION_)
         {
             isUnion++;
         }
-        else if (ts[i]->type_specifier == Tokens::STRUCT_)
+        else if (type_specifiers[i]->type_specifier == Tokens::STRUCT_)
         {
             isStruct++;
         } else {
-            string error_msg = "Invalid type";
-            yyerror(error_msg.c_str());
-            type_index = Tokens::ERROR_;
-            return;
+            //string error_msg = "Invalid type";
+            //yyerror(error_msg.c_str());
+            //return;
         }
     }
-    if (ts.size() == 3) {
-        if ((isLong >= 2) && isUnsigned)
+    if (type_specifiers.size() == 3) {
+        if ((isLong == 2) && isUnsigned)
         {
             type_index = PrimitiveTypes::U_LONG_LONG_T;
         }
-    } else if (ts.size() == 2) {
+    } 
+    else if (type_specifiers.size() == 2) {
         if ((isLong >= 2) && !isUnsigned)
         {
             type_index = PrimitiveTypes::LONG_LONG_T;
@@ -521,7 +583,7 @@ SpecifierQualifierList :: SpecifierQualifierList(vector<TypeSpecifier*> ts) : No
             type_index = PrimitiveTypes::LONG_DOUBLE_T;
         }
     }
-    else if (ts.size() == 1)
+    else if (type_specifiers.size() == 1)
     {
         if ((isLong == 1) && !isUnsigned)
         {
@@ -552,12 +614,44 @@ SpecifierQualifierList :: SpecifierQualifierList(vector<TypeSpecifier*> ts) : No
         {
             type_index = PrimitiveTypes::DOUBLE_T;
         }
-    } else {
-        string error_msg = "No type passed: ";
-        yyerror(error_msg.c_str());
-        type_index = Tokens::ERROR_;
-        return;
+    } 
+    else {
+        //string error_msg = "No type passed: ";
+        //yyerror(error_msg.c_str());
+        //type_index = Tokens::ERROR_;
+        //return;
     }
+
+}
+
+SpecifierQualifierList* create_specifier_qualifier_list(TypeSpecifier* t){
+    SpecifierQualifierList* P = new SpecifierQualifierList();
+    P->type_specifiers.push_back(t);
+    P->set_type();
+    if(P->type_index == -1){
+        string error_msg = "Invalid Type " + t->value + " at line " + to_string(t->line_no) + ", column " + to_string(t->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }
+    return P;
+}
+
+SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, TypeSpecifier* t){
+    s->type_specifiers.push_back(t);
+    s->set_type();
+    if(s->type_index == -1){
+        string error_msg = "Invalid Type at line " + to_string(s->type_specifiers[0]->line_no) + ", column " + to_string(s->type_specifiers[0]->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }
+    return s;
+}
+
+SpecifierQualifierList* create_specifier_qualifier_list(SpecifierQualifierList* s, string tq){
+    if(tq == "CONST")s->type_qualifiers.push_back(0);
+    else s->type_qualifiers.push_back(1);
+    s->set_type();
+    return s;
 }
 
 // ##############################################################################
@@ -639,7 +733,7 @@ Declarator *create_declarator( // Pointer *pointer,
 // ##############################################################################
 
 Constant ::Constant(string name, string value, unsigned int line_no, unsigned int column_no)
-    : Terminal("CONSTANT", value, line_no, column_no), constant_type(set_constant_type(value))
+    : Terminal(name, value, line_no, column_no)
 {
     Type *t = new Type(-1, 0, true);
     this->set_constant_type(value);
@@ -664,11 +758,11 @@ Type Constant ::set_constant_type(string value)
                 isUnsigned = true;
             }
         }
-        if ((isLong >= 2) && isUnsigned)
+        if ((isLong == 2) && isUnsigned)
         {
             t.typeIndex = PrimitiveTypes::U_LONG_LONG_T;
         }
-        else if ((isLong >= 2) && !isUnsigned)
+        else if ((isLong == 2) && !isUnsigned)
         {
             t.typeIndex = PrimitiveTypes::LONG_LONG_T;
         }
@@ -710,7 +804,7 @@ Type Constant ::set_constant_type(string value)
         }
         if (isFloat) {
             t.typeIndex = PrimitiveTypes::FLOAT_T;
-        } else if (isDouble > 0) {
+        } else if (isDouble == 1) {
             t.typeIndex = PrimitiveTypes::LONG_DOUBLE_T;
         } else {
             t.typeIndex = PrimitiveTypes::DOUBLE_T;
