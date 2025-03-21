@@ -24,6 +24,9 @@ DEBUG ?= 0
 CC = gcc
 CXX = g++ -std=c++17
 CFLAGS = -lfl -I$(SRC_DIR)
+ifeq ($(NAME),aaditya)
+    CFLAGS = -ll -I$(SRC_DIR)
+endif
 ifeq ($(DEBUG),1)
     CFLAGS += -DDEBUG
 endif

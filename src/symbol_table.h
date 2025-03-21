@@ -2,15 +2,19 @@
 #define SYMBOL_TABLE_H
 
 #include <string>
+#include <vector>
 #include <unordered_map>
 #include <list>
+// #include "expression.h"
 #include "ast.h"
-#include "expression.h"
+
 
 class Expression;
 class PrimaryExpression;
 class Type;
 class Identifier;
+class ConditionalExpression;
+class SpecifierQualifierList;
 
 enum PrimitiveTypes {
     ERROR_T = -1,
@@ -32,18 +36,18 @@ enum PrimitiveTypes {
 
 enum Tokens
 {
-    ERROR = -1,
-    UNSIGNED = 0,
-    SHORT = 1,
-    INT = 2,
-    LONG = 3,
-    CHAR = 4,
-    DOUBLE = 5,
-    FLOAT = 6,
-    VOID = 7,
-    ENUM = 8,
-    UNION = 9,
-    STRUCT = 10,
+    ERROR_ = -1,
+    UNSIGNED_ = 0,
+    SHORT_ = 1,
+    INT_ = 2,
+    LONG_ = 3,
+    CHAR_ = 4,
+    DOUBLE_ = 5,
+    FLOAT_ = 6,
+    VOID_ = 7,
+    ENUM_ = 8,
+    UNION_ = 9,
+    STRUCT_ = 10,
 };
 
 class Type
@@ -89,14 +93,14 @@ public:
 
 extern Type ERROR_TYPE;
 
-typedef enum direct_declarator_enum {
-    IDENTIFIER,
-    DECLARATOR,
-    ARRAY,
-    FUNCTION,
-    NUM_DIRECT_DECLARATORS
+// typedef enum direct_declarator_enum {
+//     IDENTIFIER,
+//     DECLARATOR,
+//     ARRAY,
+//     FUNCTION,
+//     NUM_DIRECT_DECLARATORS
 
-} DIRECT_DECLARATOR_TYPE;
+// } DIRECT_DECLARATOR_TYPE;
 
 class TypeQualifierList : public NonTerminal{
     vector<int> type_qualifier_list;
@@ -120,6 +124,9 @@ class DirectDeclarator : public NonTerminal{
         // ParameterTypeList* parameter_list;
         DirectDeclarator();
 };
+
+DirectDeclarator *create_dir_declarator_id( // DIRECT_DECLARATOR_TYPE type,
+    Identifier *id );
 
 class Declarator : NonTerminal{
     public:

@@ -1,8 +1,9 @@
 #ifndef EXPRESSION_H
 #define EXPRESSION_H
 
-#include "ast.h"
 #include "symbol_table.h"
+#include "ast.h"
+
 #include <vector>
 using namespace std;
 
@@ -12,6 +13,11 @@ class ArgumentExpressionList;
 class PostfixExpression;
 class UnaryExpression;
 class CastExpression;
+// class Type;
+class Identifier;
+class Constant;
+class StringLiteral;
+class TypeName;
 
 class Expression : public NonTerminal{
     public:
@@ -20,6 +26,10 @@ class Expression : public NonTerminal{
 
         Expression();
 };
+
+// ##############################################################################
+// ################################## PRIMARY EXPRESSION ######################################
+// ##############################################################################
 
 class PrimaryExpression : public Expression{
     public:

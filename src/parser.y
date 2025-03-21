@@ -71,6 +71,7 @@ void printParseSymbolTable() {
     Node* node;
 	Terminal* terminal;
     Identifier* identifier;
+    DirectDeclarator* direct_declarator;
     Constant* constant;
 	StringLiteral* string_literal;
     Expression* expression;
@@ -95,6 +96,7 @@ void printParseSymbolTable() {
 %type <direct_abstract_declarator> direct_abstract_declarator
 %type <abstract_declarator> abstract_declarator
 %type <parameter_type_list> parameter_type_list
+%type <direct_declarator> direct_declarator
 %token <strval> AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO
 %token <strval> IF INT LONG REGISTER RETURN SHORT SIGNED STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED TYPE_NAME
 %token <strval> VOID VOLATILE WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
@@ -104,7 +106,7 @@ void printParseSymbolTable() {
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case type_specifier struct_or_union struct_or_union_specifier declaration_specifiers declaration storage_class_specifier type_qualifier
-%type <strval> enum_specifier init_declarator_list init_declarator declarator direct_declarator pointer specifier_qualifier_list struct_declarator_list
+%type <strval> enum_specifier init_declarator_list init_declarator declarator pointer specifier_qualifier_list struct_declarator_list
 %type <strval> struct_declarator type_qualifier_list parameter_declaration class_declaration class_declaration_list class_specifier access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
@@ -449,8 +451,8 @@ abstract_declarator:
 
 direct_abstract_declarator:
     LEFT_PAREN abstract_declarator RIGHT_PAREN {$$ = create_direct_abstract_declarator($2);}
-    | LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_abstract_declarator($1);}
-	| LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_abstract_declarator(NULL);}
+    | LEFT_SQUARE conditional_expression RIGHT_SQUARE // {$$ = create_direct_abstract_declarator($1);}
+	| LEFT_SQUARE RIGHT_SQUARE // {$$ = create_direct_abstract_declarator(NULL);}
 	| LEFT_PAREN RIGHT_PAREN 
 	| LEFT_PAREN parameter_type_list RIGHT_PAREN 
     | direct_abstract_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE

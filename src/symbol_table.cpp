@@ -435,54 +435,54 @@ SpecifierQualifierList :: SpecifierQualifierList(vector<TypeSpecifier*> ts) : No
     int isEnum =0;
     int isUnion =0;
     for (int i = 0; i < ts.size(); i++) {
-        if (ts[i]->type_specifier == Tokens::UNSIGNED)
+        if (ts[i]->type_specifier == Tokens::UNSIGNED_)
         { 
             isUnsigned = 1;
         }
-        else if (ts[i]->type_specifier == Tokens::SHORT) {
+        else if (ts[i]->type_specifier == Tokens::SHORT_) {
             isShort++;
         }
-        else if (ts[i]->type_specifier == Tokens::INT)
+        else if (ts[i]->type_specifier == Tokens::INT_)
         {
             isInt++;
         }
-        else if (ts[i]->type_specifier == Tokens::LONG)
+        else if (ts[i]->type_specifier == Tokens::LONG_)
         {
             isLong++;
         }
-        else if (ts[i]->type_specifier == Tokens::CHAR)
+        else if (ts[i]->type_specifier == Tokens::CHAR_)
         {
             isChar++;
         }
 
-        else if (ts[i]->type_specifier == Tokens::DOUBLE)
+        else if (ts[i]->type_specifier == Tokens::DOUBLE_)
         {
             isDouble++;
         }
-        else if (ts[i]->type_specifier == Tokens::FLOAT)
+        else if (ts[i]->type_specifier == Tokens::FLOAT_)
         {
             isFloat++;
         }
 
-        else if (ts[i]->type_specifier == Tokens::VOID)
+        else if (ts[i]->type_specifier == Tokens::VOID_)
         {
             isVoid++;
         }
-        else if (ts[i]->type_specifier == Tokens::ENUM)
+        else if (ts[i]->type_specifier == Tokens::ENUM_)
         {
             isEnum++;
         }
-        else if (ts[i]->type_specifier == Tokens::UNION)
+        else if (ts[i]->type_specifier == Tokens::UNION_)
         {
             isUnion++;
         }
-        else if (ts[i]->type_specifier == Tokens::STRUCT)
+        else if (ts[i]->type_specifier == Tokens::STRUCT_)
         {
             isStruct++;
         } else {
             string error_msg = "Invalid type";
             yyerror(error_msg.c_str());
-            type_index = Tokens::ERROR;
+            type_index = Tokens::ERROR_;
             return;
         }
     }
@@ -555,7 +555,7 @@ SpecifierQualifierList :: SpecifierQualifierList(vector<TypeSpecifier*> ts) : No
     } else {
         string error_msg = "No type passed: ";
         yyerror(error_msg.c_str());
-        type_index = Tokens::ERROR;
+        type_index = Tokens::ERROR_;
         return;
     }
 }
@@ -595,7 +595,7 @@ Identifier ::Identifier(string value, unsigned int line_no, unsigned int column_
 //##############################################################################
 
 DirectDeclarator ::DirectDeclarator() 
-    : Non_Terminal( "direct_declarator" ), identifier( nullptr )
+    : NonTerminal( "direct_declarator" ), identifier( nullptr )
 {}
 
 DirectDeclarator *create_dir_declarator_id( //DIRECT_DECLARATOR_TYPE type,
@@ -613,12 +613,12 @@ DirectDeclarator *create_dir_declarator_id( //DIRECT_DECLARATOR_TYPE type,
 //##############################################################################
 
 Declarator ::Declarator( DirectDeclarator *dd )
-    : Non_Terminal( "declarator" ), direct_declarator( dd ),
-      init_expr( nullptr ), eq( nullptr ) {
+    : NonTerminal( "declarator" ), direct_declarator( dd ),
+      identifier( nullptr ) {
     if ( dd == nullptr ) {
-        id = nullptr;
+        identifier = nullptr;
     } else {
-        assert( dd->id != nullptr );
+        assert( dd->identifier != nullptr );
         id = dd->id;
     }
 };
@@ -629,7 +629,7 @@ Declarator *create_declarator( // Pointer *pointer,
         return NULL;
     }
         Declarator *d = new Declarator( direct_declarator );
-        d->add_children( direct_declarator );
+        //d->add_children( direct_declarator );
     return d;
 }
 
