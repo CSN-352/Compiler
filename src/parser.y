@@ -16,48 +16,6 @@ extern FILE *yyin;
 int has_error=0;
 
 void yyerror(const char *msg);
-/*
-#define MAX_PARSE_SYMBOLS 10000
-
-typedef struct {
-    char *token;
-    char *type;       // Data type (int, float, etc.)
-} ParseSymbol;
-
-ParseSymbol parseSymbolTable[MAX_PARSE_SYMBOLS];
-
-int parseSymbolCount = 0;
-
-// Function to add an entry to the parser symbol table
-void addParseSymbol(const char *token, Type type) {
-    if (parseSymbolCount >= MAX_PARSE_SYMBOLS) return;
-
-    symbolTable.insert(token, type, 1000);
-    // symbolTable.print(); 
-
-    parseSymbolTable[parseSymbolCount].token = strdup(token);
-    parseSymbolTable[parseSymbolCount].type = type;
-    parseSymbolCount++;
-}
-
-// Function to print the symbol table after parsing
-void printParseSymbolTable() {
-    printf("\nParser Symbol Table:\n");
-    printf("--------------------------------------------------------------\n");
-    printf("| %-20s | %-30s |\n", "Token", "Type");
-    printf("--------------------------------------------------------------\n");
-
-    for (int i = 0; i < parseSymbolCount; i++) {
-        printf("| %-20s | %-30s |\n",
-               parseSymbolTable[i].token,
-               parseSymbolTable[i].type);
-    }
-
-    printf("--------------------------------------------------------------\n");
-}
-*/
-
-
 %} 
 
 %code requires {
@@ -87,6 +45,7 @@ void printParseSymbolTable() {
     TypeQualifierList* type_qualifier_list;
     DeclarationSpecifiers* declaration_specifiers;
     ParameterDeclaration* parameter_declaration;
+    Enumerator* enumerator;
     int intval;
     char* strval;
 }
@@ -112,6 +71,7 @@ void printParseSymbolTable() {
 %type <type_qualifier_list> type_qualifier_list;
 %type <declaration_specifiers> declaration_specifiers
 %type <parameter_declaration> parameter_declaration;
+%type <enumerator> enumerator
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
 %token <strval> BREAK CASE CHAR CONTINUE DEFAULT DO DOUBLE ELSE ENUM FLOAT FOR GOTO
 %token <strval> IF INT LONG RETURN SHORT SIGNED STRUCT SWITCH UNION UNSIGNED TYPE_NAME
@@ -394,8 +354,8 @@ enumerator_list:
     ;
 
 enumerator:
-    IDENTIFIER
-    | IDENTIFIER ASSIGN conditional_expression 
+    IDENTIFIER {$$ = create_enumerator($1);}
+    | IDENTIFIER ASSIGN conditional_expression {$$ = create_enumerator($1,$3);} 
     ;
 
 type_qualifier:

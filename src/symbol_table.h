@@ -373,9 +373,12 @@ class Enumerator : public NonTerminal{
     // Implement after ConditionalExpression
     public:
         Identifier* identifier;
-        Node* initializer_expression;
+        ConditionalExpression* conditional_expression;
         Enumerator(Identifier* identifier, Node* initializer_expression);
 };
+
+Enumerator* create_enumerator(Identifier* id);
+Enumerator* create_enumerator(Identifier* id, Node* ie);
 
 class EnumeratorList : public NonTerminal{
     //Implement after Enumerator

@@ -1028,6 +1028,26 @@ Declarator *create_declarator( // Pointer *pointer,
     return d;
 }
 
+//##############################################################################
+//############################ ENUMERATOR ###############################
+//##############################################################################
+Enumerator::Enumerator(Identifier* id, ConditionalExpression* e)
+    : NonTerminal("ENUMERATOR"), identifier(id), expression(e)
+{
+
+}
+
+Enumerator* create_enumerator(Identifier* id){
+    Enumerator* P = new Enumerator(id, nullptr);
+    return P;
+}
+
+Enumerator* create_enumerator(Identifier* id, Expression* e){
+    Enumerator* P = new Enumerator(id, e);
+    return P;
+}
+
+
 
 // ##############################################################################
 // ################################## CONSTANT ######################################
