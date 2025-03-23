@@ -46,6 +46,8 @@ void yyerror(const char *msg);
     DeclarationSpecifiers* declaration_specifiers;
     ParameterDeclaration* parameter_declaration;
     Enumerator* enumerator;
+    EnumeratorList* enumerator_list;
+    EnumSpecifier* enum_specifier;
     int intval;
     char* strval;
 }
@@ -72,6 +74,8 @@ void yyerror(const char *msg);
 %type <declaration_specifiers> declaration_specifiers
 %type <parameter_declaration> parameter_declaration;
 %type <enumerator> enumerator
+%type <enumerator_list> enumerator_list
+%type <enum_specifier> enum_specifier
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
 %token <strval> BREAK CASE CHAR CONTINUE DEFAULT DO DOUBLE ELSE ENUM FLOAT FOR GOTO
 %token <strval> IF INT LONG RETURN SHORT SIGNED STRUCT SWITCH UNION UNSIGNED TYPE_NAME
@@ -82,7 +86,7 @@ void yyerror(const char *msg);
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case struct_or_union struct_or_union_specifier declaration
-%type <strval> enum_specifier init_declarator_list init_declarator declarator struct_declarator_list
+%type <strval> init_declarator_list init_declarator declarator struct_declarator_list
 %type <strval> struct_declarator class_declaration class_declaration_list class_specifier access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
@@ -343,14 +347,14 @@ struct_declarator:
 	;
 
 enum_specifier:
-    ENUM LEFT_CURLY {symbolTable.enterScope();} enumerator_list RIGHT_CURLY {symbolTable.exitScope();}                 
-	| ENUM IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} enumerator_list RIGHT_CURLY {symbolTable.exitScope();}    
-	| ENUM IDENTIFIER                        
+    ENUM LEFT_CURLY {symbolTable.enterScope();} enumerator_list RIGHT_CURLY {symbolTable.exitScope();} { $$ = create_enumerator_specifier($4); }                
+	| ENUM IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} enumerator_list RIGHT_CURLY {symbolTable.exitScope();} { $$ = create_enumerator_specifier($2, $5); }    
+	| ENUM IDENTIFIER { $$ = create_enumerator_specifier_id($2); }                        
 	;
 
 enumerator_list:
-    enumerator
-    | enumerator_list COMMA enumerator
+    enumerator { $$ = create_enumerator_list($1);}
+    | enumerator_list COMMA enumerator { $$ = create_enumerator_list($1, $3);}
     ;
 
 enumerator:

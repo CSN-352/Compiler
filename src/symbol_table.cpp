@@ -1031,24 +1031,60 @@ Declarator *create_declarator( // Pointer *pointer,
 //##############################################################################
 //############################ ENUMERATOR ###############################
 //##############################################################################
-Enumerator::Enumerator(Identifier* id, ConditionalExpression* e)
-    : NonTerminal("ENUMERATOR"), identifier(id), expression(e)
-{
-
-}
+Enumerator::Enumerator(Identifier *id, ConditionalExpression *e)
+    : NonTerminal("ENUMERATOR"), identifier(id)
+{}
 
 Enumerator* create_enumerator(Identifier* id){
     Enumerator* P = new Enumerator(id, nullptr);
     return P;
 }
 
-Enumerator* create_enumerator(Identifier* id, Expression* e){
+Enumerator *create_enumerator(Identifier *id, ConditionalExpression *e)
+{
     Enumerator* P = new Enumerator(id, e);
     return P;
 }
 
+EnumeratorList::EnumeratorList()
+    : NonTerminal("ENUMERATOR List")
+{}
 
+EnumeratorList *create_enumerator_list(Enumerator *enumer) 
+{
+    EnumeratorList* P = new EnumeratorList();
+    P->enumerator_list.push_back(enumer);
+    return P;
+}
 
+EnumeratorList *create_enumerator_list(EnumeratorList *enum_list, Enumerator *enumer) 
+{
+    enum_list->enumerator_list.push_back(enumer);
+    return enum_list;
+}
+
+EnumSpecifier::EnumSpecifier(Identifier *id, EnumeratorList *list)
+    : NonTerminal("ENUMERATOR SPECIFIER")
+{
+}
+
+EnumSpecifier *create_enumerator_specifier(EnumeratorList *enum_list)
+{
+    EnumSpecifier* P = new EnumSpecifier(nullptr, enum_list);
+    return P;
+}
+
+EnumSpecifier *create_enumerator_specifier(Identifier *id, EnumeratorList *enum_list)
+{
+    EnumSpecifier *P = new EnumSpecifier(id, enum_list);
+    return P;
+}
+
+EnumSpecifier *create_enumerator_specifier_id(Identifier *id)
+{
+    EnumSpecifier *P = new EnumSpecifier(id, nullptr);
+    return P;
+}
 // ##############################################################################
 // ################################## CONSTANT ######################################
 // ##############################################################################

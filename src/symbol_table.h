@@ -366,19 +366,27 @@ class StructDeclarator : public NonTerminal{
 };
 
 class EnumSpecifier : public NonTerminal{
-    // Implement after EnumeratorList
-};
 
-class Enumerator : public NonTerminal{
-    // Implement after ConditionalExpression
+    public:
+        Identifier *identifier;
+        EnumeratorList *enumerators; 
+        EnumSpecifier(Identifier *id, EnumeratorList *list);
+};
+EnumSpecifier* create_enumerator_specifier(EnumeratorList* enum_list);
+EnumSpecifier *create_enumerator_specifier(Identifier* id, EnumeratorList *enum_list);
+EnumSpecifier *create_enumerator_specifier_id(Identifier* id);
+
+class Enumerator : public NonTerminal
+{
+    // Hopefully implemented
     public:
         Identifier* identifier;
-        ConditionalExpression* conditional_expression;
-        Enumerator(Identifier* identifier, Node* initializer_expression);
+        ConditionalExpression *initializer_expression;
+        Enumerator(Identifier *identifier, ConditionalExpression *initializer_expression);
 };
 
 Enumerator* create_enumerator(Identifier* id);
-Enumerator* create_enumerator(Identifier* id, Node* ie);
+Enumerator *create_enumerator(Identifier *id, ConditionalExpression *ie);
 
 class EnumeratorList : public NonTerminal{
     //Implement after Enumerator
@@ -386,6 +394,8 @@ class EnumeratorList : public NonTerminal{
         vector<Enumerator*> enumerator_list;
         EnumeratorList();
 };
+EnumeratorList* create_enumerator_list(Enumerator* enumer);
+EnumeratorList *create_enumerator_list(EnumeratorList *enum_list, Enumerator* enumer);
 
 class TypeSpecifier : public Terminal{
     // Implement after StructUnionSpecifier, EnumSpecifier, ClassSpecifier
