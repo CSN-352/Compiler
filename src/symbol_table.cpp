@@ -31,7 +31,8 @@ Type::Type()
 {
     typeIndex = -1;
     ptr_level = -1;
-    is_const = false;
+    is_const_variable = false;
+    is_const_literal = false;
 
     is_pointer = false;
     is_array = false;
@@ -44,7 +45,7 @@ Type::Type()
 Type::Type(int idx, int p_lvl, bool is_con)
 {
     typeIndex = idx;
-    is_const = is_con;
+    is_const_variable = is_con;
 
     ptr_level = p_lvl;
     is_pointer = ptr_level > 0 ? true : false;
@@ -414,7 +415,7 @@ IdentifierList* create_identifier_list(IdentifierList* x, Identifier* id){
 DeclarationSpecifiers :: DeclarationSpecifiers() : NonTerminal("DECLARATION SPECIFIERS"){}
 
 void DeclarationSpecifiers :: set_type() {
-    is_const = false;
+    is_const_variable = false;
     type_index = -1;
 
     int isUnsigned = 0;
@@ -430,7 +431,7 @@ void DeclarationSpecifiers :: set_type() {
     int isUnion =0;
 
     for(int i = 0; i < type_qualifiers.size(); i++){
-        if(type_qualifiers[i] == TypeQualifiers:: CONST_) is_const = true;
+        if(type_qualifiers[i] == TypeQualifiers:: CONST_) is_const_variable = true;
         else if(type_qualifiers[i] == TypeQualifiers :: VOLATILE_) ; //add something later}
     }
 
@@ -690,9 +691,9 @@ DirectAbstractDeclarator* create_direct_abstract_declarator_array(Expression* c)
     DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
     ConditionalExpression* c_cast = dynamic_cast<ConditionalExpression*>(c);
     P->is_array = true;
-    if(c==nullptr || c->type.isInt()) P->array_dimensions.push_back(c_cast);
+    if(c==nullptr || (c->type.isInt()&&c->type.is_const_literal)) P->array_dimensions.push_back(c_cast);
     else{
-        string error_msg = "Array size must be an integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
+        string error_msg = "Array size must be a constant integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
 		yyerror(error_msg.c_str());
         symbolTable.set_error();
     }    
@@ -714,9 +715,9 @@ DirectAbstractDeclarator* create_direct_abstract_declarator_array(DirectAbstract
         return x;
     }
     ConditionalExpression* c_cast = dynamic_cast<ConditionalExpression*>(c);
-    if(c==nullptr || c->type.isInt()) x->array_dimensions.push_back(c_cast);
+    if(c==nullptr || (c->type.isInt()&&c->type.is_const_literal)) x->array_dimensions.push_back(c_cast);
     else{
-        string error_msg = "Array size must be an integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
+        string error_msg = "Array size must be a constant integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
 		yyerror(error_msg.c_str());
         symbolTable.set_error();
     }   
@@ -748,7 +749,7 @@ DirectAbstractDeclarator* create_direct_abstract_declarator_function(DirectAbstr
 SpecifierQualifierList :: SpecifierQualifierList() : NonTerminal("SPECIFIER QUALIFIER LIST") {}
 
 void SpecifierQualifierList :: set_type() {
-    is_const = false;
+    is_const_variable = false;
     type_index = -1;
 
     int isUnsigned = 0;
@@ -764,7 +765,7 @@ void SpecifierQualifierList :: set_type() {
     int isUnion =0;
 
     for(int i = 0; i < type_qualifiers.size(); i++){
-        if(type_qualifiers[i] == TypeQualifiers:: CONST_) is_const = true;
+        if(type_qualifiers[i] == TypeQualifiers:: CONST_) is_const_variable = true;
         else if(type_qualifiers[i] == TypeQualifiers :: VOLATILE_) ; //add something later}
     }
 
@@ -942,12 +943,12 @@ TypeName* create_type_name(SpecifierQualifierList* sql, AbstractDeclarator* ad){
         P->type = ERROR_TYPE;
         return P;
     }
-    if(ad == nullptr) P->type = Type(sql->type_index, 0, sql->is_const);
+    if(ad == nullptr) P->type = Type(sql->type_index, 0, sql->is_const_variable);
     else{
         if(ad->direct_abstract_declarator == nullptr){
             int pointer_level = 0;
             if(ad->pointer != nullptr) pointer_level += ad->pointer->pointer_level;
-            P->type = Type(sql->type_index, pointer_level, sql->is_const);
+            P->type = Type(sql->type_index, pointer_level, sql->is_const_variable);
         }
         else{
             DirectAbstractDeclarator* dad = ad->direct_abstract_declarator;
@@ -956,7 +957,7 @@ TypeName* create_type_name(SpecifierQualifierList* sql, AbstractDeclarator* ad){
                 if(dad->abstract_declarator->pointer != nullptr) pointer_level += dad->abstract_declarator->pointer->pointer_level;
                 dad = dad->abstract_declarator->direct_abstract_declarator;
             }
-            P->type = Type(sql->type_index, pointer_level, sql->is_const);
+            P->type = Type(sql->type_index, pointer_level, sql->is_const_variable);
             if(dad->is_array){
                 P->type.is_array = true;
                 P->type.array_dim = dad->array_dimensions.size();
@@ -1031,60 +1032,64 @@ Declarator *create_declarator( // Pointer *pointer,
 //##############################################################################
 //############################ ENUMERATOR ###############################
 //##############################################################################
-Enumerator::Enumerator(Identifier *id, ConditionalExpression *e)
-    : NonTerminal("ENUMERATOR"), identifier(id)
-{}
+Enumerator::Enumerator() : NonTerminal("ENUMERATOR"){
+    identifier = nullptr;
+    initializer_expression = nullptr;
+}
 
-Enumerator* create_enumerator(Identifier* id){
-    Enumerator* P = new Enumerator(id, nullptr);
+Enumerator* create_enumerator(Identifier *id, ConditionalExpression *e){
+    Enumerator* P = new Enumerator();
+    P->identifier = id;
+    ConditionalExpression* e_cast = dynamic_cast<ConditionalExpression*>(e);
+    if(e == nullptr || (e->type.isInt()&&e->type.is_const_literal)) P->initializer_expression = e_cast;
+    else{
+        string error_msg = "Enumerator value must be a constant integer at line  " + to_string(e->line_no) + ", column " + to_string(e->column_no);
+		yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }
     return P;
 }
 
-Enumerator *create_enumerator(Identifier *id, ConditionalExpression *e)
-{
-    Enumerator* P = new Enumerator(id, e);
-    return P;
-}
+//##############################################################################
+//############################ ENUMERATOR LIST###############################
+//##############################################################################
 
-EnumeratorList::EnumeratorList()
-    : NonTerminal("ENUMERATOR List")
-{}
+EnumeratorList::EnumeratorList(): NonTerminal("ENUMERATOR LIST"){}
 
-EnumeratorList *create_enumerator_list(Enumerator *enumer) 
-{
+EnumeratorList* create_enumerator_list(Enumerator* e){
     EnumeratorList* P = new EnumeratorList();
-    P->enumerator_list.push_back(enumer);
+    P->enumerator_list.push_back(e);
     return P;
 }
 
-EnumeratorList *create_enumerator_list(EnumeratorList *enum_list, Enumerator *enumer) 
-{
-    enum_list->enumerator_list.push_back(enumer);
-    return enum_list;
+EnumeratorList* create_enumerator_list(EnumeratorList* el, Enumerator* e){
+    el->enumerator_list.push_back(e);
+    return el;
 }
 
-EnumSpecifier::EnumSpecifier(Identifier *id, EnumeratorList *list)
-    : NonTerminal("ENUMERATOR SPECIFIER")
-{
+//##############################################################################
+//############################ ENUM SPECIFIER ###############################
+//##############################################################################
+
+EnumSpecifier::EnumSpecifier(): NonTerminal("ENUM SPECIFIER"){
+    identifier = nullptr;
+    enumerators = nullptr;
 }
 
-EnumSpecifier *create_enumerator_specifier(EnumeratorList *enum_list)
-{
-    EnumSpecifier* P = new EnumSpecifier(nullptr, enum_list);
+EnumSpecifier* create_enumerator_specifier(EnumeratorList* el){
+    EnumSpecifier* P = new EnumSpecifier();
+    P->identifier = nullptr;
+    P->enumerators = el;
     return P;
 }
 
-EnumSpecifier *create_enumerator_specifier(Identifier *id, EnumeratorList *enum_list)
-{
-    EnumSpecifier *P = new EnumSpecifier(id, enum_list);
+EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el){
+    EnumSpecifier *P = new EnumSpecifier();
+    P->identifier = id;
+    P->enumerators = el;
     return P;
 }
 
-EnumSpecifier *create_enumerator_specifier_id(Identifier *id)
-{
-    EnumSpecifier *P = new EnumSpecifier(id, nullptr);
-    return P;
-}
 // ##############################################################################
 // ################################## CONSTANT ######################################
 // ##############################################################################
@@ -1092,13 +1097,13 @@ EnumSpecifier *create_enumerator_specifier_id(Identifier *id)
 Constant ::Constant(string name, string value, unsigned int line_no, unsigned int column_no)
     : Terminal(name, value, line_no, column_no)
 {
-    Type *t = new Type(-1, 0, false);
-    this->set_constant_type(value);
+    this->constant_type = this->set_constant_type(value);
+    this->value = this->convert_to_decimal();
 }
 
 Type Constant ::set_constant_type(string value)
 {   
-    Type t = this->constant_type;
+    Type t(-1,0,false);
     int length = value.length();
     if (name == "I_CONSTANT")
     {
@@ -1172,7 +1177,6 @@ Type Constant ::set_constant_type(string value)
         string error_msg = "Invalid type: " + name;
         yyerror(error_msg.c_str());
     }
-    this->constant_type = t;
     return t;
 }
 

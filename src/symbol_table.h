@@ -116,7 +116,8 @@ public:
     Type();
 
     Type(int idx, int p_lvl, bool is_con);
-    bool is_const;
+    bool is_const_variable;
+    bool is_const_literal;
     bool isPrimitive();
     bool isInt();
     bool isChar();
@@ -137,7 +138,7 @@ public:
     friend bool operator!=(Type &obj1, Type &obj2);
 };
 
-extern Type ERROR_TYPE;
+extern Type ERROR_TYPE(-1,0,false);
 
 // typedef enum direct_declarator_enum {
 //     IDENTIFIER,
@@ -186,12 +187,12 @@ IdentifierList* create_identifier_list(IdentifierList* x, Identifier* id);
 
 class DeclarationSpecifiers : public NonTerminal{
     // Fully Implemented
-    public:
+    public: 
         vector<int> storage_class_specifiers;
         vector<TypeSpecifier*> type_specifiers;
         vector<int> type_qualifiers;
-        bool is_const;
-        bool type_index;
+        bool is_const_variable;
+        int type_index;
         void set_type();
         DeclarationSpecifiers();
 };
@@ -370,31 +371,29 @@ class EnumSpecifier : public NonTerminal{
     public:
         Identifier *identifier;
         EnumeratorList *enumerators; 
-        EnumSpecifier(Identifier *id, EnumeratorList *list);
+        EnumSpecifier();
 };
 EnumSpecifier* create_enumerator_specifier(EnumeratorList* enum_list);
 EnumSpecifier *create_enumerator_specifier(Identifier* id, EnumeratorList *enum_list);
-EnumSpecifier *create_enumerator_specifier_id(Identifier* id);
 
 class Enumerator : public NonTerminal
 {
-    // Hopefully implemented
+    // Fully Implemented
     public:
         Identifier* identifier;
-        ConditionalExpression *initializer_expression;
-        Enumerator(Identifier *identifier, ConditionalExpression *initializer_expression);
+        ConditionalExpression* initializer_expression;
+        Enumerator();
 };
 
-Enumerator* create_enumerator(Identifier* id);
-Enumerator *create_enumerator(Identifier *id, ConditionalExpression *ie);
+Enumerator *create_enumerator(Identifier *id, ConditionalExpression *e);
 
 class EnumeratorList : public NonTerminal{
-    //Implement after Enumerator
+    // Fully Implemented
     public:
         vector<Enumerator*> enumerator_list;
         EnumeratorList();
 };
-EnumeratorList* create_enumerator_list(Enumerator* enumer);
+EnumeratorList* create_enumerator_list(Enumerator* e);
 EnumeratorList *create_enumerator_list(EnumeratorList *enum_list, Enumerator* enumer);
 
 class TypeSpecifier : public Terminal{
@@ -417,7 +416,7 @@ class SpecifierQualifierList : public NonTerminal{
     public:
         vector<TypeSpecifier*> type_specifiers;
         vector<int> type_qualifiers;
-        bool is_const;
+        bool is_const_variable;
         int type_index;
         void set_type();
         SpecifierQualifierList();

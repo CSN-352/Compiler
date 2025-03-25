@@ -1,1 +1,1 @@
-(int, int)
+int arr[x];

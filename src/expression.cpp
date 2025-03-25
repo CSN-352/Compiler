@@ -128,7 +128,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
     if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
     else P->name = "POSTFIX EXPRESSION DEC OP";
-    if(x->type.is_const){
+    if(x->type.is_const_variable){
         P->type = ERROR_TYPE;
         string error_msg = "Invalid operator " + op->value + " at line  " + to_string(op->line_no) + ", column " + to_string(op->column_no);
 		yyerror(error_msg.c_str());

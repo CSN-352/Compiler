@@ -347,9 +347,9 @@ struct_declarator:
 	;
 
 enum_specifier:
-    ENUM LEFT_CURLY {symbolTable.enterScope();} enumerator_list RIGHT_CURLY {symbolTable.exitScope();} { $$ = create_enumerator_specifier($4); }                
-	| ENUM IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} enumerator_list RIGHT_CURLY {symbolTable.exitScope();} { $$ = create_enumerator_specifier($2, $5); }    
-	| ENUM IDENTIFIER { $$ = create_enumerator_specifier_id($2); }                        
+    ENUM LEFT_CURLY enumerator_list RIGHT_CURLY { $$ = create_enumerator_specifier($4); }                
+	| ENUM IDENTIFIER LEFT_CURLY enumerator_list RIGHT_CURLY { $$ = create_enumerator_specifier($2, $5); }    
+	| ENUM IDENTIFIER { $$ = create_enumerator_specifier_id($2, nullptr); }                        
 	;
 
 enumerator_list:
@@ -358,7 +358,7 @@ enumerator_list:
     ;
 
 enumerator:
-    IDENTIFIER {$$ = create_enumerator($1);}
+    IDENTIFIER {$$ = create_enumerator($1,nullptr);}
     | IDENTIFIER ASSIGN conditional_expression {$$ = create_enumerator($1,$3);} 
     ;
 
