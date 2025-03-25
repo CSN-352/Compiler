@@ -1048,7 +1048,6 @@ Declarator *create_declarator( // Pointer *pointer,
 }
 
 //##############################################################################
-<<<<<<< Updated upstream
 //############################ ENUMERATOR ###############################
 //##############################################################################
 Enumerator::Enumerator() : NonTerminal("ENUMERATOR"){
@@ -1095,19 +1094,16 @@ EnumSpecifier::EnumSpecifier(): NonTerminal("ENUM SPECIFIER"){
     enumerators = nullptr;
 }
 
-EnumSpecifier* create_enumerator_specifier(EnumeratorList* el){
-    EnumSpecifier* P = new EnumSpecifier();
-    P->identifier = nullptr;
-    P->enumerators = el;
-    return P;
-}
-
 EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el){
     EnumSpecifier *P = new EnumSpecifier();
     P->identifier = id;
     P->enumerators = el;
+    if(el != nullptr){
+        Type type(5,0,true);
+        for(Enumerator* e : el->enumerator_list) symbolTable.insert(e->identifier->value,type,0);
+    }
     return P;
-=======
+}
 //############################# DECLARATION ####################################
 //##############################################################################
 
@@ -1121,7 +1117,6 @@ Declaration *new_declaration( DeclarationSpecifiers *declaration_specifiers,
     //d->add_children( declaration_specifiers, init_declarator_list );
     // declaration_specifiers->type_index;
     return d;
->>>>>>> Stashed changes
 }
 
 // ##############################################################################
@@ -1306,7 +1301,9 @@ void SymbolTable::insert(string name, Type type, int memoryAddr)
     table[name].push_front(sym);
 }
 
-
+void SymbolTable::insert_defined_type(std::string name, Types type){
+    defined_types[name].push_front({currentScope,type});
+}
 
 bool SymbolTable::lookup(string name)
 {
@@ -1318,6 +1315,17 @@ bool SymbolTable::lookup(string name)
     {
         if (sym->scope <= currentScope)
             return true;
+    }
+    return false;
+}
+
+bool SymbolTable::lookup_defined_type(string name){
+    auto it = defined_types.find(name);
+    if (it == defined_types.end())
+        return false;
+    
+    for(pair<int,Types> p : it->second){
+        if(p.first <= currentScope) return true;
     }
     return false;
 }
@@ -1344,6 +1352,21 @@ Symbol *SymbolTable::getSymbol(string name)
     return sym;
 }
 
+Types SymbolTable::get_defined_type(std::string name){
+    auto it = defined_types.find(name);
+
+    Types types;
+
+    for(pair<int,Types> p : it->second){
+        if(p.first <= currentScope){
+            types = p.second;
+            break;
+        }
+    }
+
+    return types;
+}
+
 void SymbolTable::update(string name, Type newType)
 {
     Symbol *sym = getSymbol(name);
@@ -1353,6 +1376,18 @@ void SymbolTable::update(string name, Type newType)
     }
     else
     {
+        string error_msg = "Symbol '" + name + "' not found.";
+        yyerror(error_msg.c_str());
+        set_error();
+    }
+}
+
+void SymbolTable::update_members(string name, Declarator* new_member){
+    Symbol* sym = getSymbol(name);
+    if(sym){
+        sym->members.push_back(new_member);
+    }
+    else{
         string error_msg = "Symbol '" + name + "' not found.";
         yyerror(error_msg.c_str());
         set_error();

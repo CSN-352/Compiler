@@ -140,6 +140,22 @@ public:
 
 extern Type ERROR_TYPE;
 
+class TypeDefinition{
+    public:
+        unordered_map<string,Type> members;
+        Type *get_member( Identifier *id );
+};
+
+class Types {
+    public:
+      int index;
+      std::string name;
+      bool is_class;
+      bool is_struct;
+      bool is_union;
+      TypeDefinition *struct_definition;
+  };
+
 // typedef enum direct_declarator_enum {
 //     IDENTIFIER,
 //     DECLARATOR,
@@ -201,11 +217,8 @@ class DeclarationSpecifiers : public NonTerminal{
         vector<int> storage_class_specifiers;
         vector<TypeSpecifier*> type_specifiers;
         vector<int> type_qualifiers;
-<<<<<<< Updated upstream
         bool is_const_variable;
-=======
         bool is_const;
->>>>>>> Stashed changes
         int type_index;
         void set_type();
         DeclarationSpecifiers();
@@ -395,7 +408,6 @@ class EnumSpecifier : public NonTerminal{
         EnumeratorList *enumerators; 
         EnumSpecifier();
 };
-EnumSpecifier* create_enumerator_specifier(EnumeratorList* el);
 EnumSpecifier *create_enumerator_specifier(Identifier* id, EnumeratorList *el);
 
 class Enumerator : public NonTerminal
@@ -490,13 +502,14 @@ public:
     int scope;
     int memoryAddr;
 
-    Symbol(string n, Type t, int s, int m) : name(n), type(t), scope(s), memoryAddr(m) {}
+    Symbol(string n, Type t, int s, int m, bool is_d) : name(n), type(t), scope(s), memoryAddr(m){}
 };
 
 class SymbolTable
 {
 private:
     std::unordered_map<std::string, std::list<Symbol*> > table;
+    std::unordered_map<std::string, std::list<std::pair<int,Types>>> defined_types;
     int currentScope;
     bool error;
 
@@ -505,8 +518,11 @@ public:
     void enterScope();
     void exitScope();
     void insert(std::string name, Type type, int memoryAddr);
+    void insert_defined_type(std::string name, Types type);
     bool lookup(std::string name);
+    bool lookup_defined_type(string name);
     Symbol* getSymbol(std::string name);
+    Types get_defined_type(std::string name);
     void update(std::string name, Type newType);
     void remove(std::string name);
     void print();

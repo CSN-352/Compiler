@@ -91,13 +91,10 @@ void yyerror(const char *msg);
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
-<<<<<<< Updated upstream
 %type <strval> error_case struct_or_union struct_or_union_specifier declaration
 %type <strval> init_declarator_list init_declarator declarator struct_declarator_list
-=======
 %type <strval> error_case struct_or_union struct_or_union_specifier
 %type <strval> enum_specifier struct_declarator_list
->>>>>>> Stashed changes
 %type <strval> struct_declarator class_declaration class_declaration_list class_specifier access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
@@ -364,7 +361,7 @@ enum_specifier:
 	;
 
 enumerator_list:
-    enumerator { $$ = create_enumerator_list($1);}
+    enumerator { $$ = create_enumerator_list(nullptr,$1);}
     | enumerator_list COMMA enumerator { $$ = create_enumerator_list($1, $3);}
     ;
 
