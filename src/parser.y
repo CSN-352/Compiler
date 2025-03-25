@@ -347,9 +347,9 @@ struct_declarator:
 	;
 
 enum_specifier:
-    ENUM LEFT_CURLY enumerator_list RIGHT_CURLY { $$ = create_enumerator_specifier($4); }                
-	| ENUM IDENTIFIER LEFT_CURLY enumerator_list RIGHT_CURLY { $$ = create_enumerator_specifier($2, $5); }    
-	| ENUM IDENTIFIER { $$ = create_enumerator_specifier_id($2, nullptr); }                        
+    ENUM LEFT_CURLY enumerator_list RIGHT_CURLY { $$ = create_enumerator_specifier($3); }                
+	| ENUM IDENTIFIER LEFT_CURLY enumerator_list RIGHT_CURLY { $$ = create_enumerator_specifier($2, $4); }    
+	| ENUM IDENTIFIER { $$ = create_enumerator_specifier($2, nullptr); }                        
 	;
 
 enumerator_list:

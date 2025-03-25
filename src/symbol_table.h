@@ -138,7 +138,7 @@ public:
     friend bool operator!=(Type &obj1, Type &obj2);
 };
 
-extern Type ERROR_TYPE(-1,0,false);
+extern Type ERROR_TYPE;
 
 // typedef enum direct_declarator_enum {
 //     IDENTIFIER,
@@ -373,8 +373,8 @@ class EnumSpecifier : public NonTerminal{
         EnumeratorList *enumerators; 
         EnumSpecifier();
 };
-EnumSpecifier* create_enumerator_specifier(EnumeratorList* enum_list);
-EnumSpecifier *create_enumerator_specifier(Identifier* id, EnumeratorList *enum_list);
+EnumSpecifier* create_enumerator_specifier(EnumeratorList* el);
+EnumSpecifier *create_enumerator_specifier(Identifier* id, EnumeratorList *el);
 
 class Enumerator : public NonTerminal
 {
@@ -385,7 +385,7 @@ class Enumerator : public NonTerminal
         Enumerator();
 };
 
-Enumerator *create_enumerator(Identifier *id, ConditionalExpression *e);
+Enumerator *create_enumerator(Identifier *id, Expression* e);
 
 class EnumeratorList : public NonTerminal{
     // Fully Implemented
@@ -394,7 +394,7 @@ class EnumeratorList : public NonTerminal{
         EnumeratorList();
 };
 EnumeratorList* create_enumerator_list(Enumerator* e);
-EnumeratorList *create_enumerator_list(EnumeratorList *enum_list, Enumerator* enumer);
+EnumeratorList *create_enumerator_list(EnumeratorList *el, Enumerator* e);
 
 class TypeSpecifier : public Terminal{
     // Implement after StructUnionSpecifier, EnumSpecifier, ClassSpecifier

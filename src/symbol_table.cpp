@@ -1037,7 +1037,7 @@ Enumerator::Enumerator() : NonTerminal("ENUMERATOR"){
     initializer_expression = nullptr;
 }
 
-Enumerator* create_enumerator(Identifier *id, ConditionalExpression *e){
+Enumerator* create_enumerator(Identifier *id, Expression* e){
     Enumerator* P = new Enumerator();
     P->identifier = id;
     ConditionalExpression* e_cast = dynamic_cast<ConditionalExpression*>(e);
