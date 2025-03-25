@@ -164,8 +164,18 @@ class DeclarationList : public NonTerminal{
 };
 
 class Declaration : public NonTerminal{
-    //Implement after InitDeclaratorList
+    public:
+    DeclarationSpecifiers *declaration_specifiers;
+    DeclaratorList *init_declarator_list;
+    int type;
+    Declaration( DeclarationSpecifiers *declaration_specifiers_,
+                 DeclaratorList *init_declarator_list_ );
+    void add_to_symbol_table( SymbolTable &sym_tab );
+    void dotify();
 };
+
+Declaration *new_declaration( DeclarationSpecifiers *declaraion_specifiers,
+    DeclaratorList *init_declarator_list );
 
 class InitializerList : public NonTerminal{
     //Implement after initializer
@@ -191,7 +201,11 @@ class DeclarationSpecifiers : public NonTerminal{
         vector<int> storage_class_specifiers;
         vector<TypeSpecifier*> type_specifiers;
         vector<int> type_qualifiers;
+<<<<<<< Updated upstream
         bool is_const_variable;
+=======
+        bool is_const;
+>>>>>>> Stashed changes
         int type_index;
         void set_type();
         DeclarationSpecifiers();
@@ -247,6 +261,12 @@ class Declarator : NonTerminal{
         // Declarator(Pointer* p, DirectDeclarator* direct_declarator);
 };
 
+Declarator *create_declarator( // Pointer *pointer,
+    DirectDeclarator *direct_declarator );
+
+Declarator *create_declarator( // Pointer *pointer,
+    DirectDeclarator *direct_declarator );
+
 class ParameterDeclaration : public NonTerminal{
     //Implement after Declaration Specifiers and Declarator
     public:
@@ -287,6 +307,8 @@ class DeclaratorList : public NonTerminal{
         vector<Declarator*> declarator_list;
         DeclaratorList();
 };
+
+DeclaratorList *create_init_declarator_list( Declarator *init_declarator );
 
 class AbstractDeclarator : public NonTerminal{
     // Fully Implemented

@@ -408,6 +408,24 @@ IdentifierList* create_identifier_list(IdentifierList* x, Identifier* id){
     return x;
 }
 
+//##############################################################################
+//############################# DECLARATOR LIST ################################
+//##############################################################################
+
+DeclaratorList ::DeclaratorList() : NonTerminal( "init_declarator_list" ){};
+
+DeclaratorList *create_init_declarator_list( Declarator *d ) {
+
+    if ( d == nullptr ) {
+        return nullptr;
+    }
+    DeclaratorList *dl = new DeclaratorList();
+    dl->declarator_list.push_back( d );
+    // dl->add_children( d );
+    declaration->add_to_symbol_table( local_symbol_table );
+    return dl;
+}
+
 // ##############################################################################
 // ################################## DECLARATION SPECIFIERS ######################################
 // ##############################################################################
@@ -1030,6 +1048,7 @@ Declarator *create_declarator( // Pointer *pointer,
 }
 
 //##############################################################################
+<<<<<<< Updated upstream
 //############################ ENUMERATOR ###############################
 //##############################################################################
 Enumerator::Enumerator() : NonTerminal("ENUMERATOR"){
@@ -1088,6 +1107,21 @@ EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el){
     P->identifier = id;
     P->enumerators = el;
     return P;
+=======
+//############################# DECLARATION ####################################
+//##############################################################################
+
+Declaration ::Declaration( DeclarationSpecifiers *declaration_specifiers_,
+    DeclaratorList *init_declarator_list_ )
+: NonTerminal( "declaration" ), declaration_specifiers( declaration_specifiers_ ), init_declarator_list( init_declarator_list_ ){};
+
+Declaration *new_declaration( DeclarationSpecifiers *declaration_specifiers,
+    DeclaratorList *init_declarator_list ) {
+    Declaration *d = new Declaration( declaration_specifiers, init_declarator_list );
+    //d->add_children( declaration_specifiers, init_declarator_list );
+    // declaration_specifiers->type_index;
+    return d;
+>>>>>>> Stashed changes
 }
 
 // ##############################################################################
@@ -1271,6 +1305,8 @@ void SymbolTable::insert(string name, Type type, int memoryAddr)
     Symbol *sym = new Symbol(name, type, currentScope, memoryAddr);
     table[name].push_front(sym);
 }
+
+
 
 bool SymbolTable::lookup(string name)
 {
