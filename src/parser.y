@@ -29,7 +29,10 @@ void yyerror(const char *msg);
     Node* node;
 	Terminal* terminal;
     Identifier* identifier;
+    Declaration * declaration;
+    Declarator* declarator;
     DirectDeclarator* direct_declarator;
+    DeclaratorList * init_declarator_list;
     Constant* constant;
 	StringLiteral* string_literal;
     Expression* expression;
@@ -63,6 +66,9 @@ void yyerror(const char *msg);
 %type <type_name> type_name
 %type <direct_abstract_declarator> direct_abstract_declarator
 %type <abstract_declarator> abstract_declarator
+%type <declarator> init_declarator declarator
+%type<init_declarator_list> init_declarator_list
+%type<declaration> declaration
 %type <parameter_type_list> parameter_type_list
 %type <direct_declarator> direct_declarator
 %type <parameter_list> parameter_list
@@ -85,8 +91,13 @@ void yyerror(const char *msg);
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
+<<<<<<< Updated upstream
 %type <strval> error_case struct_or_union struct_or_union_specifier declaration
 %type <strval> init_declarator_list init_declarator declarator struct_declarator_list
+=======
+%type <strval> error_case struct_or_union struct_or_union_specifier
+%type <strval> enum_specifier struct_declarator_list
+>>>>>>> Stashed changes
 %type <strval> struct_declarator class_declaration class_declaration_list class_specifier access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
@@ -241,7 +252,7 @@ expression:
 
 declaration:
     declaration_specifiers SEMICOLON                           
-    | declaration_specifiers init_declarator_list SEMICOLON  
+    | declaration_specifiers init_declarator_list SEMICOLON  {$$ = new_declaration( $1, $2 );}
     | error_case skip_until_semicolon SEMICOLON
     ;
 
@@ -252,12 +263,12 @@ declaration_specifiers:
     ;
 
 init_declarator_list:
-    init_declarator 
+    init_declarator { $$ = create_init_declarator_list( $1 ); }
     | init_declarator_list COMMA init_declarator 
     ;
 
 init_declarator:
-    declarator 
+    declarator {$$ = $1;}
     | declarator ASSIGN initializer
     ;
 
@@ -369,7 +380,7 @@ type_qualifier:
 
 declarator:
     pointer direct_declarator 
-    | direct_declarator  
+    | direct_declarator  { $$ = create_declarator( $1 ); }
     ;
 
 direct_declarator:
