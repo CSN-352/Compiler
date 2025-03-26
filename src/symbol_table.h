@@ -67,9 +67,19 @@ enum PrimitiveTypes {
 };
 
 enum PrimitiveTypesSize{
-    U_CHAR_T_SIZE = 2,
-    CHAR_T_SIZE = 2,
-    U_SHORT_T = 2,
+    SIZE_U_CHAR_T = 2,
+    SIZE_CHAR_T = 2,
+    SIZE_U_SHORT_T = 2,
+    SIZE_SHORT_T = 2,
+    SIZE_U_INT_T = 4,
+    SIZE_INT_T = 4,
+    SIZE_U_LONG_T = 4,
+    SIZE_LONG_T = 4,
+    SIZE_U_LONG_LONG_T = 8,
+    SIZE_LONG_LONG_T = 8,
+    SIZE_FLOAT_T = 4,
+    SIZE_DOUBLE_T = 8,
+    SIZE_LONG_DOUBLE_T = 8,
 };
 
 enum Tokens

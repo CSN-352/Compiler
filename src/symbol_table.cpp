@@ -119,9 +119,9 @@ size_t Type::get_size() {
             p *= array_dims[i];
         }
 
-        size_t sz;
+        size_t size;
         if (isPrimitive()) {
-            size = defined_types[typeIndex].size;
+            size = PrimitiveTypesSize::
         } 
         else {
             if ( defined_types[typeIndex].struct_definition != nullptr ) {

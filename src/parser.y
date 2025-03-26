@@ -116,7 +116,7 @@ primary_expression:
     | F_CONSTANT {$$ = create_primary_expression($1);}
     | CHAR_CONSTANT {$$ = create_primary_expression($1);}
     | STRING_LITERAL {$$ = create_primary_expression($1);}
-    | (primary_expression) {$$ = create_primary_expression($1);}
+    | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($1);}
     ;
 
 argument_expression_list:
