@@ -395,7 +395,7 @@ TypeQualifierList* create_type_qualifier_list(TypeQualifierList* x, int tq){
 // ##############################################################################
 // ################################## IDENTIFIER LIST ######################################
 // ##############################################################################
-IdentifierList :: IdentifierList() : NonTerminal("IDENTIFIER LIST") {}
+IdentifierList :: IdentifierList(nTerminal("IDENTIFIER LIST") {}
 
 IdentifierList* create_identifier_list(Identifier* id){
     IdentifierList* P = new IdentifierList();
@@ -412,7 +412,7 @@ IdentifierList* create_identifier_list(IdentifierList* x, Identifier* id){
 //############################# DECLARATOR LIST ################################
 //##############################################################################
 
-DeclaratorList ::DeclaratorList() : NonTerminal( "init_declarator_list" ){};
+DeclaratorList ::DeclaratorList(nTerminal( "init_declarator_list" ){};
 
 DeclaratorList *create_init_declarator_list( Declarator *d ) {
 
@@ -1099,7 +1099,7 @@ EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el){
     P->identifier = id;
     P->enumerators = el;
     if(el != nullptr){
-        Type type(5,0,true);
+        Type type(PrimitiveTypes::INT_T,0,true);
         for(Enumerator* e : el->enumerator_list) symbolTable.insert(e->identifier->value,type,0);
     }
     return P;

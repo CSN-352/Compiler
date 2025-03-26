@@ -37,7 +37,6 @@ class ClassDeclarationList;
 class ClassDeclaration;
 class StructDeclarationList;
 class StructDeclaratorList;
-class EnumSpecifier;
 class Enumerator;
 class EnumeratorList;
 class TypeSpecifier;
@@ -50,7 +49,7 @@ class Symbol;
 class SymbolTable;
 
 enum PrimitiveTypes {
-    ERROR_T = -1,
+    TYPE_ERROR_T = -1,
     U_CHAR_T = 0,
     CHAR_T = 1,
     U_SHORT_T = 2,
@@ -401,15 +400,6 @@ class StructDeclarator : public NonTerminal{
     // Implement after Declarator, ConditionalExpression
 };
 
-class EnumSpecifier : public NonTerminal{
-
-    public:
-        Identifier *identifier;
-        EnumeratorList *enumerators; 
-        EnumSpecifier();
-};
-EnumSpecifier *create_enumerator_specifier(Identifier* id, EnumeratorList *el);
-
 class Enumerator : public NonTerminal
 {
     // Fully Implemented
@@ -431,7 +421,7 @@ EnumeratorList* create_enumerator_list(Enumerator* e);
 EnumeratorList *create_enumerator_list(EnumeratorList *el, Enumerator* e);
 
 class TypeSpecifier : public Terminal{
-    // Implement after StructUnionSpecifier, EnumSpecifier, ClassSpecifier
+    // Implement after StructUnionSpecifier, ClassSpecifier
     public: 
         int type_specifier;
         Identifier* identifier;
@@ -444,6 +434,8 @@ class TypeSpecifier : public Terminal{
         TypeSpecifier(int type_specifier, Identifier* identifier, EnumeratorList* enumerator_list);
 
 };
+
+TypeSpecifier *create_enumerator_specifier(Identifier* id, EnumeratorList *el);
 
 class SpecifierQualifierList : public NonTerminal{
     // Fully Implemented

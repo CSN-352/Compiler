@@ -50,7 +50,6 @@ void yyerror(const char *msg);
     ParameterDeclaration* parameter_declaration;
     Enumerator* enumerator;
     EnumeratorList* enumerator_list;
-    EnumSpecifier* enum_specifier;
     int intval;
     char* strval;
 }
@@ -67,12 +66,12 @@ void yyerror(const char *msg);
 %type <direct_abstract_declarator> direct_abstract_declarator
 %type <abstract_declarator> abstract_declarator
 %type <declarator> init_declarator declarator
-%type<init_declarator_list> init_declarator_list
-%type<declaration> declaration
+%type <init_declarator_list> init_declarator_list
+%type <declaration> declaration
 %type <parameter_type_list> parameter_type_list
 %type <direct_declarator> direct_declarator
 %type <parameter_list> parameter_list
-%type <type_specifier> type_specifier
+%type <type_specifier> type_specifier struct_or_union_specifier class_specifier enum_specifier
 %type <intval> type_qualifier storage_class_specifier
 %type <specifier_qualifier_list> specifier_qualifier_list
 %type <pointer> pointer
@@ -81,21 +80,19 @@ void yyerror(const char *msg);
 %type <parameter_declaration> parameter_declaration;
 %type <enumerator> enumerator
 %type <enumerator_list> enumerator_list
-%type <enum_specifier> enum_specifier
+%token <type_specifier> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
-%token <strval> BREAK CASE CHAR CONTINUE DEFAULT DO DOUBLE ELSE ENUM FLOAT FOR GOTO
-%token <strval> IF INT LONG RETURN SHORT SIGNED STRUCT SWITCH UNION UNSIGNED TYPE_NAME
-%token <strval> VOID WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
+%token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
+%token <strval> IF RETURN STRUCT SWITCH UNION
+%token <strval> WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
-%type <strval> error_case struct_or_union struct_or_union_specifier declaration
-%type <strval> init_declarator_list init_declarator declarator struct_declarator_list
-%type <strval> error_case struct_or_union struct_or_union_specifier
-%type <strval> enum_specifier struct_declarator_list
-%type <strval> struct_declarator class_declaration class_declaration_list class_specifier access_specifier
+%type <strval> error_case struct_or_union
+%type <strval> struct_declarator_list
+%type <strval> struct_declarator class_declaration class_declaration_list access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
 %nonassoc LOW_PREC
