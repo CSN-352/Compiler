@@ -66,6 +66,12 @@ enum PrimitiveTypes {
     VOID_T = 13,
 };
 
+enum PrimitiveTypesSize{
+    U_CHAR_T_SIZE = 2,
+    CHAR_T_SIZE = 2,
+    U_SHORT_T = 2,
+};
+
 enum Tokens
 {
     ERROR_ = -1,
@@ -104,12 +110,13 @@ public:
     int ptr_level;
 
     bool is_array;
-    unsigned int array_dim;
-    vector<ConditionalExpression*> array_dims;
+    int array_dim;
+    vector<int> array_dims;
 
     bool is_function;
-    unsigned int num_args;
+    int num_args;
     vector<Type> arg_types;
+
     bool is_defined;
 
     Type();
@@ -142,12 +149,11 @@ extern Type ERROR_TYPE;
 class TypeDefinition{
     public:
         unordered_map<string,Type> members;
-        Type *get_member( Identifier *id );
+        Type* get_member( Identifier *id );
 };
 
-class Types {
+class DefinedTypes {
     public:
-      int index;
       std::string name;
       bool is_class;
       bool is_struct;
@@ -339,7 +345,7 @@ class DirectAbstractDeclarator : public NonTerminal{
         bool is_function; // Flag to check if it's a function
         bool is_array; // Flag to check if it's an array
         ParameterTypeList* parameters; // Stores function parameters if applicable
-        vector<ConditionalExpression* > array_dimensions; // Stores array dimensions if applicable
+        vector<int> array_dimensions; // Stores array dimensions if applicable
         DirectAbstractDeclarator();
         
 };
@@ -398,6 +404,9 @@ class StructDeclaratorList : public NonTerminal{
 
 class StructDeclarator : public NonTerminal{
     // Implement after Declarator, ConditionalExpression
+    Declarator* declarator;
+    ConditionalExpression* conditional_expression;
+    StructDeclarator();
 };
 
 class Enumerator : public NonTerminal
@@ -501,7 +510,7 @@ class SymbolTable
 {
 private:
     std::unordered_map<std::string, std::list<Symbol*> > table;
-    std::unordered_map<std::string, std::list<std::pair<int,Types>>> defined_types;
+    std::unordered_map<std::string, std::list<std::pair<int,DefinedTypes>>> defined_types;
     int currentScope;
     bool error;
 
@@ -510,11 +519,11 @@ public:
     void enterScope();
     void exitScope();
     void insert(std::string name, Type type, int memoryAddr);
-    void insert_defined_type(std::string name, Types type);
+    void insert_defined_type(std::string name, DefinedTypes type);
     bool lookup(std::string name);
     bool lookup_defined_type(string name);
     Symbol* getSymbol(std::string name);
-    Types get_defined_type(std::string name);
+    DefinedTypes get_defined_type(std::string name);
     void update(std::string name, Type newType);
     void remove(std::string name);
     void print();

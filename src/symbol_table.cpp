@@ -18,9 +18,10 @@
 #include "expression.h"
 using namespace std;
 
+#define WORD_SIZE 4
+
 extern void yyerror(const char *msg);
 
-// std::vector<Types> defined_types;
 extern unsigned int line_no;
 
 // ##############################################################################
@@ -111,44 +112,47 @@ bool Type::isPrimitive()
 //     return ss.str();
 // }
 
-// size_t Type::get_size() {
-//     if ( is_array ) {
-//         unsigned int p = 1;
-//         for ( unsigned int i = 0; i < array_dim; i++ ) {
-//             p *= array_dims[i];
-//         }
-//         size_t sz;
-//         if ( isPrimitive() ) {
-//             sz = defined_types[typeIndex].size;
-//         } else {
-//             if ( defined_types[typeIndex].struct_definition != nullptr ) {
-//                 sz = defined_types[typeIndex].struct_definition->get_size();
-//             } else {
-//                 error_msg( "Size of " + defined_types[typeIndex].name +
-//                                " isn't known",
-//                            line_no );
-//                 exit( 0 );
-//             }
-//         }
-//         return sz * p;
+size_t Type::get_size() {
+    if (is_array){
+        unsigned int p = 1;
+        for(int i = 0; i < array_dim; i++ ) {
+            p *= array_dims[i];
+        }
 
-//     } else if ( ptr_level > 0 || is_function ) {
-//         return WORD_SIZE;
-//     } else if ( !isPrimitive() ) {
-//         if ( defined_types[typeIndex].struct_definition != nullptr ) {
-//             return defined_types[typeIndex].struct_definition->get_size();
-//         } else {
-//             error_msg( "Size of " + defined_types[typeIndex].name +
-//                            " isn't known",
-//                        line_no );
-//             exit( 0 );
-//         }
-//     }
+        size_t sz;
+        if (isPrimitive()) {
+            size = defined_types[typeIndex].size;
+        } 
+        else {
+            if ( defined_types[typeIndex].struct_definition != nullptr ) {
+                sz = defined_types[typeIndex].struct_definition->get_size();
+            } else {
+                error_msg( "Size of " + defined_types[typeIndex].name +
+                               " isn't known",
+                           line_no );
+                exit( 0 );
+            }
+        }
+        return sz * p;
 
-//     else {
-//         return defined_types[typeIndex].size;
-//     }
-// }
+    } 
+    else if ( ptr_level > 0 || is_function ) return WORD_SIZE;
+    else if ( !isPrimitive() ) {
+        if ( defined_types[typeIndex].struct_definition != nullptr ) {
+            return defined_types[typeIndex].struct_definition->get_size();
+        } 
+        else {
+            error_msg( "Size of " + defined_types[typeIndex].name +
+                           " isn't known",
+                       line_no );
+            exit( 0 );
+        }
+    }
+
+    else {
+        return defined_types[typeIndex].size;
+    }
+}
 
 bool Type::isInt()
 {
@@ -707,9 +711,11 @@ DirectAbstractDeclarator* create_direct_abstract_declarator(AbstractDeclarator* 
 
 DirectAbstractDeclarator* create_direct_abstract_declarator_array(Expression* c){
     DirectAbstractDeclarator* P = new DirectAbstractDeclarator();
-    ConditionalExpression* c_cast = dynamic_cast<ConditionalExpression*>(c);
     P->is_array = true;
-    if(c==nullptr || (c->type.isInt()&&c->type.is_const_literal)) P->array_dimensions.push_back(c_cast);
+    if(c==nullptr || (c->type.isInt()&&c->type.is_const_literal)){
+        PrimaryExpression* c_cast = dynamic_cast<PrimaryExpression*>(c);
+        P->array_dimensions.push_back(stoi(c_cast->constant->value));
+    } 
     else{
         string error_msg = "Array size must be a constant integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
 		yyerror(error_msg.c_str());
@@ -733,7 +739,10 @@ DirectAbstractDeclarator* create_direct_abstract_declarator_array(DirectAbstract
         return x;
     }
     ConditionalExpression* c_cast = dynamic_cast<ConditionalExpression*>(c);
-    if(c==nullptr || (c->type.isInt()&&c->type.is_const_literal)) x->array_dimensions.push_back(c_cast);
+    if(c==nullptr || (c->type.isInt()&&c->type.is_const_literal)){
+        PrimaryExpression* c_cast = dynamic_cast<PrimaryExpression*>(c);
+        x->array_dimensions.push_back(stoi(c_cast->constant->value));
+    } 
     else{
         string error_msg = "Array size must be a constant integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
 		yyerror(error_msg.c_str());
@@ -1048,6 +1057,17 @@ Declarator *create_declarator( // Pointer *pointer,
 }
 
 //##############################################################################
+//############################ STRUCT DECLARATOR ###############################
+//##############################################################################
+
+StructDeclarator :: StructDeclarator() : NonTerminal("STRUCT DECLARATOR"){
+    declarator = nullptr;
+    conditional_expression = nullptr;
+}
+
+
+
+//##############################################################################
 //############################ ENUMERATOR ###############################
 //##############################################################################
 Enumerator::Enumerator() : NonTerminal("ENUMERATOR"){
@@ -1301,7 +1321,7 @@ void SymbolTable::insert(string name, Type type, int memoryAddr)
     table[name].push_front(sym);
 }
 
-void SymbolTable::insert_defined_type(std::string name, Types type){
+void SymbolTable::insert_defined_type(std::string name, DefinedTypes type){
     defined_types[name].push_front({currentScope,type});
 }
 
@@ -1324,7 +1344,7 @@ bool SymbolTable::lookup_defined_type(string name){
     if (it == defined_types.end())
         return false;
     
-    for(pair<int,Types> p : it->second){
+    for(pair<int,DefinedTypes> p : it->second){
         if(p.first <= currentScope) return true;
     }
     return false;
@@ -1352,12 +1372,12 @@ Symbol *SymbolTable::getSymbol(string name)
     return sym;
 }
 
-Types SymbolTable::get_defined_type(std::string name){
+DefinedTypes SymbolTable::get_defined_type(std::string name){
     auto it = defined_types.find(name);
 
-    Types types;
+    DefinedTypes types;
 
-    for(pair<int,Types> p : it->second){
+    for(pair<int,DefinedTypes> p : it->second){
         if(p.first <= currentScope){
             types = p.second;
             break;
