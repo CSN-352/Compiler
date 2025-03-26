@@ -86,22 +86,6 @@ enum PrimitiveTypesSize
     SIZE_LONG_DOUBLE_T = 8,
 };
 
-enum Tokens
-{
-    ERROR_ = -1,
-    UNSIGNED_ = 0,
-    SHORT_ = 1,
-    INT_ = 2,
-    LONG_ = 3,
-    CHAR_ = 4,
-    DOUBLE_ = 5,
-    FLOAT_ = 6,
-    VOID_ = 7,
-    ENUM_ = 8,
-    UNION_ = 9,
-    STRUCT_ = 10,
-};
-
 enum TypeQualifiers
 {
     CONST_ = 0,
@@ -583,10 +567,11 @@ private:
     int currentScope;
     bool error;
 
+public:
     SymbolTable();
-    size void enterScope();
+    void enterScope();
     void exitScope();
-    void insert(std::string name, Type type, int memoryAddr);
+    void insert(std::string name, Type type, int offset);
     void insert_defined_type(std::string name, DefinedTypes type);
     bool lookup(std::string name);
     bool lookup_defined_type(string name);

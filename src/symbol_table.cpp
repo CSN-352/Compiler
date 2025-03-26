@@ -1,4 +1,3 @@
-#include "symbol_table.h"
 #include <iostream>
 #include <unordered_map>
 #include <list>
@@ -7,15 +6,17 @@
 #include <assert.h>
 #include <ast.h>
 #include <sstream>
-#include <expression.h>
 #include <vector>
-// #include <y.tab.h>
 #include <iostream>
 #include <vector>
 #include <utility>
 #include <iterator>
-#include "ast.h"
+
+#include "parser.tab.h"
+#include "symbol_table.h"
 #include "expression.h"
+#include "ast.h"
+
 using namespace std;
 
 #define WORD_SIZE 4
@@ -467,49 +468,49 @@ void DeclarationSpecifiers :: set_type() {
 
     for (int i = 0; i < type_specifiers.size(); i++)
     {
-        if (type_specifiers[i]->type_specifier == Tokens::UNSIGNED_)
+        if (type_specifiers[i]->type_specifier == UNSIGNED)
         {
             isUnsigned = 1;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::SHORT_)
+        else if (type_specifiers[i]->type_specifier == SHORT)
         {
             isShort++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::INT_)
+        else if (type_specifiers[i]->type_specifier == INT)
         {
             isInt++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::LONG_)
+        else if (type_specifiers[i]->type_specifier == LONG)
         {
             isLong++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::CHAR_)
+        else if (type_specifiers[i]->type_specifier == CHAR)
         {
             isChar++;
         }
 
-        else if (type_specifiers[i]->type_specifier == Tokens::DOUBLE_)
+        else if (type_specifiers[i]->type_specifier == DOUBLE)
         {
             isDouble++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::FLOAT_)
+        else if (type_specifiers[i]->type_specifier == FLOAT)
         {
             isFloat++;
         }
 
-        else if (type_specifiers[i]->type_specifier == Tokens::VOID_)
+        else if (type_specifiers[i]->type_specifier == VOID)
         {
             isVoid++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::ENUM_)
+        else if (type_specifiers[i]->type_specifier == ENUM)
         {
             isEnum++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::UNION_)
+        else if (type_specifiers[i]->type_specifier == UNION)
         {
             isUnion++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::STRUCT_)
+        else if (type_specifiers[i]->type_specifier == STRUCT)
         {
             isStruct++;
         }
@@ -594,7 +595,7 @@ void DeclarationSpecifiers :: set_type() {
     {
         // string error_msg = "No type passed: ";
         // yyerror(error_msg.c_str());
-        // type_index = Tokens::ERROR_;
+        // type_index = ERROR_;
         // return;
     }
 }
@@ -963,48 +964,48 @@ void SpecifierQualifierList :: set_type() {
     }
 
     for (int i = 0; i < type_specifiers.size(); i++) {
-        if (type_specifiers[i]->type_specifier == Tokens::UNSIGNED_)
+        if (type_specifiers[i]->type_specifier == UNSIGNED)
         { 
             isUnsigned = 1;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::SHORT_) {
+        else if (type_specifiers[i]->type_specifier == SHORT) {
             isShort++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::INT_)
+        else if (type_specifiers[i]->type_specifier == INT)
         {
             isInt++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::LONG_)
+        else if (type_specifiers[i]->type_specifier == LONG)
         {
             isLong++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::CHAR_)
+        else if (type_specifiers[i]->type_specifier == CHAR)
         {
             isChar++;
         }
 
-        else if (type_specifiers[i]->type_specifier == Tokens::DOUBLE_)
+        else if (type_specifiers[i]->type_specifier == DOUBLE)
         {
             isDouble++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::FLOAT_)
+        else if (type_specifiers[i]->type_specifier == FLOAT)
         {
             isFloat++;
         }
 
-        else if (type_specifiers[i]->type_specifier == Tokens::VOID_)
+        else if (type_specifiers[i]->type_specifier == VOID)
         {
             isVoid++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::ENUM_)
+        else if (type_specifiers[i]->type_specifier == ENUM)
         {
             isEnum++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::UNION_)
+        else if (type_specifiers[i]->type_specifier == UNION)
         {
             isUnion++;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::STRUCT_)
+        else if (type_specifiers[i]->type_specifier == STRUCT)
         {
             isStruct++;
         }
@@ -1086,7 +1087,7 @@ void SpecifierQualifierList :: set_type() {
     else {
         //string error_msg = "No type passed: ";
         //yyerror(error_msg.c_str());
-        //type_index = Tokens::ERROR_;
+        //type_index = ERROR_;
         //return;
     }
 
@@ -1386,9 +1387,14 @@ void SymbolTable::insert_defined_type(std::string name, DefinedTypes type){
     defined_types[name].push_front({currentScope,type});
 }
 
-bool SymbolTable::lookup(string name){
-    t = table.find(name);
-    if(t == table.end());
+bool SymbolTable::lookup(string name)
+{
+    auto it = table.find(name);
+    if (it == table.end())
+        return false;
+
+    for (const Symbol *sym : it->second)
+    {
         if (sym->scope <= currentScope)
             return true;
     }
@@ -1458,17 +1464,17 @@ void SymbolTable::update(string name, Type newType)
     }
 }
 
-void SymbolTable::update_members(string name, Declarator* new_member){
-    Symbol* sym = getSymbol(name);
-    if(sym){
-        sym->members.push_back(new_member);
-    }
-    else{
-        string error_msg = "Symbol '" + name + "' not found.";
-        yyerror(error_msg.c_str());
-        set_error();
-    }
-}
+// void SymbolTable::update_members(string name, Declarator* new_member){
+//     Symbol* sym = getSymbol(name);
+//     if(sym){
+//         sym->members.push_back(new_member);
+//     }
+//     else{
+//         string error_msg = "Symbol '" + name + "' not found.";
+//         yyerror(error_msg.c_str());
+//         set_error();
+//     }
+// }
 
 void SymbolTable::remove(string name)
 {
@@ -1491,7 +1497,7 @@ void SymbolTable::print()
     cout << "| " << setw(20) << left << "Name"
          << "| " << setw(26) << left << "Type"
          << "| " << setw(8) << left << "Scope"
-         << "| " << setw(12) << left << "Memory Addr" << " |\n";
+         << "| " << setw(12) << left << "Offset" << " |\n";
     cout << "----------------------------------------------------------------------------\n";
 
     for (const auto &entry : table)
@@ -1502,7 +1508,7 @@ void SymbolTable::print()
                  << "| " << setw(26) << left << symbol->type.typeIndex
                  // Aren ~ maine add kiya hai .typeIndex (isko change krna hai according to Type class)
                  << "| " << setw(8) << left << symbol->scope
-                 << "| " << setw(12) << left << symbol->memoryAddr << " |\n";
+                 << "| " << setw(12) << left << symbol->offset << " |\n";
         }
     }
 
