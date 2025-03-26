@@ -22,7 +22,8 @@ using namespace std;
 
 extern void yyerror(const char *msg);
 
-extern unsigned int line_no;
+static unsigned int t_index = 14;
+static unsigned int currAddress = 0;
 
 // ##############################################################################
 // ################################## TYPE ######################################
@@ -112,7 +113,7 @@ bool Type::isPrimitive()
 //     return ss.str();
 // }
 
-size_t Type::get_size() {
+int Type::get_size() {
     if (is_array){
         unsigned int p = 1;
         for(int i = 0; i < array_dim; i++ ) {
@@ -381,6 +382,11 @@ bool operator==(Type &obj1, Type &obj2)
 }
 
 // ##############################################################################
+// ################################## DEFINED TYPES ######################################
+// ##############################################################################
+DefinedTypes :: DefinedTypes() : Type(t_index++,0,false){}
+
+// ##############################################################################
 // ################################## TYPE QUALIFIER LIST ######################################
 // ##############################################################################
 TypeQualifierList :: TypeQualifierList() : NonTerminal("TYPE QUALIFIER LIST"){}
@@ -394,6 +400,22 @@ TypeQualifierList* create_type_qualifier_list(int tq){
 TypeQualifierList* create_type_qualifier_list(TypeQualifierList* x, int tq){
     x->type_qualifier_list.push_back(tq);
     return x;
+}
+// ##############################################################################
+// ############################# DECLARATION ####################################
+// ##############################################################################
+
+Declaration ::Declaration(DeclarationSpecifiers *declaration_specifiers_,
+                          DeclaratorList *init_declarator_list_)
+    : NonTerminal("declaration"), declaration_specifiers(declaration_specifiers_), init_declarator_list(init_declarator_list_) {};
+
+Declaration *new_declaration(DeclarationSpecifiers *declaration_specifiers,
+                             DeclaratorList *init_declarator_list)
+{
+    Declaration *d = new Declaration(declaration_specifiers, init_declarator_list);
+    // d->add_children( declaration_specifiers, init_declarator_list );
+    //  declaration_specifiers->type_index;
+    return d;
 }
 
 // ##############################################################################
@@ -412,23 +434,6 @@ IdentifierList* create_identifier_list(IdentifierList* x, Identifier* id){
     return x;
 }
 
-//##############################################################################
-//############################# DECLARATOR LIST ################################
-//##############################################################################
-
-DeclaratorList ::DeclaratorList(nTerminal( "init_declarator_list" ){};
-
-DeclaratorList *create_init_declarator_list( Declarator *d ) {
-
-    if ( d == nullptr ) {
-        return nullptr;
-    }
-    DeclaratorList *dl = new DeclaratorList();
-    dl->declarator_list.push_back( d );
-    // dl->add_children( d );
-    declaration->add_to_symbol_table( local_symbol_table );
-    return dl;
-}
 
 // ##############################################################################
 // ################################## DECLARATION SPECIFIERS ######################################
@@ -447,22 +452,27 @@ void DeclarationSpecifiers :: set_type() {
     int isChar = 0;
     int isDouble = 0;
     int isFloat = 0;
-    int isVoid =0;
-    int isStruct =0;
-    int isEnum =0;
-    int isUnion =0;
+    int isVoid = 0;
+    int isStruct = 0;
+    int isEnum = 0;
+    int isUnion = 0;
 
-    for(int i = 0; i < type_qualifiers.size(); i++){
-        if(type_qualifiers[i] == TypeQualifiers:: CONST_) is_const_variable = true;
-        else if(type_qualifiers[i] == TypeQualifiers :: VOLATILE_) ; //add something later}
+    for (int i = 0; i < type_qualifiers.size(); i++)
+    {
+        if (type_qualifiers[i] == TypeQualifiers::CONST_)
+            is_const_variable = true;
+        else if (type_qualifiers[i] == TypeQualifiers ::VOLATILE_)
+            ; // add something later}
     }
 
-    for (int i = 0; i < type_specifiers.size(); i++) {
+    for (int i = 0; i < type_specifiers.size(); i++)
+    {
         if (type_specifiers[i]->type_specifier == Tokens::UNSIGNED_)
-        { 
+        {
             isUnsigned = 1;
         }
-        else if (type_specifiers[i]->type_specifier == Tokens::SHORT_) {
+        else if (type_specifiers[i]->type_specifier == Tokens::SHORT_)
+        {
             isShort++;
         }
         else if (type_specifiers[i]->type_specifier == Tokens::INT_)
@@ -502,19 +512,23 @@ void DeclarationSpecifiers :: set_type() {
         else if (type_specifiers[i]->type_specifier == Tokens::STRUCT_)
         {
             isStruct++;
-        } else {
-            //string error_msg = "Invalid type";
-            //yyerror(error_msg.c_str());
-            //return;
+        }
+        else
+        {
+            // string error_msg = "Invalid type";
+            // yyerror(error_msg.c_str());
+            // return;
         }
     }
-    if (type_specifiers.size() == 3) {
+    if (type_specifiers.size() == 3)
+    {
         if ((isLong == 2) && isUnsigned)
         {
             type_index = PrimitiveTypes::U_LONG_LONG_T;
         }
-    } 
-    else if (type_specifiers.size() == 2) {
+    }
+    else if (type_specifiers.size() == 2)
+    {
         if ((isLong >= 2) && !isUnsigned)
         {
             type_index = PrimitiveTypes::LONG_LONG_T;
@@ -535,7 +549,7 @@ void DeclarationSpecifiers :: set_type() {
         {
             type_index = PrimitiveTypes::U_INT_T;
         }
-        else if (isChar&& isUnsigned)
+        else if (isChar && isUnsigned)
         {
             type_index = PrimitiveTypes::U_CHAR_T;
         }
@@ -554,7 +568,7 @@ void DeclarationSpecifiers :: set_type() {
         {
             type_index = PrimitiveTypes::INT_T;
         }
-        
+
         else if (isShort && !isUnsigned)
         {
             type_index = PrimitiveTypes::SHORT_T;
@@ -575,22 +589,24 @@ void DeclarationSpecifiers :: set_type() {
         {
             type_index = PrimitiveTypes::DOUBLE_T;
         }
-    } 
-    else {
-        //string error_msg = "No type passed: ";
-        //yyerror(error_msg.c_str());
-        //type_index = Tokens::ERROR_;
-        //return;
+    }
+    else
+    {
+        // string error_msg = "No type passed: ";
+        // yyerror(error_msg.c_str());
+        // type_index = Tokens::ERROR_;
+        // return;
     }
 }
 
 DeclarationSpecifiers* create_declaration_specifiers(SpecifierQualifierList* sql){
-    DeclarationSpecifiers* P = new DeclarationSpecifiers();
-    P->type_specifiers.insert(P->type_specifiers.end(),sql->type_specifiers.begin(), sql->type_specifiers.end());
+    DeclarationSpecifiers *P = new DeclarationSpecifiers();
+    P->type_specifiers.insert(P->type_specifiers.end(), sql->type_specifiers.begin(), sql->type_specifiers.end());
     P->set_type();
-    if(P->type_index == -1){
+    if (P->type_index == -1)
+    {
         string error_msg = "Invalid Type at line " + to_string(P->type_specifiers[0]->line_no) + ", column " + to_string(P->type_specifiers[0]->column_no);
-		yyerror(error_msg.c_str());
+        yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
     return P;
@@ -602,11 +618,12 @@ DeclarationSpecifiers* create_declaration_specifiers(DeclarationSpecifiers* x, i
 }
 
 DeclarationSpecifiers* create_declaration_specifiers(DeclarationSpecifiers* x, SpecifierQualifierList* sql){
-    x->type_specifiers.insert(x->type_specifiers.end(),sql->type_specifiers.begin(), sql->type_specifiers.end());
+    x->type_specifiers.insert(x->type_specifiers.end(), sql->type_specifiers.begin(), sql->type_specifiers.end());
     x->set_type();
-    if(x->type_index == -1){
+    if (x->type_index == -1)
+    {
         string error_msg = "Invalid Type at line " + to_string(x->type_specifiers[0]->line_no) + ", column " + to_string(x->type_specifiers[0]->column_no);
-		yyerror(error_msg.c_str());
+        yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
     return x;    
@@ -621,7 +638,7 @@ Pointer :: Pointer(): NonTerminal("POINTER"){
 }
 
 Pointer* create_pointer(TypeQualifierList* tql){
-    Pointer* P = new Pointer();
+    Pointer *P = new Pointer();
     P->pointer_level++;
     P->type_qualifier_list = tql;
     return P;
@@ -631,6 +648,54 @@ Pointer* create_pointer(Pointer* x, TypeQualifierList* tql){
     x->pointer_level++;
     x->type_qualifier_list = tql;
     return x;
+}
+
+
+//##############################################################################
+//############################ DIRECT DECLARATOR ###############################
+//##############################################################################
+
+DirectDeclarator ::DirectDeclarator() 
+    : NonTerminal( "direct_declarator" ), identifier( nullptr )
+{}
+
+DirectDeclarator *create_dir_declarator_id( //DIRECT_DECLARATOR_TYPE type,
+    Identifier *identifier ) {
+    // assert( type == ID );
+    DirectDeclarator *dd = new DirectDeclarator();
+    // dd->type = type;
+    assert(identifier != nullptr);
+    dd->identifier = identifier;
+    dd->add_children(identifier);
+    return dd;
+}
+//##############################################################################
+//############################ DECLARATOR ###############################
+//##############################################################################
+
+Declarator ::Declarator( DirectDeclarator *dd )
+    : NonTerminal( "declarator" ), direct_declarator( dd ),
+      identifier( nullptr ) {
+    if (dd == nullptr)
+    {
+        identifier = nullptr;
+    }
+    else
+    {
+        assert(dd->identifier != nullptr);
+        id = dd->id;
+    }
+};
+
+Declarator *create_declarator( // Pointer *pointer,
+    DirectDeclarator *direct_declarator ) {
+    if (direct_declarator == NULL)
+    {
+        return NULL;
+    }
+    Declarator *d = new Declarator(direct_declarator);
+    // d->add_children( direct_declarator );
+    return d;
 }
 
 // ##############################################################################
@@ -650,7 +715,7 @@ ParameterDeclaration :: ParameterDeclaration(DeclarationSpecifiers* ds) : NonTer
 ParameterList :: ParameterList() : NonTerminal("PARAMETER LIST"){}
 
 ParameterList* create_parameter_list(ParameterDeclaration* pd){
-    ParameterList* P = new ParameterList();
+    ParameterList *P = new ParameterList();
     P->parameter_declarations.push_back(pd);
     return P;
 }
@@ -670,11 +735,31 @@ ParameterTypeList :: ParameterTypeList() : NonTerminal("PARAMETER TYPE LIST"){
 }
 
 ParameterTypeList* create_parameter_type_list(ParameterList* p, bool var){
-    ParameterTypeList* P = new ParameterTypeList();
+    ParameterTypeList *P = new ParameterTypeList();
     P->paramater_list = p;
     P->is_variadic = var;
     return P;
 }
+
+//##############################################################################
+//############################# DECLARATOR LIST ################################
+//##############################################################################
+
+DeclaratorList ::DeclaratorList() : NonTerminal( "init_declarator_list" ){};
+
+DeclaratorList *create_init_declarator_list( Declarator *d ) {
+
+    if ( d == nullptr ) {
+        return nullptr;
+    }
+    DeclaratorList *dl = new DeclaratorList();
+    dl->declarator_list.push_back( d );
+    // dl->add_children( d );
+
+    symbolTable.insert(d->name, d->type, get_size());
+    return dl;
+}
+
 
 // ##############################################################################
 // ################################## ABSTRACT DECLARATOR ######################################
@@ -720,7 +805,7 @@ DirectAbstractDeclarator* create_direct_abstract_declarator_array(Expression* c)
         string error_msg = "Array size must be a constant integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
 		yyerror(error_msg.c_str());
         symbolTable.set_error();
-    }    
+    }
     return P;
 }
 
@@ -742,12 +827,12 @@ DirectAbstractDeclarator* create_direct_abstract_declarator_array(DirectAbstract
     if(c==nullptr || (c->type.isInt()&&c->type.is_const_literal)){
         PrimaryExpression* c_cast = dynamic_cast<PrimaryExpression*>(c);
         x->array_dimensions.push_back(stoi(c_cast->constant->value));
-    } 
+    }
     else{
         string error_msg = "Array size must be a constant integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
 		yyerror(error_msg.c_str());
         symbolTable.set_error();
-    }   
+    }
     return x;
 }
 
@@ -768,6 +853,87 @@ DirectAbstractDeclarator* create_direct_abstract_declarator_function(DirectAbstr
     x->parameters = p;
     return x;
 }
+
+//##############################################################################
+//############################ STRUCT DECLARATOR ###############################
+//##############################################################################
+
+StructDeclarator :: StructDeclarator() : NonTerminal("STRUCT DECLARATOR"){
+    declarator = nullptr;
+    conditional_expression = nullptr;
+}
+
+
+//##############################################################################
+//############################ ENUMERATOR ###############################
+//##############################################################################
+Enumerator::Enumerator() : NonTerminal("ENUMERATOR"){
+    identifier = nullptr;
+    initializer_expression = nullptr;
+}
+
+Enumerator* create_enumerator(Identifier *id, Expression* e){
+    Enumerator *P = new Enumerator();
+    P->identifier = id;
+    ConditionalExpression *e_cast = dynamic_cast<ConditionalExpression *>(e);
+    if (e == nullptr || (e->type.isInt() && e->type.is_const_literal))
+        P->initializer_expression = e_cast;
+    else
+    {
+        string error_msg = "Enumerator value must be a constant integer at line  " + to_string(e->line_no) + ", column " + to_string(e->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }
+    return P;
+}
+
+//##############################################################################
+//############################ ENUMERATOR LIST###############################
+//##############################################################################
+
+EnumeratorList::EnumeratorList(): NonTerminal("ENUMERATOR LIST"){}
+
+EnumeratorList* create_enumerator_list(Enumerator* e){
+    EnumeratorList *P = new EnumeratorList();
+    P->enumerator_list.push_back(e);
+    return P;
+}
+
+EnumeratorList* create_enumerator_list(EnumeratorList* el, Enumerator* e){
+    el->enumerator_list.push_back(e);
+    return el;
+}
+
+//##############################################################################
+//############################ ENUM SPECIFIER ###############################
+//##############################################################################
+
+EnumSpecifier::EnumSpecifier(): NonTerminal("ENUM SPECIFIER"){
+    identifier = nullptr;
+    enumerators = nullptr;
+}
+
+EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el){
+    EnumSpecifier *P = new EnumSpecifier();
+    P->identifier = id;
+    P->enumerators = el;
+    if (el != nullptr)
+    {
+        Type type(PrimitiveTypes::INT_T, 0, true);
+        for (Enumerator *e : el->enumerator_list)
+            symbolTable.insert(e->identifier->value, type, 0);
+    }
+    return P;
+}
+
+// ##############################################################################
+// ################################## TYPE SPECIFIER ############################
+// ##############################################################################
+
+TypeSpecifier :: TypeSpecifier(int type_specifier, unsigned int line_no, unsigned int column_no)
+    : Terminal("TYPE SPECIFIER", NULL, line_no, column_no), type_specifier(type_specifier),   {}
+
+TypeSpecifier :: TypeSpecifier()
 
 // ##############################################################################
 // ################################## SPECIFIER QUALIFIER LIST ######################################
@@ -841,7 +1007,9 @@ void SpecifierQualifierList :: set_type() {
         else if (type_specifiers[i]->type_specifier == Tokens::STRUCT_)
         {
             isStruct++;
-        } else {
+        }
+        else
+        {
             //string error_msg = "Invalid type";
             //yyerror(error_msg.c_str());
             //return;
@@ -852,7 +1020,7 @@ void SpecifierQualifierList :: set_type() {
         {
             type_index = PrimitiveTypes::U_LONG_LONG_T;
         }
-    } 
+    }
     else if (type_specifiers.size() == 2) {
         if ((isLong >= 2) && !isUnsigned)
         {
@@ -893,7 +1061,7 @@ void SpecifierQualifierList :: set_type() {
         {
             type_index = PrimitiveTypes::INT_T;
         }
-        
+
         else if (isShort && !isUnsigned)
         {
             type_index = PrimitiveTypes::SHORT_T;
@@ -914,7 +1082,7 @@ void SpecifierQualifierList :: set_type() {
         {
             type_index = PrimitiveTypes::DOUBLE_T;
         }
-    } 
+    }
     else {
         //string error_msg = "No type passed: ";
         //yyerror(error_msg.c_str());
@@ -1013,117 +1181,6 @@ Identifier ::Identifier(string value, unsigned int line_no, unsigned int column_
     : Terminal("IDENTIFIER", value, line_no, column_no)
 {}
 
-//##############################################################################
-//############################ DIRECT DECLARATOR ###############################
-//##############################################################################
-
-DirectDeclarator ::DirectDeclarator() 
-    : NonTerminal( "direct_declarator" ), identifier( nullptr )
-{}
-
-DirectDeclarator *create_dir_declarator_id( //DIRECT_DECLARATOR_TYPE type,
-    Identifier *identifier ) {
-    //assert( type == ID );
-    DirectDeclarator *dd = new DirectDeclarator();
-    //dd->type = type;
-    assert( identifier != nullptr );
-    dd->identifier = identifier;
-    dd->add_children( identifier );
-    return dd;
-}
-//##############################################################################
-//############################ DECLARATOR ###############################
-//##############################################################################
-
-Declarator ::Declarator( DirectDeclarator *dd )
-    : NonTerminal( "declarator" ), direct_declarator( dd ),
-      identifier( nullptr ) {
-    if ( dd == nullptr ) {
-        identifier = nullptr;
-    } else {
-        assert( dd->identifier != nullptr );
-        id = dd->id;
-    }
-};
-
-Declarator *create_declarator( // Pointer *pointer,
-    DirectDeclarator *direct_declarator ) {
-    if ( direct_declarator == NULL ) {
-        return NULL;
-    }
-        Declarator *d = new Declarator( direct_declarator );
-        //d->add_children( direct_declarator );
-    return d;
-}
-
-//##############################################################################
-//############################ STRUCT DECLARATOR ###############################
-//##############################################################################
-
-StructDeclarator :: StructDeclarator() : NonTerminal("STRUCT DECLARATOR"){
-    declarator = nullptr;
-    conditional_expression = nullptr;
-}
-
-
-
-//##############################################################################
-//############################ ENUMERATOR ###############################
-//##############################################################################
-Enumerator::Enumerator() : NonTerminal("ENUMERATOR"){
-    identifier = nullptr;
-    initializer_expression = nullptr;
-}
-
-Enumerator* create_enumerator(Identifier *id, Expression* e){
-    Enumerator* P = new Enumerator();
-    P->identifier = id;
-    ConditionalExpression* e_cast = dynamic_cast<ConditionalExpression*>(e);
-    if(e == nullptr || (e->type.isInt()&&e->type.is_const_literal)) P->initializer_expression = e_cast;
-    else{
-        string error_msg = "Enumerator value must be a constant integer at line  " + to_string(e->line_no) + ", column " + to_string(e->column_no);
-		yyerror(error_msg.c_str());
-        symbolTable.set_error();
-    }
-    return P;
-}
-
-//##############################################################################
-//############################ ENUMERATOR LIST###############################
-//##############################################################################
-
-EnumeratorList::EnumeratorList(): NonTerminal("ENUMERATOR LIST"){}
-
-EnumeratorList* create_enumerator_list(Enumerator* e){
-    EnumeratorList* P = new EnumeratorList();
-    P->enumerator_list.push_back(e);
-    return P;
-}
-
-EnumeratorList* create_enumerator_list(EnumeratorList* el, Enumerator* e){
-    el->enumerator_list.push_back(e);
-    return el;
-}
-
-//##############################################################################
-//############################ ENUM SPECIFIER ###############################
-//##############################################################################
-
-EnumSpecifier::EnumSpecifier(): NonTerminal("ENUM SPECIFIER"){
-    identifier = nullptr;
-    enumerators = nullptr;
-}
-
-EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el){
-    EnumSpecifier *P = new EnumSpecifier();
-    P->identifier = id;
-    P->enumerators = el;
-    if(el != nullptr){
-        Type type(PrimitiveTypes::INT_T,0,true);
-        for(Enumerator* e : el->enumerator_list) symbolTable.insert(e->identifier->value,type,0);
-    }
-    return P;
-}
 //############################# DECLARATION ####################################
 //##############################################################################
 
@@ -1215,9 +1272,13 @@ Type Constant ::set_constant_type(string value)
         }
         if (isFloat) {
             t.typeIndex = PrimitiveTypes::FLOAT_T;
-        } else if (isDouble == 1) {
+        }
+        else if (isDouble == 1)
+        {
             t.typeIndex = PrimitiveTypes::LONG_DOUBLE_T;
-        } else {
+        }
+        else
+        {
             t.typeIndex = PrimitiveTypes::DOUBLE_T;
         }
     }
@@ -1265,10 +1326,10 @@ StringLiteral ::StringLiteral(string value, unsigned int line_no, unsigned int c
 // ################################## SYMBOLTABLE ######################################
 // ##############################################################################
 
-SymbolTable::SymbolTable() { currentScope = 0; }
+SymbolTable::SymbolTable() {
+    currentScope = 0; }
 
-void SymbolTable::enterScope()
-{
+void SymbolTable::enterScope(){
     currentScope++;
 }
 
@@ -1304,7 +1365,7 @@ void SymbolTable::exitScope()
         currentScope--;
 }
 
-void SymbolTable::insert(string name, Type type, int memoryAddr)
+void SymbolTable::insert(string name, Type type, int size)
 {
     for (const Symbol *sym : table[name])
     {
@@ -1316,8 +1377,8 @@ void SymbolTable::insert(string name, Type type, int memoryAddr)
             return;
         }
     }
-
-    Symbol *sym = new Symbol(name, type, currentScope, memoryAddr);
+    Symbol *sym = new Symbol(name, type, currentScope, currAddress);
+    currAddress += size;
     table[name].push_front(sym);
 }
 
@@ -1325,14 +1386,9 @@ void SymbolTable::insert_defined_type(std::string name, DefinedTypes type){
     defined_types[name].push_front({currentScope,type});
 }
 
-bool SymbolTable::lookup(string name)
-{
-    auto it = table.find(name);
-    if (it == table.end())
-        return false;
-
-    for (const Symbol *sym : it->second)
-    {
+bool SymbolTable::lookup(string name){
+    t = table.find(name);
+    if(t == table.end());
         if (sym->scope <= currentScope)
             return true;
     }
