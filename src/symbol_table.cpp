@@ -58,7 +58,7 @@ Type::Type(int idx, int p_lvl, bool is_con)
 
     is_function = false;
     num_args = 0;
-    is_defined = false;
+    is_defined_type = false;
 }
 
 bool Type::isPrimitive()
@@ -113,47 +113,35 @@ bool Type::isPrimitive()
 //     }
 //     return ss.str();
 // }
-
 int Type::get_size() {
     if (is_array){
         unsigned int p = 1;
         for(int i = 0; i < array_dim; i++ ) {
             p *= array_dims[i];
         }
-
-        size_t size;
-        if (isPrimitive()) {
-            size = PrimitiveTypesSize::
-        } 
+        int size;
+        if (isPrimitive()) size = primitive_type_size[typeIndex];
         else {
-            if ( defined_types[typeIndex].struct_definition != nullptr ) {
-                sz = defined_types[typeIndex].struct_definition->get_size();
-            } else {
-                error_msg( "Size of " + defined_types[typeIndex].name +
-                               " isn't known",
-                           line_no );
-                exit( 0 );
+            if(symbolTable.get_defined_type(defined_type_name).type_definition != nullptr) size = symbolTable.get_defined_type(defined_type_name).type_definition->get_size();
+            else {
+                string error_msg = "Type " + defined_type_name + " declared but not defined at ";
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
             }
         }
-        return sz * p;
+        return size * p;
 
     } 
     else if ( ptr_level > 0 || is_function ) return WORD_SIZE;
-    else if ( !isPrimitive() ) {
-        if ( defined_types[typeIndex].struct_definition != nullptr ) {
-            return defined_types[typeIndex].struct_definition->get_size();
-        } 
+    else if (!isPrimitive()) {
+        if(symbolTable.get_defined_type(defined_type_name).type_definition != nullptr) return symbolTable.get_defined_type(defined_type_name).type_definition->get_size();
         else {
-            error_msg( "Size of " + defined_types[typeIndex].name +
-                           " isn't known",
-                       line_no );
-            exit( 0 );
+            string error_msg = "Type " + defined_type_name + " declared but not defined at ";
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
         }
     }
-
-    else {
-        return defined_types[typeIndex].size;
-    }
+    else return primitive_type_size[typeIndex];
 }
 
 bool Type::isInt()
@@ -385,7 +373,9 @@ bool operator==(Type &obj1, Type &obj2)
 // ##############################################################################
 // ################################## DEFINED TYPES ######################################
 // ##############################################################################
-DefinedTypes :: DefinedTypes() : Type(t_index++,0,false){}
+DefinedTypes :: DefinedTypes() : Type(t_index++,0,false){
+    is_defined_type = true;
+}
 
 // ##############################################################################
 // ################################## TYPE QUALIFIER LIST ######################################
@@ -402,27 +392,11 @@ TypeQualifierList* create_type_qualifier_list(TypeQualifierList* x, int tq){
     x->type_qualifier_list.push_back(tq);
     return x;
 }
-// ##############################################################################
-// ############################# DECLARATION ####################################
-// ##############################################################################
-
-Declaration ::Declaration(DeclarationSpecifiers *declaration_specifiers_,
-                          DeclaratorList *init_declarator_list_)
-    : NonTerminal("declaration"), declaration_specifiers(declaration_specifiers_), init_declarator_list(init_declarator_list_) {};
-
-Declaration *new_declaration(DeclarationSpecifiers *declaration_specifiers,
-                             DeclaratorList *init_declarator_list)
-{
-    Declaration *d = new Declaration(declaration_specifiers, init_declarator_list);
-    // d->add_children( declaration_specifiers, init_declarator_list );
-    //  declaration_specifiers->type_index;
-    return d;
-}
 
 // ##############################################################################
 // ################################## IDENTIFIER LIST ######################################
 // ##############################################################################
-IdentifierList :: IdentifierList(nTerminal("IDENTIFIER LIST") {}
+IdentifierList :: IdentifierList() : NonTerminal("IDENTIFIER LIST") {}
 
 IdentifierList* create_identifier_list(Identifier* id){
     IdentifierList* P = new IdentifierList();
@@ -756,8 +730,6 @@ DeclaratorList *create_init_declarator_list( Declarator *d ) {
     DeclaratorList *dl = new DeclaratorList();
     dl->declarator_list.push_back( d );
     // dl->add_children( d );
-
-    symbolTable.insert(d->name, d->type, get_size());
     return dl;
 }
 
@@ -932,7 +904,7 @@ EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el){
 // ##############################################################################
 
 TypeSpecifier :: TypeSpecifier(int type_specifier, unsigned int line_no, unsigned int column_no)
-    : Terminal("TYPE SPECIFIER", NULL, line_no, column_no), type_specifier(type_specifier),   {}
+    : NonTerminal("TYPE SPECIFIER", NULL, line_no, column_no), type_specifier(type_specifier)   {}
 
 TypeSpecifier :: TypeSpecifier()
 
@@ -1192,8 +1164,13 @@ Declaration ::Declaration( DeclarationSpecifiers *declaration_specifiers_,
 Declaration *new_declaration( DeclarationSpecifiers *declaration_specifiers,
     DeclaratorList *init_declarator_list ) {
     Declaration *d = new Declaration( declaration_specifiers, init_declarator_list );
-    //d->add_children( declaration_specifiers, init_declarator_list );
-    // declaration_specifiers->type_index;
+    
+    int number_of_variables = init_declarator_list->declarator_list.size();
+
+    for(int index = 0;index<number_of_variables;index++){
+        Declarator* variable = init_declarator_list->declarator_list[index];
+        symbolTable.insert(variable->name, d->type, d->type.get_size());
+    }
     return d;
 }
 
@@ -1514,6 +1491,5 @@ void SymbolTable::print()
 
     cout << "----------------------------------------------------------------------------\n";
 }
-
 
 SymbolTable symbolTable;

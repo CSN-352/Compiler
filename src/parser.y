@@ -279,7 +279,7 @@ type_specifier:
     VOID      
     | CHAR    
 	| SHORT   
-	| INT     
+	| INT   
 	| LONG    
 	| FLOAT   
 	| DOUBLE  
@@ -369,8 +369,8 @@ enumerator:
     ;
 
 type_qualifier:
-    CONST  {$$ = $1;}
-    | VOLATILE  {$$ = $1;}
+    CONST  {$$ = 0;}
+    | VOLATILE  {$$ = 1;}
     ;
 
 declarator:

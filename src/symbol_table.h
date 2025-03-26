@@ -69,22 +69,9 @@ enum PrimitiveTypes
     VOID_T = 13,
 };
 
-enum PrimitiveTypesSize
-{
-    SIZE_U_CHAR_T = 2,
-    SIZE_CHAR_T = 2,
-    SIZE_U_SHORT_T = 2,
-    SIZE_SHORT_T = 2,
-    SIZE_U_INT_T = 4,
-    SIZE_INT_T = 4,
-    SIZE_U_LONG_T = 4,
-    SIZE_LONG_T = 4,
-    SIZE_U_LONG_LONG_T = 8,
-    SIZE_LONG_LONG_T = 8,
-    SIZE_FLOAT_T = 4,
-    SIZE_DOUBLE_T = 8,
-    SIZE_LONG_DOUBLE_T = 8,
-};
+
+
+unordered_map<int,int> primitive_type_size = {{0,2},{1,2},{2,2},{3,2},{4,4},{5,4},{6,4},{7,4},{8,8},{9,8},{10,4},{11,8},{12,4}};
 
 enum TypeQualifiers
 {
@@ -117,7 +104,8 @@ public:
     int num_args;
     vector<Type> arg_types;
 
-    bool is_defined;
+    bool is_defined_type;
+    string defined_type_name;
 
     Type();
 
@@ -151,16 +139,16 @@ class TypeDefinition
 public:
     unordered_map<string, Type> members;
     Type *get_member(Identifier *id);
+    int get_size();
 };
 
 class DefinedTypes : Type
 {
 public:
-    std::string name;
     bool is_class;
     bool is_struct;
     bool is_union;
-    TypeDefinition *struct_definition;
+    TypeDefinition *type_definition;
     DefinedTypes();
 };
 
@@ -189,7 +177,7 @@ class Declaration : public NonTerminal
 public:
     DeclarationSpecifiers *declaration_specifiers;
     DeclaratorList *init_declarator_list;
-    int type;
+    Type type;
     Declaration(DeclarationSpecifiers *declaration_specifiers_,
                 DeclaratorList *init_declarator_list_);
     void add_to_symbol_table(SymbolTable &sym_tab);
@@ -279,7 +267,7 @@ public:
 DirectDeclarator *create_dir_declarator_id( // DIRECT_DECLARATOR_TYPE type,
     Identifier *id);
 
-class Declarator : NonTerminal
+class Declarator : public NonTerminal
 {
     // Implement after Pointer and DirectDeclarator
 public:
@@ -468,14 +456,14 @@ public:
 EnumSpecifier *create_enumerator_specifier(EnumeratorList *enum_list);
 EnumSpecifier *create_enumerator_specifier(Identifier *id, EnumeratorList *enum_list);
 
-class TypeSpecifier : public Terminal
+class TypeSpecifier : public NonTerminal
 {
     // Implement after StructUnionSpecifier, ClassSpecifier
 public:
     int type_specifier;
-    Identifier *identifier;
-    StructDeclarationList *struct_declaration_list;
-    EnumeratorList *enumerator_list;
+    EnumSpecifier* enum_specifier;
+    ClassSpecifier* class_specifier;
+    StructUnionSpecifier* struct_union_specifier;
     int type_index;
 
     TypeSpecifier(int type_specifier, unsigned int line_no, unsigned int column_no);
