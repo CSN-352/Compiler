@@ -31,12 +31,13 @@ class AbstractDeclarator;
 class DirectAbstractDeclarator;
 class StructDefinition;
 class StructUnionSpecifier;
+class StructDeclarator;
 class StructDeclaration;
 class ClassSpecifier;
 class ClassDeclarationList;
 class ClassDeclaration;
 class StructDeclarationList;
-// class StructDeclaratorList;
+class StructDeclaratorList;
 class Enumerator;
 class EnumeratorList;
 class TypeSpecifier;
@@ -135,7 +136,6 @@ public:
     void make_signed();
     void make_unsigned();
     bool isVoid();
-    bool is_invalid();
     bool is_ea();
     int get_size();
 
@@ -150,13 +150,13 @@ public:
 class TypeDefinition 
 {
 public:
-    unordered_map<string, Type> members;
     TypeCategory type_category;
-    Type *get_member(Identifier *id);
+    vector<string> members;
+    bool get_member(Identifier* id);
     int get_size();
 };
 
-TypeDefinition *create_struct_or_union_definition(TypeCategory tc, StructDeclarationList *sdl);
+TypeDefinition *create_type_definition(TypeCategory tc, StructDeclarationList *sdl);
 
 // ##############################################################################
 // ################################## DEFINED TYPES ######################################
@@ -168,7 +168,7 @@ public:
     static int t_index_count;
     TypeCategory type_category;
     TypeDefinition *type_definition;
-    DefinedTypes();
+    DefinedTypes(TypeCategory tc, TypeDefinition *td);
 };
 
 // typedef enum direct_declarator_enum {
@@ -207,8 +207,7 @@ public:
     Declaration();
 };
 
-Declaration* create_declaration(DeclarationSpecifiers *declaraion_specifiers,
-                             DeclaratorList *init_declarator_list);
+Declaration* create_declaration(DeclarationSpecifiers *declaraion_specifiers,DeclaratorList *init_declarator_list);
 
 // ##############################################################################
 // ################################## DECLARATION LIST ######################################
@@ -357,18 +356,18 @@ Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declar
 
 class ParameterDeclaration : public NonTerminal
 {
-    // Implement after Declaration Specifiers and Declarator
+    // Fully Implemented
 public:
     DeclarationSpecifiers *declarations_specifiers;
     AbstractDeclarator *abstract_declarator;
     Declarator *declarator;
     Type type;
-    Type set_type(DeclarationSpecifiers *ds);
     ParameterDeclaration();
 };
 
 ParameterDeclaration *create_parameter_declaration(DeclarationSpecifiers *ds, AbstractDeclarator *ad);
-ParameterDeclaration *create_paramater_declaration(DeclarationSpecifiers *ds, Declarator *d);
+ParameterDeclaration *create_parameter_declaration(DeclarationSpecifiers *ds, Declarator *d);
+ParameterDeclaration *create_parameter_declaration(DeclarationSpecifiers *ds);
 
 // ##############################################################################
 // ################################## PARAMETER LIST ######################################
@@ -459,24 +458,15 @@ public:
 
 class StructUnionSpecifier : public NonTerminal
 {
-    TypeCategory type_category;
-    Identifier *identifier;
-    StructDeclarationList *struct_declaration_list;
+    public:
+        TypeCategory type_category;
+        Identifier *identifier;
+        StructDeclarationList *struct_declaration_list;
 
-    StructUnionSpecifier(TypeCategory type_category, Identifier *identifier, StructDeclarationList *struct_declaration_list);
+        StructUnionSpecifier();
 };
 
-class StructDeclaration : public NonTerminal
-{
-public:
-    SpecifierQualifierList *specifier_qualifier_list;
-    DeclaratorList *declarator_list;
-
-    StructDeclaration(SpecifierQualifierList *specifier_qualifier_list, DeclaratorList *declarator_list);
-    void add_to_struct_definition(StructDefinition *);
-};
-
-StructDeclaration* create_struct_declaration(SpecifierQualifierList *sql, DeclaratorList *dl);
+StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationList *sdl);
 
 class ClassSpecifier : public NonTerminal
 {
@@ -495,29 +485,48 @@ class ClassDeclaration : public NonTerminal
 
 class StructDeclarationList : public NonTerminal
 {
-    // Implement after StructDeclaration
+    // Fully Implemented
 public:
     vector<StructDeclaration *> struct_declaration_list;
     StructDeclarationList();
 };
 
 StructDeclarationList *create_struct_declaration_list(StructDeclaration *sd);
-StructDeclarationList *add_to_struct_declaration_list(StructDeclarationList *sdl, StructDeclaration *sd);
+StructDeclarationList *create_struct_declaration_list(StructDeclarationList *sdl, StructDeclaration *sd);
 
-// Implemented as DeclaratorList
-// class StructDeclaratorList : public NonTerminal
-// {
-//     // Implement after StructDeclarator
-// };
+class StructDeclaration : public NonTerminal
+{
+public:
+    // Fully Implemented
+    SpecifierQualifierList *specifier_qualifier_list;
+    StructDeclaratorList* struct_declarator_list;
+    StructDeclaration();
+    // void add_to_struct_definition(StructDefinition *);
+};
 
-// Implemented as Declarator
-// class StructDeclarator : public NonTerminal
-// {
-//     // Implement after Declarator, ConditionalExpression
-//     Declarator *declarator;
-//     ConditionalExpression *conditional_expression;
-//     StructDeclarator();
-// };
+StructDeclaration* create_struct_declaration(SpecifierQualifierList *sql, StructDeclaratorList *dl);
+
+class StructDeclaratorList : public NonTerminal
+{
+    // Fully Implemented
+    public:
+        vector<StructDeclarator*> struct_declarator_list;
+        StructDeclaratorList();
+};
+
+StructDeclaratorList *create_struct_declarator_list(StructDeclarator* sd);
+StructDeclaratorList *create_struct_declarator_list(StructDeclaratorList* sdl, StructDeclarator* sd);
+
+class StructDeclarator : public NonTerminal
+{
+    // Fully Implemented
+    public:
+        Declarator* declarator;
+        int bit_field_width;
+        StructDeclarator();
+};
+
+StructDeclarator *create_struct_declarator(Declarator *sd, Expression *e);
 
 class Enumerator : public NonTerminal
 {
@@ -542,34 +551,31 @@ EnumeratorList *create_enumerator_list(EnumeratorList *el, Enumerator *e);
 
 class EnumSpecifier : public NonTerminal
 {
-
-public:
-    Identifier *identifier;
-    EnumeratorList *enumerators;
-    EnumSpecifier();
+    public:
+        Identifier *identifier;
+        EnumeratorList *enumerators;
+        EnumSpecifier();
 };
 EnumSpecifier *create_enumerator_specifier(EnumeratorList *enum_list);
 EnumSpecifier *create_enumerator_specifier(Identifier *id, EnumeratorList *enum_list);
 
 class TypeSpecifier : public NonTerminal
 {
-    // Implement after StructUnionSpecifier, ClassSpecifier
+    // Fully Implemented
 public:
-    int type_specifier;
+    Terminal* primitive_type_specifier;
     EnumSpecifier *enum_specifier;
     StructUnionSpecifier *struct_union_specifier;
     // ClassSpecifier *class_specifier;
     // int type_index;
 
-    TypeSpecifier(int type_specifier);
-    TypeSpecifier(EnumSpecifier *enum_specifier);
-    TypeSpecifier(StructUnionSpecifier *struct_union_specifier);
+    TypeSpecifier();
     // TypeSpecifier(ClassSpecifier* class_specifier);
 };
 
-TypeSpecifier *create_type_specifier(int type_specifier);
-TypeSpecifier *create_enum_type_specifier(EnumSpecifier *enum_specifier);
-TypeSpecifier *create_struct_or_union_type_specifier(StructUnionSpecifier *struct_union_specifier);
+TypeSpecifier *create_type_specifier(Terminal* t);
+TypeSpecifier *create_type_specifier(EnumSpecifier* es);
+TypeSpecifier *create_type_specifier(StructUnionSpecifier* sus);
 // TypeSpecifier* create_type_specifier(ClassSpecifier* class_specifier);
 
 class SpecifierQualifierList : public NonTerminal
@@ -663,4 +669,4 @@ public:
 
 extern SymbolTable symbolTable;
 
-#endif
+#endif;

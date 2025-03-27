@@ -1,0 +1,124 @@
+
+SYMBOL TABLE:
+----------------------------------------------------------------------------
+| Name                | Type                      | Scope   | Offset       |
+----------------------------------------------------------------------------
+| declarator          | -1                        | 0       | 0            |
+----------------------------------------------------------------------------
+Parsing completed successfully.
+Starting parse
+Entering state 0
+Stack now 0
+Reading a token
+Next token is token LONG ()
+Shifting token LONG ()
+Entering state 9
+Stack now 0 9
+Reducing stack by rule 99 (line 292):
+   $1 = token LONG ()
+-> $$ = nterm type_specifier ()
+Entering state 33
+Stack now 0 33
+Reducing stack by rule 132 (line 347):
+   $1 = nterm type_specifier ()
+-> $$ = nterm specifier_qualifier_list ()
+Entering state 37
+Stack now 0 37
+Reading a token
+Next token is token LONG ()
+Shifting token LONG ()
+Entering state 9
+Stack now 0 37 9
+Reducing stack by rule 99 (line 292):
+   $1 = token LONG ()
+-> $$ = nterm type_specifier ()
+Entering state 67
+Stack now 0 37 67
+Reducing stack by rule 133 (line 348):
+   $1 = nterm specifier_qualifier_list ()
+   $2 = nterm type_specifier ()
+-> $$ = nterm specifier_qualifier_list ()
+Entering state 37
+Stack now 0 37
+Reading a token
+Next token is token INT ()
+Shifting token INT ()
+Entering state 8
+Stack now 0 37 8
+Reducing stack by rule 98 (line 291):
+   $1 = token INT ()
+-> $$ = nterm type_specifier ()
+Entering state 67
+Stack now 0 37 67
+Reducing stack by rule 133 (line 348):
+   $1 = nterm specifier_qualifier_list ()
+   $2 = nterm type_specifier ()
+Syntax error at line 1: Invalid Type at line 0, column 0
+-> $$ = nterm specifier_qualifier_list ()
+Entering state 37
+Stack now 0 37
+Reading a token
+Next token is token IDENTIFIER ()
+Reducing stack by rule 84 (line 265):
+   $1 = nterm specifier_qualifier_list ()
+Syntax error at line 1: Invalid Type at line 0, column 0
+-> $$ = nterm declaration_specifiers ()
+Entering state 31
+Stack now 0 31
+Next token is token IDENTIFIER ()
+Shifting token IDENTIFIER ()
+Entering state 3
+Stack now 0 31 3
+Reducing stack by rule 150 (line 393):
+   $1 = token IDENTIFIER ()
+-> $$ = nterm direct_declarator ()
+Entering state 41
+Stack now 0 31 41
+Reading a token
+Next token is token SEMICOLON ()
+Reducing stack by rule 149 (line 389):
+   $1 = nterm direct_declarator ()
+-> $$ = nterm declarator ()
+Entering state 63
+Stack now 0 31 63
+Next token is token SEMICOLON ()
+Reducing stack by rule 88 (line 275):
+   $1 = nterm declarator ()
+-> $$ = nterm init_declarator ()
+Entering state 61
+Stack now 0 31 61
+Reducing stack by rule 86 (line 270):
+   $1 = nterm init_declarator ()
+-> $$ = nterm init_declarator_list ()
+Entering state 60
+Stack now 0 31 60
+Next token is token SEMICOLON ()
+Shifting token SEMICOLON ()
+Entering state 92
+Stack now 0 31 60 92
+Reducing stack by rule 81 (line 259):
+   $1 = nterm declaration_specifiers ()
+   $2 = nterm init_declarator_list ()
+   $3 = token SEMICOLON ()
+Syntax error at line 1: Type  declared but not defined at 
+-> $$ = nterm declaration ()
+Entering state 30
+Stack now 0 30
+Reducing stack by rule 232 (line 541):
+   $1 = nterm declaration ()
+-> $$ = nterm external_declaration ()
+Entering state 44
+Stack now 0 44
+Reducing stack by rule 229 (line 535):
+   $1 = nterm external_declaration ()
+-> $$ = nterm translation_unit ()
+Entering state 43
+Stack now 0 43
+Reading a token
+Now at end of input.
+Shifting token "end of file" ()
+Entering state 78
+Stack now 0 43 78
+Stack now 0 43 78
+Cleanup: popping token "end of file" ()
+Cleanup: popping nterm translation_unit ()

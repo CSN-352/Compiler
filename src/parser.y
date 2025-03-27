@@ -53,6 +53,8 @@ void yyerror(const char *msg);
     EnumSpecifier* enum_specifier;
     StructUnionSpecifier* struct_or_union_specifier;
     ClassSpecifier* class_specifier;
+    StructDeclarator* struct_declarator;
+    StructDeclaratorList* struct_declarator_list;
     StructDeclaration* struct_declaration;
     StructDeclarationList* struct_declaration_list;
     int intval;
@@ -64,6 +66,8 @@ void yyerror(const char *msg);
 %token <constant> I_CONSTANT F_CONSTANT CHAR_CONSTANT
 %token <string_literal> STRING_LITERAL
 %token <terminal> INC_OP DEC_OP PTR_OP DOT
+%token <terminal> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME
+%token <terminal> STRUCT UNION
 %type <terminal> unary_operator
 %type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression
 %type <argument_expression_list> argument_expression_list
@@ -80,7 +84,7 @@ void yyerror(const char *msg);
 %type <struct_or_union_specifier> struct_or_union_specifier
 %type <class_specifier> class_specifier
 %type <enum_specifier> enum_specifier
-%type <intval> type_qualifier storage_class_specifier struct_or_union
+%type <intval> type_qualifier storage_class_specifier
 %type <specifier_qualifier_list> specifier_qualifier_list
 %type <pointer> pointer
 %type <type_qualifier_list> type_qualifier_list;
@@ -88,14 +92,14 @@ void yyerror(const char *msg);
 %type <parameter_declaration> parameter_declaration;
 %type <enumerator> enumerator
 %type <enumerator_list> enumerator_list
-%type <declarator> struct_declarator
-%type <init_declarator_list> struct_declarator_list
+%type <struct_declarator> struct_declarator
+%type <struct_declarator_list> struct_declarator_list
 %type <struct_declaration> struct_declaration
 %type <struct_declaration_list> struct_declaration_list
-%token <intval> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME
+%type <terminal> struct_or_union
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
 %token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
-%token <strval> IF RETURN STRUCT SWITCH UNION
+%token <strval> IF RETURN SWITCH
 %token <strval> WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
@@ -297,25 +301,28 @@ type_specifier:
 	| SIGNED    {$$ = create_type_specifier($1);}
 	| UNSIGNED  {$$ = create_type_specifier($1);}
     | TYPE_NAME {$$ = create_type_specifier($1);}
-	| struct_or_union_specifier {$$ = create_struct_or_union_type_specifier($1);}
-	| enum_specifier            {$$ = create_enum_type_specifier($1);}
-    | class_specifier           /*{$$ = create_class_type_specifier($1);} */
+	| struct_or_union_specifier {$$ = create_type_specifier($1);}
+	| enum_specifier            {$$ = create_type_specifier($1);}
+    | class_specifier           /*{$$ = create_type_specifier($1);} */
 	;
 
+// DONE
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} struct_declaration_list RIGHT_CURLY {symbolTable.exitScope();}  
-	| struct_or_union LEFT_CURLY {symbolTable.enterScope();} struct_declaration_list RIGHT_CURLY {symbolTable.exitScope();}    
-	| struct_or_union IDENTIFIER                      
+    struct_or_union IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} struct_declaration_list RIGHT_CURLY {create_struct_union_specifier($1->name,$2,$5); symbolTable.exitScope();}  
+	| struct_or_union LEFT_CURLY {symbolTable.enterScope();} struct_declaration_list RIGHT_CURLY {create_struct_union_specifier($1->name,nullptr,$4); symbolTable.exitScope();}  
+	| struct_or_union IDENTIFIER {create_struct_union_specifier($1->name,$2,nullptr);}                  
 	;
 
+// DONE
 struct_or_union:
     STRUCT {$$ = $1;}
     | UNION {$$ = $1;}
     ;
 
+// DONE
 struct_declaration_list:
     struct_declaration {$$ = create_struct_declaration_list($1);}
-    | struct_declaration_list struct_declaration {$$ = add_to_struct_declaration_list($1, $2);}
+    | struct_declaration_list struct_declaration {$$ = create_struct_declaration_list($1, $2);}
     ;
 
 class_specifier:
@@ -355,15 +362,15 @@ specifier_qualifier_list:
 
 // DONE
 struct_declarator_list:
-    struct_declarator { $$ = create_init_declarator_list( $1 ); }
-	| struct_declarator_list COMMA struct_declarator {$$ = add_to_init_declarator_list($1, $3);}
+    struct_declarator { $$ = create_struct_declarator_list( $1 ); }
+	| struct_declarator_list COMMA struct_declarator {$$ = create_struct_declarator_list($1, $3);}
 	;
 
-// DONE
+//DONE
 struct_declarator:
-    declarator {$$ = $1;}
-	/* | COLON conditional_expression
-	| declarator COLON conditional_expression */
+    declarator {$$ = create_struct_declarator($1,nullptr);}
+	| COLON conditional_expression {$$ = create_struct_declarator(nullptr,$2);}
+	| declarator COLON conditional_expression {$$ = create_struct_declarator($1,$3);}
 	;
 
 enum_specifier:
@@ -424,9 +431,9 @@ parameter_list:
     ;
 
 parameter_declaration:
-    declaration_specifiers declarator 
-	| declaration_specifiers abstract_declarator 
-	| declaration_specifiers                        
+    declaration_specifiers declarator {$$ = create_parameter_declaration($1,$2);}
+	| declaration_specifiers abstract_declarator {$$ = create_parameter_declaration($1,$2);}
+	| declaration_specifiers {$$ = create_parameter_declaration($1);}                   
 	;
 
 identifier_list:

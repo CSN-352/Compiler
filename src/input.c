@@ -1,1 +1,1 @@
-const long long int long x ;
+long long int x; 

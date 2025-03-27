@@ -237,33 +237,33 @@ NEWLINE        \n
 {AUTO}                { yylval.intval = AUTO; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AUTO); }
 {BREAK}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BREAK); }
 {CASE}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CASE); }
-{CHAR}                { yylval.intval = CHAR; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CHAR); }
-{CONST}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONST); }
-{CONTINUE}            { yylval.intval = 0; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONTINUE); }
+{CHAR}                { Terminal* t = new Terminal("CHAR",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CHAR); }
+{CONST}               { yylval.intval = CONST; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONST); }
+{CONTINUE}            { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CONTINUE); }
 {DEFAULT}             { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DEFAULT); }
 {DO}                  { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DO); }
-{DOUBLE}              { yylval.intval = DOUBLE; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DOUBLE); }
+{DOUBLE}              { Terminal* t = new Terminal("DOUBLE",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DOUBLE); }
 {ELSE}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ELSE); }
 {ENUM}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ENUM); }
 {EXTERN}              { yylval.intval = EXTERN; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(EXTERN); }
-{FLOAT}               { yylval.intval = FLOAT; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(FLOAT); }
+{FLOAT}               { Terminal* t = new Terminal("FLOAT",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(FLOAT); }
 {FOR}                 { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(FOR); }
 {GOTO}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(GOTO); }
 {IF}                  { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(IF); }
-{INT}                 { yylval.intval = INT; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INT); }
-{LONG}                { yylval.intval = LONG; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LONG); }
+{INT}                 { Terminal* t = new Terminal("INT",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INT); }
+{LONG}                { Terminal* t = new Terminal("LONG",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LONG); }
 {REGISTER}            { yylval.intval = REGISTER; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(REGISTER); }
 {RETURN}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RETURN); }
-{SHORT}               { yylval.intval = SHORT; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SHORT); }
-{SIGNED}              { yylval.intval = SIGNED; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SIGNED); }
-{SIZEOF}              { Terminal* t = new Terminal("PTR_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SIZEOF); }
+{SHORT}               { Terminal* t = new Terminal("SHORT",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SHORT); }
+{SIGNED}              { Terminal* t = new Terminal("SIGNED",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SIGNED); }
+{SIZEOF}              { Terminal* t = new Terminal("SIZEOF",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SIZEOF); }
 {STATIC}              { yylval.intval = STATIC; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STATIC); }
-{STRUCT}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STRUCT); }
+{STRUCT}              { Terminal* t = new Terminal("STRUCT",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STRUCT); }
 {SWITCH}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SWITCH); }
 {TYPEDEF}             { yylval.intval = TYPEDEF; is_typedef=1; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(TYPEDEF); }
-{UNION}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(UNION); }
-{UNSIGNED}            { yylval.intval = UNSIGNED; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(UNSIGNED); }
-{VOID}                { yylval.intval = VOID; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(VOID); }
+{UNION}               { Terminal* t = new Terminal("UNION",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(UNION); }
+{UNSIGNED}            { Terminal* t = new Terminal("UNSIGNED",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(UNSIGNED); }
+{VOID}                { Terminal* t = new Terminal("VOID",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(VOID); }
 {VOLATILE}            { yylval.intval = VOLATILE; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(VOLATILE); }
 {WHILE}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(WHILE); }
 {UNTIL}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(UNTIL); }

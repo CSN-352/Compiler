@@ -73,47 +73,6 @@ bool Type::isPrimitive()
     }
 }
 
-// std::string Type::get_name() {
-//     std::stringstream ss;
-//     ss << defined_types[typeIndex].name;
-
-//     if ( is_array ) {
-//         ss << " ";
-//         for ( unsigned int i = 0; i < array_dim; i++ ) {
-//             if ( array_dims[i] != 0 ) {
-//                 ss << "[" << array_dims[i] << "]";
-//             } else {
-//                 ss << "[]";
-//             }
-//         }
-//     } else if ( is_pointer ) {
-
-//         for ( int i = 0; i < ptr_level; i++ ) {
-//             ss << "*";
-//         }
-//     } else if ( is_function ) {
-//         if ( num_args == 0 ) {
-//             ss << "( )";
-//         } else if ( num_args == 1 ) {
-//             ss << "( ";
-//             for ( auto it = arg_types.begin(); it != arg_types.end(); it++ ) {
-//                 ss << ( *it ).get_name();
-//             }
-//             ss << " )";
-//         } else {
-//             ss << "( ";
-//             auto it = arg_types.begin();
-//             ss << ( *it ).get_name();
-//             for ( auto it = arg_types.begin() + 1; it != arg_types.end();
-//                   it++ ) {
-//                 ss << ", " << ( *it ).get_name();
-//             }
-//             ss << " )";
-//         }
-//     }
-//     return ss.str();
-// }
-
 bool Type::isInt()
 {
     if (typeIndex > U_CHAR_T && typeIndex <= LONG_LONG_T)
@@ -220,7 +179,7 @@ bool Type::isVoid()
     return false;
 }
 
-bool Type::is_invalid()
+bool Type::is_error()
 {
 
     if (typeIndex == -1)
@@ -259,12 +218,12 @@ int Type::get_size()
         {
             p *= array_dims[i];
         }
-        int size;
+        int size = 0;
         if (isPrimitive())
             size = primitive_type_size[typeIndex];
         else
         {
-            if (symbolTable.get_defined_type(defined_type_name).type_definition != nullptr)
+            if (is_defined_type && symbolTable.get_defined_type(defined_type_name).type_definition != nullptr)
                 size = symbolTable.get_defined_type(defined_type_name).type_definition->get_size();
             else
             {
@@ -275,11 +234,10 @@ int Type::get_size()
         }
         return size * p;
     }
-    else if (ptr_level > 0 || is_function)
-        return WORD_SIZE;
+    else if (ptr_level > 0 || is_function) return WORD_SIZE;
     else if (!isPrimitive())
     {
-        if (symbolTable.get_defined_type(defined_type_name).type_definition != nullptr)
+        if (is_defined_type && symbolTable.get_defined_type(defined_type_name).type_definition != nullptr)
             return symbolTable.get_defined_type(defined_type_name).type_definition->get_size();
         else
         {
@@ -387,119 +345,69 @@ bool operator!=(Type &obj1, Type &obj2)
 // ################################## TYPE DEFINITION ###########################
 // ##############################################################################
 
-// Not fully implemented:- Basic is done only for the sake of testing, since without this, the code will not compile
+// Not fully implemented
 
-Type *TypeDefinition::get_member(Identifier *id)
+bool TypeDefinition::get_member(Identifier* id)
 {
-    if (members.find(id->name) != members.end())
-    {
-        return &members[id->name];
-    }
-    else
-    {
-        return nullptr;
-    }
+    if (find(members.begin(),members.end(),id->name) != members.end()) return true;
+    return false;
 }
 
 int TypeDefinition::get_size()
 {
     int size = 0;
-    for (auto it = members.begin(); it != members.end(); it++)
-    {
-        size += it->second.get_size();
+    for (string member : members){
+        Symbol* sym = symbolTable.getSymbol(member);
+        size += sym->type.get_size();
     }
     return size;
 }
 
-TypeDefinition* create_struct_or_union_definition(TypeCategory type_category, StructDeclarationList *sdl)
+TypeDefinition* create_type_definition(TypeCategory type_category, StructDeclarationList* sdl)
 {
-    if(type_category != STRUCT && type_category != UNION)
-    {
-        string error_msg = "Invalid type category";
-        yyerror(error_msg.c_str());
-        symbolTable.set_error();
-        return nullptr;
-    }
-
-    TypeDefinition *type_definition = new TypeDefinition();
-    type_definition->type_category = type_category;
-    
-    return type_definition;
-}
-
-TypeDefinition *create_struct_or_union_definition(TypeCategory type_category, StructDeclarationList *struct_declaration_list) {
-    if(type_category != STRUCT && type_category != UNION)
-    {
-        string error_msg = "Invalid type category";
-        yyerror(error_msg.c_str());
-        symbolTable.set_error();
-        return nullptr;
-    }
-    TypeDefinition *struct_type_definition = new TypeDefinition();
-    struct_type_definition->type_category = type_category;
-
-    size_t currentOffset = 0;
-
-    // Iterate over each struct member declaration
-    for (auto &member_struct_declaration : struct_declaration_list->struct_declaration_list) {
-        int type_index = member_struct_declaration->specifier_qualifier_list->type_index;
-        bool is_const = member_struct_declaration->specifier_qualifier_list->is_const_variable;
-
-        assert(type_index != PrimitiveTypes::TYPE_ERROR_T);
-        if (type_index >= N_PRIMITIVE_TYPES || type_index < 0) {
-            continue;
-        }
-
-        // Process each declarator within the member declaration
-        for (auto &declarator : member_struct_declaration->declarator_list->declarator_list) {
-            int pointerLevel = declarator->get_pointer_level();
-            DirectDeclarator *directDecl = declarator->direct_declarator;
-            Type memberType(type_index, pointerLevel, is_const);
-
-            if (directDecl->type == ID) {
-                // Regular variable, nothing to modify
-            } 
-            else if (directDecl->type == ARRAY) {
-                // Handle array type
-                memberType = Type(type_index, directDecl->array_dims.size(), true);
-                memberType.isArray = true;
-                memberType.isPointer = true;
-                memberType.arrayDim = directDecl->array_dims.size();
-                memberType.arrayDims = directDecl->array_dims;
-            } 
-            else if (directDecl->type == FUNCTION) {
-                error_msg("Function cannot be a member of struct/union",
-                          declarator->id->line_num, declarator->id->column);
-                continue;
+    TypeDefinition* P = new TypeDefinition();
+    P->type_category = type_category;
+    if(sdl != nullptr){
+        for(StructDeclaration* sd : sdl->struct_declaration_list){
+            for(int i = 0; i < sd->struct_declarator_list->struct_declarator_list.size(); i++){
+                StructDeclarator* d = sd->struct_declarator_list->struct_declarator_list[i];
+                if(d != nullptr){
+                    Identifier* id = d->declarator->direct_declarator->identifier;
+                    int pointer_level = 0;
+                    if(d->declarator->pointer != nullptr)pointer_level = d->declarator->pointer->pointer_level;
+                    Type t = Type(sd->specifier_qualifier_list->type_index, pointer_level, sd->specifier_qualifier_list->is_const_variable);
+                    if (d->declarator->direct_declarator->is_array){
+                        t.is_array = true;
+                        t.is_pointer = true;
+                        t.array_dim = d->declarator->direct_declarator->array_dimensions.size();
+                        t.array_dims = d->declarator->direct_declarator->array_dimensions;
+                    }
+                    else if (d->declarator->direct_declarator->is_function){
+                        string error_msg = "Function cannot be part of Struct/Union at line " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->line_no) + ", column " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->column_no);
+                        yyerror(error_msg.c_str());
+                        symbolTable.set_error();
+                        
+                    }
+                    if(d->bit_field_width == -1)symbolTable.insert(id->value, t, t.get_size());
+                    else symbolTable.insert(id->value, t, d->bit_field_width);
+                    P->members.push_back(id->value);
+                }
+                else currAddress += d->bit_field_width;
             }
-
-            // Store the offset for this member
-            struct_type_definition->offsets.insert({declarator->id->value, currentOffset});
-
-            // Calculate and align size
-            size_t memberSize = memberType.get_size();
-            if (memberSize % WORD_SIZE != 0) {
-                memberSize += WORD_SIZE - (memberSize % WORD_SIZE);
-            }
-            currentOffset += memberSize;
-
-            // Add member to struct definition
-            struct_type_definition->members.insert({declarator->id->value, memberType});
         }
     }
-
-    return struct_type_definition;
+    return P;
 }
-
-
 
 // ##############################################################################
 // ################################## DEFINED TYPES ######################################
 // ##############################################################################
 int DefinedTypes::t_index_count = PrimitiveTypes::N_PRIMITIVE_TYPES;
-DefinedTypes ::DefinedTypes() : Type(t_index_count++, 0, false)
-{
+
+DefinedTypes :: DefinedTypes(TypeCategory tc, TypeDefinition* td) : Type(t_index_count++, 0, false){
     is_defined_type = true;
+    type_category = tc;
+    type_definition = td;
 }
 
 // ##############################################################################
@@ -540,16 +448,26 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
     P->declaration_specifiers = declaration_specifiers;
     P->init_declarator_list = init_declarator_list;
 
-    // int number_of_variables = init_declarator_list->declarator_list.size();
     if(init_declarator_list != nullptr){
         for (int index = 0; index < init_declarator_list->declarator_list.size(); index++)
         {
             Declarator *variable = init_declarator_list->declarator_list[index];
             int ptr_level = 0;
-            if (variable->pointer != nullptr)
-                ptr_level = variable->pointer->pointer_level;
-            Type t = Type(P->declaration_specifiers->type_index, ptr_level, false);
-            symbolTable.insert(variable->name, t, t.get_size());
+            if (variable->pointer != nullptr) ptr_level = variable->pointer->pointer_level;
+            Type t = Type(P->declaration_specifiers->type_index, ptr_level, P->declaration_specifiers->is_const_variable);
+            if (variable->direct_declarator->is_array){
+                t.is_array = true;
+                t.is_pointer = true;
+                t.array_dim = variable->direct_declarator->array_dimensions.size();
+                t.array_dims = variable->direct_declarator->array_dimensions;
+            }
+            else if (variable->direct_declarator->is_function){
+                t.is_function = true;
+                t.num_args = variable->direct_declarator->parameters->paramater_list->parameter_declarations.size();
+                for (int i = 0; i < t.num_args; i++) t.arg_types.push_back(variable->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
+                
+            }
+            symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size());
         }
         return P;
     }
@@ -619,57 +537,51 @@ void DeclarationSpecifiers ::set_type()
 
     for (int i = 0; i < type_specifiers.size(); i++)
     {
-        if (type_specifiers[i]->type_specifier == UNSIGNED)
+        if (type_specifiers[i]->primitive_type_specifier->name == "UNSIGNED")
         {
             isUnsigned = 1;
         }
-        else if (type_specifiers[i]->type_specifier == SHORT)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "SHORT")
         {
             isShort++;
         }
-        else if (type_specifiers[i]->type_specifier == INT)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "INT")
         {
             isInt++;
         }
-        else if (type_specifiers[i]->type_specifier == LONG)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "LONG")
         {
             isLong++;
         }
-        else if (type_specifiers[i]->type_specifier == CHAR)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "CHAR")
         {
             isChar++;
         }
 
-        else if (type_specifiers[i]->type_specifier == DOUBLE)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "DOUBLE")
         {
             isDouble++;
         }
-        else if (type_specifiers[i]->type_specifier == FLOAT)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "FLOAT")
         {
             isFloat++;
         }
 
-        else if (type_specifiers[i]->type_specifier == VOID)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "VOID")
         {
             isVoid++;
         }
-        else if (type_specifiers[i]->type_specifier == ENUM)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "ENUM")
         {
             isEnum++;
         }
-        else if (type_specifiers[i]->type_specifier == UNION)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "UNION")
         {
             isUnion++;
         }
-        else if (type_specifiers[i]->type_specifier == STRUCT)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "STRUCT")
         {
             isStruct++;
-        }
-        else
-        {
-            // string error_msg = "Invalid type";
-            // yyerror(error_msg.c_str());
-            // return;
         }
     }
     if (type_specifiers.size() == 3)
@@ -741,13 +653,6 @@ void DeclarationSpecifiers ::set_type()
         {
             type_index = PrimitiveTypes::DOUBLE_T;
         }
-    }
-    else
-    {
-        // string error_msg = "No type passed: ";
-        // yyerror(error_msg.c_str());
-        // type_index = ERROR_;
-        // return;
     }
 }
 
@@ -918,15 +823,30 @@ ParameterDeclaration ::ParameterDeclaration() : NonTerminal("PARAMETER DECLARATI
 }
 
 ParameterDeclaration *create_parameter_declaration(DeclarationSpecifiers *ds, AbstractDeclarator *ad){
-    ParameterDeclaration* pd = new ParameterDeclaration();
-
-    return pd;
+    ParameterDeclaration* P = new ParameterDeclaration();
+    P->declarations_specifiers = ds;
+    P->abstract_declarator = ad;
+    int pointer_level = 0;
+    if(ad->pointer != nullptr)pointer_level = ad->pointer->pointer_level;
+    P->type = Type(ds->type_index,pointer_level ,ds->is_const_variable);
+    return P;
 }
 
-ParameterDeclaration *create_paramater_declaration(DeclarationSpecifiers *ds, Declarator *d){
-    ParameterDeclaration* pd = new ParameterDeclaration();
+ParameterDeclaration *create_parameter_declaration(DeclarationSpecifiers *ds, Declarator *d){
+    ParameterDeclaration* P = new ParameterDeclaration();
+    P->declarations_specifiers = ds;
+    P->declarator = d;
+    int pointer_level = 0;
+    if(d->pointer != nullptr)pointer_level = d->pointer->pointer_level;
+    P->type = Type(ds->type_index,pointer_level ,ds->is_const_variable);
+    return P;
+}
 
-    return pd;
+ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers *ds){
+    ParameterDeclaration* P = new ParameterDeclaration();
+    P->declarations_specifiers = ds;
+    P->type = Type(ds->type_index,0,ds->is_const_variable);
+    return P;
 }
 
 // ##############################################################################
@@ -1103,14 +1023,114 @@ DirectAbstractDeclarator *create_direct_abstract_declarator_function(DirectAbstr
 }
 
 // ##############################################################################
+// ############################ STRUCT UNION SPECIFIER #########################
+// ##############################################################################
+StructUnionSpecifier :: StructUnionSpecifier() : NonTerminal("STRUCT UNION SPECIFIER")
+{
+    identifier = nullptr;
+    struct_declaration_list = nullptr;
+    type_category = TYPE_CATEGORY_ERROR;
+}
+
+StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationList *sdl)
+{
+    StructUnionSpecifier *P = new StructUnionSpecifier();
+    if(struct_or_union == "STRUCT") P->type_category = TYPE_CATEGORY_STRUCT;
+    else P->type_category = TYPE_CATEGORY_UNION;
+    P->identifier = id;
+    P->struct_declaration_list = sdl;
+    TypeDefinition *td;
+    if (sdl != nullptr)td = create_type_definition(P->type_category, sdl);
+    else td = nullptr;
+    if (id != nullptr){
+        DefinedTypes dt = DefinedTypes(P->type_category, td);
+        dt.defined_type_name = id->value;
+        symbolTable.insert_defined_type(id->value, dt);
+    }
+    return P;
+}
+
+// ##############################################################################
+// ############################ STRUCT DECLARATION LIST #########################
+// ##############################################################################
+
+StructDeclarationList::StructDeclarationList() : NonTerminal("STRUCT DECLARATION LIST") {}
+
+StructDeclarationList *create_struct_declaration_list(StructDeclaration *sd)
+{
+    StructDeclarationList *P = new StructDeclarationList();
+    P->struct_declaration_list.push_back(sd);
+    return P;
+}
+
+StructDeclarationList *create_struct_declaration_list(StructDeclarationList *sdl, StructDeclaration *sd)
+{
+    sdl->struct_declaration_list.push_back(sd);
+    return sdl;
+}
+
+// ##############################################################################
+// ############################ STRUCT DECLARATION ###############################
+// ##############################################################################
+
+StructDeclaration::StructDeclaration(): NonTerminal("STRUCT DECLARATION")
+{
+    specifier_qualifier_list = nullptr;
+    struct_declarator_list = nullptr;
+}
+
+StructDeclaration* create_struct_declaration(SpecifierQualifierList *sql, StructDeclaratorList *sdl)   {
+    StructDeclaration* P = new StructDeclaration();
+    P->specifier_qualifier_list = sql;
+    P->struct_declarator_list = sdl;
+    return P;
+}
+
+// ##############################################################################
+// ############################ STRUCT DECLARATOR LIST ###############################
+// ##############################################################################
+StructDeclaratorList ::StructDeclaratorList() : NonTerminal("STRUCT DECLARATOR LIST") {}
+
+StructDeclaratorList *create_struct_declarator_list(StructDeclarator *sd)
+{
+    StructDeclaratorList *P = new StructDeclaratorList();
+    P->struct_declarator_list.push_back(sd);
+    return P;
+}
+
+StructDeclaratorList *create_struct_declarator_list(StructDeclaratorList *sdl, StructDeclarator *sd)
+{
+    sdl->struct_declarator_list.push_back(sd);
+    return sdl;
+}
+
+// ##############################################################################
 // ############################ STRUCT DECLARATOR ###############################
 // ##############################################################################
 
-// StructDeclarator ::StructDeclarator() : NonTerminal("STRUCT DECLARATOR")
-// {
-//     declarator = nullptr;
-//     conditional_expression = nullptr;
-// }
+StructDeclarator ::StructDeclarator() : NonTerminal("STRUCT DECLARATOR"){
+    declarator = nullptr;
+    bit_field_width = -1;
+}
+
+StructDeclarator* create_struct_declarator(Declarator* d, Expression* e){
+    StructDeclarator* P = new StructDeclarator();
+    P->declarator = d;
+    if(e != nullptr){
+        if (e->type.isInt() && e->type.is_const_literal){
+            PrimaryExpression *e_cast = dynamic_cast<PrimaryExpression *>(e);
+            P->bit_field_width = stoi(e_cast->constant->value);
+        }
+        else{
+            string error_msg = "Bit-field width must be a constant integer at line " + to_string(e->line_no) + ", column " + to_string(e->column_no);
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
+        }
+    }
+    return P;
+}
+
+
 
 // ##############################################################################
 // ############################ ENUMERATOR ###############################
@@ -1193,145 +1213,44 @@ EnumSpecifier *create_enumerator_specifier(EnumeratorList *el)
     return P;
 }
 
-// ##############################################################################
-// ############################ STRUCT DECLARATION ###############################
-// ##############################################################################
-
-StructDeclaration::StructDeclaration(SpecifierQualifierList *specifier_qualifier_list, DeclaratorList *declarator_list)
-    : NonTerminal("STRUCT DECLARATION")
-{
-    this->specifier_qualifier_list = specifier_qualifier_list;
-    this->declarator_list = declarator_list;
-}
-
-StructDeclaration* create_struct_declaration(SpecifierQualifierList *specifier_qualifier_list, DeclaratorList *declarator_list)
-{
-    StructDeclaration *P = new StructDeclaration(specifier_qualifier_list, declarator_list);
-    P->specifier_qualifier_list->set_type();
-    return P;
-}
-
-
-// ##############################################################################
-// ############################ STRUCT DECLARATION LIST #########################
-// ##############################################################################
-
-StructDeclarationList::StructDeclarationList() : NonTerminal("STRUCT DECLARATION LIST") {}
-
-StructDeclarationList *create_struct_declaration_list(StructDeclaration *sd)
-{
-    if(sd == nullptr)
-        return nullptr;
-
-    StructDeclarationList *P = new StructDeclarationList();
-    P->struct_declaration_list.push_back(sd);
-    return P;
-}
-
-StructDeclarationList *add_to_struct_declaration_list(StructDeclarationList *sdl, StructDeclaration *sd)
-{
-    if(sd == nullptr)
-        return sdl;
-
-    sdl->struct_declaration_list.push_back(sd);
-    return sdl;
-}
 
 // ##############################################################################
 // ################################## TYPE SPECIFIER ############################
 // ##############################################################################
 
-TypeSpecifier ::TypeSpecifier(int type_specifier)
-    : NonTerminal("TYPE SPECIFIER")
-{
-    this->type_specifier = type_specifier;
+TypeSpecifier ::TypeSpecifier() : NonTerminal("TYPE SPECIFIER"){
+    primitive_type_specifier = nullptr;
     enum_specifier = nullptr;
     struct_union_specifier = nullptr;
     // class_specifier = nullptr;
-    // type_index = nullptr;
 }
 
-TypeSpecifier ::TypeSpecifier(EnumSpecifier *es)
-    : NonTerminal("TYPE SPECIFIER")
+TypeSpecifier *create_type_specifier(Terminal* t)
 {
-    this->type_specifier = ENUM;
-    enum_specifier = es;
-    struct_union_specifier = nullptr;
-    // class_specifier = nullptr;
-    // type_index = nullptr;
+    TypeSpecifier* P = new TypeSpecifier();
+    P->primitive_type_specifier = t;
+    P->name += ": " + t->name; // for debugging purposes
+    return P;
 }
 
-TypeSpecifier ::TypeSpecifier(StructUnionSpecifier *sus)
-    : NonTerminal("TYPE SPECIFIER")
+TypeSpecifier *create_type_specifier(EnumSpecifier* es)
 {
-    this->type_specifier = -1;
-    enum_specifier = nullptr;
-    struct_union_specifier = sus;
-    // class_specifier = nullptr;
-    // type_index = nullptr;
+    TypeSpecifier* P = new TypeSpecifier();
+    P->enum_specifier = es;
+    P->name += ": ENUM";
+    return P;
 }
 
-TypeSpecifier *create_type_specifier(int type_specifier)
+TypeSpecifier *create_type_specifier(StructUnionSpecifier *sus)
 {
-    TypeSpecifier *type_specifier_obj = new TypeSpecifier(type_specifier);
-    string name;
-    switch (type_specifier)
-    {
-    case VOID:
-        name = ": void";
-        break;
-    case CHAR:
-        name = ": char";
-        break;
-    case SHORT:
-        name = ": short";
-        break;
-    case INT:
-        name = ": int";
-        break;
-    case LONG:
-        name = ": long";
-        break;
-    case FLOAT:
-        name = ": float";
-        break;
-    case DOUBLE:
-        name = ": double";
-        break;
-    case SIGNED:
-        name = ": signed";
-        break;
-    case UNSIGNED:
-        name = ": unsigned";
-        break;
-    case TYPE_NAME:
-        name = ": type_name";
-        break;
-    default:
-        name = ": ERROR";
-        break;
-    }
-    type_specifier_obj->name += name;
-
-    return type_specifier_obj;
-}
-
-TypeSpecifier *create_enum_type_specifier(EnumSpecifier *es)
-{
-    TypeSpecifier *type_specifier_obj = new TypeSpecifier(es);
-    type_specifier_obj->name += ": Enum";
-    return type_specifier_obj;
-}
-
-TypeSpecifier *create_struct_or_union_type_specifier(StructUnionSpecifier *sus)
-{
-    TypeSpecifier *type_specifier_obj = new TypeSpecifier(sus);
+    TypeSpecifier* P = new TypeSpecifier();
+    P->struct_union_specifier = sus;
+    P->name += ": STRUCT/UNION";
     // if(sus.is_struct)
     //     type_specifier_obj->name += ": Struct";
     // else
     // type_specifier_obj->name += ": Union";
-    type_specifier_obj->name += ": Struct/Union";
-    return type_specifier_obj;
+    return P;
 }
 
 // ##############################################################################
@@ -1363,63 +1282,57 @@ void SpecifierQualifierList ::set_type()
     {
         if (type_qualifiers[i] == TypeQualifiers::TYPE_QUALIFIERS_CONST)
             is_const_variable = true;
-        else if (type_qualifiers[i] == TypeQualifiers::TYPE_QUALIFIERS_VOLATILE)
+        else if (type_qualifiers[i] == TypeQualifiers ::TYPE_QUALIFIERS_VOLATILE)
             ; // add something later}
     }
 
     for (int i = 0; i < type_specifiers.size(); i++)
     {
-        if (type_specifiers[i]->type_specifier == UNSIGNED)
+        if (type_specifiers[i]->primitive_type_specifier->name == "UNSIGNED")
         {
             isUnsigned = 1;
         }
-        else if (type_specifiers[i]->type_specifier == SHORT)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "SHORT")
         {
             isShort++;
         }
-        else if (type_specifiers[i]->type_specifier == INT)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "INT")
         {
             isInt++;
         }
-        else if (type_specifiers[i]->type_specifier == LONG)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "LONG")
         {
             isLong++;
         }
-        else if (type_specifiers[i]->type_specifier == CHAR)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "CHAR")
         {
             isChar++;
         }
 
-        else if (type_specifiers[i]->type_specifier == DOUBLE)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "DOUBLE")
         {
             isDouble++;
         }
-        else if (type_specifiers[i]->type_specifier == FLOAT)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "FLOAT")
         {
             isFloat++;
         }
 
-        else if (type_specifiers[i]->type_specifier == VOID)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "VOID")
         {
             isVoid++;
         }
-        else if (type_specifiers[i]->type_specifier == ENUM)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "ENUM")
         {
             isEnum++;
         }
-        else if (type_specifiers[i]->type_specifier == UNION)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "UNION")
         {
             isUnion++;
         }
-        else if (type_specifiers[i]->type_specifier == STRUCT)
+        else if (type_specifiers[i]->primitive_type_specifier->name == "STRUCT")
         {
             isStruct++;
-        }
-        else
-        {
-            // string error_msg = "Invalid type";
-            // yyerror(error_msg.c_str());
-            // return;
         }
     }
     if (type_specifiers.size() == 3)
@@ -1491,13 +1404,6 @@ void SpecifierQualifierList ::set_type()
         {
             type_index = PrimitiveTypes::DOUBLE_T;
         }
-    }
-    else
-    {
-        // string error_msg = "No type passed: ";
-        // yyerror(error_msg.c_str());
-        // type_index = ERROR_;
-        // return;
     }
 }
 
@@ -1802,6 +1708,16 @@ void SymbolTable::insert(string name, Type type, int size)
 
 void SymbolTable::insert_defined_type(std::string name, DefinedTypes type)
 {
+    for (auto defined_type : defined_types[name])
+    {
+        if (defined_type.first == currentScope)
+        {
+            string error_msg = " '" + name + "' already declared in this scope.";
+            yyerror(error_msg.c_str());
+            set_error();
+            return;
+        }
+    }
     defined_types[name].push_front({currentScope, type});
 }
 
@@ -1859,18 +1775,18 @@ DefinedTypes SymbolTable::get_defined_type(std::string name)
 {
     auto it = defined_types.find(name);
 
-    DefinedTypes types;
+    DefinedTypes* types = nullptr;
 
     for (pair<int, DefinedTypes> p : it->second)
     {
         if (p.first <= currentScope)
         {
-            types = p.second;
+            types = &p.second;
             break;
         }
     }
 
-    return types;
+    return *types;
 }
 
 void SymbolTable::update(string name, Type newType)
