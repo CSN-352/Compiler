@@ -122,7 +122,7 @@ primary_expression:
     | F_CONSTANT {$$ = create_primary_expression($1);}
     | CHAR_CONSTANT {$$ = create_primary_expression($1);}
     | STRING_LITERAL {$$ = create_primary_expression($1);}
-    /* | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($1);} */
+    | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($2);} 
     ;
 
 argument_expression_list:
@@ -274,11 +274,11 @@ init_declarator:
     ;
 
 storage_class_specifier:
-    TYPEDEF {$$ = $1;}
-    | EXTERN {$$ = $1;}
-    | STATIC {$$ = $1;}
-    | AUTO {$$ = $1;}
-    | REGISTER {$$ = $1;}
+    TYPEDEF {$$ = 0;}
+    | EXTERN {$$ = 1;}
+    | STATIC {$$ = 2;}
+    | AUTO {$$ = 3;}
+    | REGISTER {$$ = 4;}
     ;
 
 type_specifier:
@@ -294,7 +294,7 @@ type_specifier:
     | TYPE_NAME {$$ = create_type_specifier($1);}
 	| struct_or_union_specifier {$$ = create_struct_or_union_type_specifier($1);}
 	| enum_specifier            {$$ = create_enum_type_specifier($1);}
-    /* | class_specifier           {$$ = create_class_type_specifier($1);} */
+    | class_specifier           /*{$$ = create_class_type_specifier($1);} */
 	;
 
 struct_or_union_specifier:
@@ -386,11 +386,11 @@ declarator:
 
 direct_declarator:
     IDENTIFIER  { $$ = create_dir_declarator_id( $1 ); }
-    /* | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_declarator_array($1, $3);}
-	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_declarator_array($1, nullptr);} */
-    /* | LEFT_PAREN declarator RIGHT_PAREN { $$ = create_direct_declarator($2); } */
-    /* | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_declarator_function($1, $3);}
-    | direct_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_declarator_function($1, nullptr);} */
+    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_declarator_array($1, $3);}
+	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_declarator_array($1, nullptr);} 
+    | LEFT_PAREN declarator RIGHT_PAREN { $$ = create_direct_declarator($2); } 
+    | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_declarator_function($1, $3);}
+    | direct_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_declarator_function($1, nullptr);} 
     ;
 
 pointer:

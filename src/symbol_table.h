@@ -269,6 +269,9 @@ public:
 
 DirectDeclarator *create_dir_declarator_id( // DIRECT_DECLARATOR_TYPE type,
 Identifier *id);
+DirectDeclarator *create_direct_declarator(Declarator *x);
+DirectDeclarator *create_direct_declarator_array(DirectDeclarator *x, Expression *c);
+DirectDeclarator *create_direct_declarator_function(DirectDeclarator *x, ParameterTypeList *p);
  
 class Declarator : public NonTerminal
 {
