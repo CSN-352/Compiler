@@ -48,8 +48,6 @@ class StringLiteral;
 class Symbol;
 class SymbolTable;
 
-static int type;
-
 enum PrimitiveTypes
 {
     TYPE_ERROR_T = -1,
@@ -67,6 +65,7 @@ enum PrimitiveTypes
     DOUBLE_T = 11,
     LONG_DOUBLE_T = 12,
     VOID_T = 13,
+    NUM_PRIMITIVE_TYPES = 14,
 };
 
 
@@ -145,6 +144,7 @@ public:
 class DefinedTypes : Type
 {
 public:
+    static int t_index_count;
     bool is_class;
     bool is_struct;
     bool is_union;

@@ -23,7 +23,6 @@ using namespace std;
 
 extern void yyerror(const char *msg);
 
-static unsigned int t_index = 14;
 static unsigned int currAddress = 0;
 SymbolTable symbolTable;
 
@@ -414,7 +413,8 @@ Type *TypeDefinition::get_member(Identifier *id)
 // ##############################################################################
 // ################################## DEFINED TYPES ######################################
 // ##############################################################################
-DefinedTypes ::DefinedTypes() : Type(t_index++, 0, false)
+int DefinedTypes::t_index_count = PrimitiveTypes::NUM_PRIMITIVE_TYPES;
+DefinedTypes ::DefinedTypes() : Type(t_index_count++, 0, false)
 {
     is_defined_type = true;
 }
