@@ -48,6 +48,8 @@ class StringLiteral;
 class Symbol;
 class SymbolTable;
 
+extern Type ERROR_TYPE;
+
 enum PrimitiveTypes
 {
     TYPE_ERROR_T = -1,
@@ -336,13 +338,9 @@ class Declarator : public NonTerminal
     // Implement after Pointer and DirectDeclarator
 public:
     Identifier *identifier;
-    Pointer* ptr;
+    Pointer* pointer;
     DirectDeclarator *direct_declarator;
-    // Expression* initialising_expression;
-    // Terminal* eq;
-    // int get_pointer_level();
-    Declarator(DirectDeclarator *dd, Pointer *pointer);
-    // Declarator(Pointer* p, DirectDeclarator* direct_declarator);
+    Declarator();
 };
 
 Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declarator);

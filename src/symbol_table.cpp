@@ -757,30 +757,18 @@ DirectDeclarator *create_direct_declarator_function(DirectDeclarator *x, Paramet
 // ############################ DECLARATOR ###############################
 // ##############################################################################
 
-Declarator ::Declarator(DirectDeclarator *dd, Pointer* pointer)
-    : NonTerminal("declarator"), direct_declarator(dd),
-      identifier(nullptr)
-{
-    if (dd == nullptr)
-    {
-        identifier = nullptr;
-    }
-    else
-    {
-        assert(dd->identifier != nullptr);
-        id = dd->id;
-        this->ptr = pointer;
-    }
-};
+Declarator ::Declarator(): NonTerminal("DECLARATOR"){
+    identifier = nullptr;
+    pointer = nullptr;
+    direct_declarator = nullptr;
+}
 
 Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declarator)
 {
-    if (direct_declarator == NULL)
-    {
-        return NULL;
-    }
-    Declarator *d = new Declarator(direct_declarator, pointer);
-    return d;
+    Declarator *P = new Declarator();
+    P->pointer = pointer;
+    P->direct_declarator = direct_declarator;
+    return P;
 }
 
 // ##############################################################################
@@ -1470,7 +1458,7 @@ Declaration* create_declaration(DeclarationSpecifiers *declaration_specifiers,
         for (int i = 0; i < init_declarator_list->declarator_list.size(); i++)
             {
                 Declarator* variable = init_declarator_list->declarator_list[i];
-                Type t = Type(P->declaration_specifiers->type_index, variable->ptr->pointer_level, false);
+                Type t = Type(P->declaration_specifiers->type_index, variable->pointer->pointer_level, false);
                 cerr<<"Hello";
                 symbolTable.insert(variable->name, t, t.get_size());
                 cerr<<"Hello";
