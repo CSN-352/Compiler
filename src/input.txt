@@ -1,0 +1,43 @@
+
+SYMBOL TABLE:
+----------------------------------------------------------------------------
+| Name                | Type                      | Scope   | Offset       |
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+Parsing completed successfully.
+Starting parse
+Entering state 0
+Stack now 0
+Reading a token
+Next token is token IDENTIFIER ()
+Shifting token IDENTIFIER ()
+Entering state 3
+Stack now 0 3
+Reducing stack by rule 152 (line 388):
+   $1 = token IDENTIFIER ()
+-> $$ = nterm direct_declarator ()
+Entering state 41
+Stack now 0 41
+Reading a token
+Next token is token SEMICOLON ()
+Reducing stack by rule 151 (line 384):
+   $1 = nterm direct_declarator ()
+-> $$ = nterm declarator ()
+Entering state 40
+Stack now 0 40
+Next token is token SEMICOLON ()
+Syntax error at line 1: syntax error
+Shifting token error ()
+Entering state 1
+Stack now 0 40 1
+Reducing stack by rule 4 (line 116):
+   $1 = token error ()
+-> $$ = nterm error_case ()
+Entering state 29
+Stack now 0 40 29
+Reading a token
+Now at end of input.
+Cleanup: discarding lookahead token "end of file" ()
+Stack now 0 40 29
+Cleanup: popping nterm error_case ()
+Cleanup: popping nterm declarator ()

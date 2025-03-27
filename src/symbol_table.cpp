@@ -1427,23 +1427,27 @@ Identifier ::Identifier(string value, unsigned int line_no, unsigned int column_
 // ############################# DECLARATION ####################################
 // ##############################################################################
 
-Declaration ::Declaration(DeclarationSpecifiers *declaration_specifiers_,
-                          DeclaratorList *init_declarator_list_)
-    : NonTerminal("declaration"), declaration_specifiers(declaration_specifiers_), init_declarator_list(init_declarator_list_) {};
+Declaration ::Declaration() : NonTerminal("DECLARATION"){
+    declaration_specifiers = nullptr;
+    init_declarator_list = nullptr;
+};
 
-Declaration *new_declaration(DeclarationSpecifiers *declaration_specifiers,
+Declaration* create_declaration(DeclarationSpecifiers *declaration_specifiers,
                              DeclaratorList *init_declarator_list)
 {
-    Declaration *d = new Declaration(declaration_specifiers, init_declarator_list);
+    Declaration* P = new Declaration();
+    P->declaration_specifiers = declaration_specifiers;
+    P->init_declarator_list = init_declarator_list;
 
-    int number_of_variables = init_declarator_list->declarator_list.size();
-
-    for (int index = 0; index < number_of_variables; index++)
-    {
-        Declarator *variable = init_declarator_list->declarator_list[index];
-        symbolTable.insert(variable->name, d->type, d->type.get_size());
+    if(init_declarator_list != nullptr){
+        for (int i = 0; i < init_declarator_list->declarator_list.size(); i++)
+            {
+                Declarator* variable = init_declarator_list->declarator_list[i];
+                symbolTable.insert(variable->name, P->type, P->type.get_size());
+            }
     }
-    return d;
+    
+    return P;
 }
 
 // ##############################################################################

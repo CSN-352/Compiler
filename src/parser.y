@@ -252,8 +252,8 @@ expression:
     ;
 
 declaration:
-    declaration_specifiers SEMICOLON                           
-    | declaration_specifiers init_declarator_list SEMICOLON  {$$ = new_declaration( $1, $2 );}
+    declaration_specifiers SEMICOLON     { $$ = create_declaration($1, nullptr);}                      
+    | declaration_specifiers init_declarator_list SEMICOLON  {$$ = create_declaration( $1, $2 );}
     | error_case skip_until_semicolon SEMICOLON
     ;
 
@@ -576,7 +576,7 @@ int main(int argc, char **argv) {
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     has_error |= symbolTable.has_error();
-    symbolTable.printSymbolTable();
+    symbolTable.print();
     // if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;

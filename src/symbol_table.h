@@ -198,13 +198,12 @@ public:
     DeclarationSpecifiers *declaration_specifiers;
     DeclaratorList *init_declarator_list;
     Type type;
-    Declaration(DeclarationSpecifiers *declaration_specifiers_,
-                DeclaratorList *init_declarator_list_);
+    Declaration();
     void add_to_symbol_table(SymbolTable &sym_tab);
     void dotify();
 };
 
-Declaration *new_declaration(DeclarationSpecifiers *declaraion_specifiers,
+Declaration *create_declaration(DeclarationSpecifiers *declaraion_specifiers,
                              DeclaratorList *init_declarator_list);
 
 // ##############################################################################
