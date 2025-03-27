@@ -416,8 +416,7 @@ int TypeDefinition::get_size()
 // ##############################################################################
 // ################################## DEFINED TYPES ######################################
 // ##############################################################################
-int DefinedTypes::t_index_count = PrimitiveTypes::NUM_PRIMITIVE_TYPES;
-
+int DefinedTypes::t_index_count = PrimitiveTypes::N_PRIMITIVE_TYPES;
 DefinedTypes ::DefinedTypes() : Type(t_index_count++, 0, false)
 {
     is_defined_type = true;
@@ -485,9 +484,9 @@ void DeclarationSpecifiers ::set_type()
 
     for (int i = 0; i < type_qualifiers.size(); i++)
     {
-        if (type_qualifiers[i] == TypeQualifiers::CONST_)
+        if (type_qualifiers[i] == TypeQualifiers::TYPE_QUALIFIERS_CONST)
             is_const_variable = true;
-        else if (type_qualifiers[i] == TypeQualifiers ::VOLATILE_)
+        else if (type_qualifiers[i] == TypeQualifiers ::TYPE_QUALIFIERS_VOLATILE)
             ; // add something later}
     }
 
@@ -852,6 +851,16 @@ DeclaratorList *create_init_declarator_list(Declarator *d)
     return dl;
 }
 
+DeclaratorList* add_to_init_declarator_list(DeclaratorList *init_declarator_list, Declarator *init_declarator)
+{
+    if (init_declarator == nullptr)
+    {
+        return init_declarator_list;
+    }
+    init_declarator_list->declarator_list.push_back(init_declarator);
+    return init_declarator_list;
+}
+
 // ##############################################################################
 // ################################## ABSTRACT DECLARATOR ######################################
 // ##############################################################################
@@ -963,11 +972,11 @@ DirectAbstractDeclarator *create_direct_abstract_declarator_function(DirectAbstr
 // ############################ STRUCT DECLARATOR ###############################
 // ##############################################################################
 
-StructDeclarator ::StructDeclarator() : NonTerminal("STRUCT DECLARATOR")
-{
-    declarator = nullptr;
-    conditional_expression = nullptr;
-}
+// StructDeclarator ::StructDeclarator() : NonTerminal("STRUCT DECLARATOR")
+// {
+//     declarator = nullptr;
+//     conditional_expression = nullptr;
+// }
 
 // ##############################################################################
 // ############################ ENUMERATOR ###############################
@@ -1049,6 +1058,25 @@ EnumSpecifier *create_enumerator_specifier(EnumeratorList *el)
     }
     return P;
 }
+
+// ##############################################################################
+// ############################ STRUCT DECLARATION ###############################
+// ##############################################################################
+
+StructDeclaration::StructDeclaration(SpecifierQualifierList *specifier_qualifier_list, DeclaratorList *declarator_list)
+    : NonTerminal("STRUCT DECLARATION")
+{
+    this->specifier_qualifier_list = specifier_qualifier_list;
+    this->declarator_list = declarator_list;
+}
+
+StructDeclaration* create_struct_declaration(SpecifierQualifierList *specifier_qualifier_list, DeclaratorList *declarator_list)
+{
+    StructDeclaration *P = new StructDeclaration(specifier_qualifier_list, declarator_list);
+    P->specifier_qualifier_list->set_type();
+    return P;
+}
+
 
 // ##############################################################################
 // ################################## TYPE SPECIFIER ############################
@@ -1176,9 +1204,9 @@ void SpecifierQualifierList ::set_type()
 
     for (int i = 0; i < type_qualifiers.size(); i++)
     {
-        if (type_qualifiers[i] == TypeQualifiers::CONST_)
+        if (type_qualifiers[i] == TypeQualifiers::TYPE_QUALIFIERS_CONST)
             is_const_variable = true;
-        else if (type_qualifiers[i] == TypeQualifiers ::VOLATILE_)
+        else if (type_qualifiers[i] == TypeQualifiers::TYPE_QUALIFIERS_VOLATILE)
             ; // add something later}
     }
 

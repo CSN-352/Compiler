@@ -53,6 +53,7 @@ void yyerror(const char *msg);
     EnumSpecifier* enum_specifier;
     StructUnionSpecifier* struct_or_union_specifier;
     ClassSpecifier* class_specifier;
+    StructDeclaration* struct_declaration;
     int intval;
     char* strval;
 }
@@ -86,6 +87,9 @@ void yyerror(const char *msg);
 %type <parameter_declaration> parameter_declaration;
 %type <enumerator> enumerator
 %type <enumerator_list> enumerator_list
+%type <declarator> struct_declarator
+%type <init_declarator_list> struct_declarator_list
+%type <struct_declaration> struct_declaration
 %token <intval> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
 %token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
@@ -97,8 +101,7 @@ void yyerror(const char *msg);
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case struct_or_union
-%type <strval> struct_declarator_list
-%type <strval> struct_declarator class_declaration class_declaration_list access_specifier
+%type <strval> class_declaration class_declaration_list access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
 %nonassoc LOW_PREC
@@ -265,7 +268,7 @@ declaration_specifiers:
 
 init_declarator_list:
     init_declarator { $$ = create_init_declarator_list( $1 ); }
-    | init_declarator_list COMMA init_declarator 
+    | init_declarator_list COMMA init_declarator {$$ = add_to_init_declarator_list($1, $3);}
     ;
 
 init_declarator:
@@ -337,7 +340,7 @@ access_specifier:
     ;
 
 struct_declaration:
-    specifier_qualifier_list struct_declarator_list SEMICOLON 
+    specifier_qualifier_list struct_declarator_list SEMICOLON {$$ = create_struct_declaration($1,$2);}
     ;
 
 specifier_qualifier_list:
@@ -347,15 +350,17 @@ specifier_qualifier_list:
     | specifier_qualifier_list type_qualifier {$$ = create_specifier_qualifier_list($1,$2);}                  
 	;
 
+// DONE
 struct_declarator_list:
-    struct_declarator 
-	| struct_declarator_list COMMA struct_declarator 
+    struct_declarator { $$ = create_init_declarator_list( $1 ); }
+	| struct_declarator_list COMMA struct_declarator {$$ = add_to_init_declarator_list($1, $3);}
 	;
 
+// DONE
 struct_declarator:
-    declarator
-	| COLON conditional_expression
-	| declarator COLON conditional_expression
+    declarator {$$ = $1;}
+	/* | COLON conditional_expression
+	| declarator COLON conditional_expression */
 	;
 
 enum_specifier:
@@ -375,8 +380,8 @@ enumerator:
     ;
 
 type_qualifier:
-    CONST  {$$ = 0;}
-    | VOLATILE  {$$ = 1;}
+    CONST  {$$ = TypeQualifiers::TYPE_QUALIFIERS_CONST;}
+    | VOLATILE  {$$ = TypeQualifiers::TYPE_QUALIFIERS_VOLATILE;}
     ;
 
 declarator:
