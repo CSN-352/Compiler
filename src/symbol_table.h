@@ -278,20 +278,19 @@ class Declarator : public NonTerminal
     // Implement after Pointer and DirectDeclarator
 public:
     Identifier *identifier;
-    // Pointer* pointer;
+    Pointer* ptr;
     DirectDeclarator *direct_declarator;
     // Expression* initialising_expression;
     // Terminal* eq;
     // int get_pointer_level();
-    Declarator(DirectDeclarator *direct_declarator);
+    Declarator(DirectDeclarator *dd, Pointer *pointer);
     // Declarator(Pointer* p, DirectDeclarator* direct_declarator);
 };
 
-Declarator *create_declarator( // Pointer *pointer,
-    DirectDeclarator *direct_declarator);
+Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declarator);
 
-Declarator *create_declarator( // Pointer *pointer,
-    DirectDeclarator *direct_declarator);
+// Declarator *create_declarator( // Pointer *pointer,
+//     DirectDeclarator *direct_declarator);
 
 class ParameterDeclaration : public NonTerminal
 {

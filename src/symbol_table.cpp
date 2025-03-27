@@ -753,7 +753,7 @@ DirectDeclarator *create_direct_declarator_function(DirectDeclarator *x, Paramet
 // ############################ DECLARATOR ###############################
 // ##############################################################################
 
-Declarator ::Declarator(DirectDeclarator *dd)
+Declarator ::Declarator(DirectDeclarator *dd, Pointer* pointer)
     : NonTerminal("declarator"), direct_declarator(dd),
       identifier(nullptr)
 {
@@ -765,17 +765,17 @@ Declarator ::Declarator(DirectDeclarator *dd)
     {
         assert(dd->identifier != nullptr);
         id = dd->id;
+        this->ptr = pointer;
     }
 };
 
-Declarator *create_declarator( // Pointer *pointer,
-    DirectDeclarator *direct_declarator)
+Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declarator)
 {
     if (direct_declarator == NULL)
     {
         return NULL;
     }
-    Declarator *d = new Declarator(direct_declarator);
+    Declarator *d = new Declarator(direct_declarator, pointer);
     // d->add_children( direct_declarator );
     return d;
 }

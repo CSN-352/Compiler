@@ -380,8 +380,8 @@ type_qualifier:
     ;
 
 declarator:
-    pointer direct_declarator 
-    | direct_declarator  { $$ = create_declarator( $1 ); }
+    pointer direct_declarator { $$ = create_declarator( $1, $2 ); } 
+    | direct_declarator  { $$ = create_declarator( nullptr, $1 ); }
     ;
 
 direct_declarator:
