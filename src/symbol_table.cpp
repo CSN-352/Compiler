@@ -1457,8 +1457,13 @@ Declaration* create_declaration(DeclarationSpecifiers *declaration_specifiers,
     if(init_declarator_list != nullptr){
         for (int i = 0; i < init_declarator_list->declarator_list.size(); i++)
             {
+                cerr << "Hello";
                 Declarator* variable = init_declarator_list->declarator_list[i];
-                Type t = Type(P->declaration_specifiers->type_index, variable->pointer->pointer_level, false);
+                cerr << P->declaration_specifiers->type_index;
+                int ptr_level = 0;
+                if (variable->pointer != nullptr)
+                    ptr_level = variable->pointer->pointer_level;
+                Type t = Type(P->declaration_specifiers->type_index, ptr_level, false);
                 cerr<<"Hello";
                 symbolTable.insert(variable->name, t, t.get_size());
                 cerr<<"Hello";
