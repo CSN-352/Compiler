@@ -197,10 +197,7 @@ class Declaration : public NonTerminal
 public:
     DeclarationSpecifiers *declaration_specifiers;
     DeclaratorList *init_declarator_list;
-    Type type;
     Declaration();
-    void add_to_symbol_table(SymbolTable &sym_tab);
-    void dotify();
 };
 
 Declaration *create_declaration(DeclarationSpecifiers *declaraion_specifiers,
@@ -363,7 +360,6 @@ public:
     AbstractDeclarator *abstract_declarator;
     Declarator *declarator;
     Type type;
-    Type set_type(DeclarationSpecifiers *ds);
     ParameterDeclaration(DeclarationSpecifiers *ds);
 };
 

@@ -781,7 +781,6 @@ Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declar
         return NULL;
     }
     Declarator *d = new Declarator(direct_declarator, pointer);
-    // d->add_children( direct_declarator );
     return d;
 }
 
@@ -1443,7 +1442,10 @@ Declaration* create_declaration(DeclarationSpecifiers *declaration_specifiers,
         for (int i = 0; i < init_declarator_list->declarator_list.size(); i++)
             {
                 Declarator* variable = init_declarator_list->declarator_list[i];
-                symbolTable.insert(variable->name, P->type, P->type.get_size());
+                Type t = Type(P->declaration_specifiers->type_index, variable->ptr->pointer_level, false);
+                cerr<<"Hello";
+                symbolTable.insert(variable->name, t, t.get_size());
+                cerr<<"Hello";
             }
     }
     
