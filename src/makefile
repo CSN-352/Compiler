@@ -47,15 +47,15 @@ $(LEX_C_FILE): $(LEX_FILE) $(YACC_H_FILE) | $(BUILD_DIR)
 
 # Compile symbol_table.cpp into symbol_table.o
 $(SYMBOL_TABLE_O_FILE): $(SRC_DIR)/symbol_table.cpp $(SRC_DIR)/symbol_table.h | $(BUILD_DIR)
-	$(CXX) -c $(SRC_DIR)/symbol_table.cpp -o $(SYMBOL_TABLE_O_FILE) $(CFLAGS)
+	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/symbol_table.cpp -o $(SYMBOL_TABLE_O_FILE) $(CFLAGS)
 
 # Compile ast.cpp into ast.o
 $(AST_O_FILE): $(SRC_DIR)/ast.cpp $(SRC_DIR)/ast.h | $(BUILD_DIR)
-	$(CXX) -c $(SRC_DIR)/ast.cpp -o $(AST_O_FILE) $(CFLAGS)
+	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/ast.cpp -o $(AST_O_FILE) $(CFLAGS)
 
 # Compile expression.cpp into expression.o
 $(EXPRESSION_O_FILE): $(SRC_DIR)/expression.cpp $(SRC_DIR)/expression.h | $(BUILD_DIR)
-	$(CXX) -c $(SRC_DIR)/expression.cpp -o $(EXPRESSION_O_FILE) $(CFLAGS)
+	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/expression.cpp -o $(EXPRESSION_O_FILE) $(CFLAGS)
 
 # Compile lex.yy.c into lex.yy.o
 $(LEX_O_FILE): $(LEX_C_FILE)

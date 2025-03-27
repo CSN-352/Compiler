@@ -51,6 +51,8 @@ void yyerror(const char *msg);
     Enumerator* enumerator;
     EnumeratorList* enumerator_list;
     EnumSpecifier* enum_specifier;
+    StructUnionSpecifier* struct_or_union_specifier;
+    ClassSpecifier* class_specifier;
     int intval;
     char* strval;
 }
@@ -67,12 +69,15 @@ void yyerror(const char *msg);
 %type <direct_abstract_declarator> direct_abstract_declarator
 %type <abstract_declarator> abstract_declarator
 %type <declarator> init_declarator declarator
-%type<init_declarator_list> init_declarator_list
-%type<declaration> declaration
+%type <init_declarator_list> init_declarator_list
+%type <declaration> declaration
 %type <parameter_type_list> parameter_type_list
 %type <direct_declarator> direct_declarator
 %type <parameter_list> parameter_list
-%type <type_specifier> type_specifier
+%type <type_specifier> type_specifier 
+%type <struct_or_union_specifier> struct_or_union_specifier
+%type <class_specifier> class_specifier
+%type <enum_specifier> enum_specifier
 %type <intval> type_qualifier storage_class_specifier
 %type <specifier_qualifier_list> specifier_qualifier_list
 %type <pointer> pointer
@@ -81,21 +86,19 @@ void yyerror(const char *msg);
 %type <parameter_declaration> parameter_declaration;
 %type <enumerator> enumerator
 %type <enumerator_list> enumerator_list
-%type <enum_specifier> enum_specifier
+%token <intval> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
-%token <strval> BREAK CASE CHAR CONTINUE DEFAULT DO DOUBLE ELSE ENUM FLOAT FOR GOTO
-%token <strval> IF INT LONG RETURN SHORT SIGNED STRUCT SWITCH UNION UNSIGNED TYPE_NAME
-%token <strval> VOID WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
+%token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
+%token <strval> IF RETURN STRUCT SWITCH UNION
+%token <strval> WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
-%type <strval> error_case struct_or_union struct_or_union_specifier declaration
-%type <strval> init_declarator_list init_declarator declarator struct_declarator_list
-%type <strval> error_case struct_or_union struct_or_union_specifier
-%type <strval> enum_specifier struct_declarator_list
-%type <strval> struct_declarator class_declaration class_declaration_list class_specifier access_specifier
+%type <strval> error_case struct_or_union
+%type <strval> struct_declarator_list
+%type <strval> struct_declarator class_declaration class_declaration_list access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
 %nonassoc LOW_PREC
@@ -119,6 +122,7 @@ primary_expression:
     | F_CONSTANT {$$ = create_primary_expression($1);}
     | CHAR_CONSTANT {$$ = create_primary_expression($1);}
     | STRING_LITERAL {$$ = create_primary_expression($1);}
+    /* | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($1);} */
     ;
 
 argument_expression_list:
@@ -278,19 +282,19 @@ storage_class_specifier:
     ;
 
 type_specifier:
-    VOID      
-    | CHAR    
-	| SHORT   
-	| INT     
-	| LONG    
-	| FLOAT   
-	| DOUBLE  
-	| SIGNED  
-	| UNSIGNED 
-    | TYPE_NAME
-	| struct_or_union_specifier  
-	| enum_specifier  
-    | class_specifier 
+    VOID        {$$ = create_type_specifier($1);}
+    | CHAR      {$$ = create_type_specifier($1);}
+	| SHORT     {$$ = create_type_specifier($1);}
+	| INT       {$$ = create_type_specifier($1);}  
+	| LONG      {$$ = create_type_specifier($1);}
+	| FLOAT     {$$ = create_type_specifier($1);}
+	| DOUBLE    {$$ = create_type_specifier($1);}
+	| SIGNED    {$$ = create_type_specifier($1);}
+	| UNSIGNED  {$$ = create_type_specifier($1);}
+    | TYPE_NAME {$$ = create_type_specifier($1);}
+	| struct_or_union_specifier {$$ = create_struct_or_union_type_specifier($1);}
+	| enum_specifier            {$$ = create_enum_type_specifier($1);}
+    /* | class_specifier           {$$ = create_class_type_specifier($1);} */
 	;
 
 struct_or_union_specifier:
@@ -371,8 +375,8 @@ enumerator:
     ;
 
 type_qualifier:
-    CONST  {$$ = $1;}
-    | VOLATILE  {$$ = $1;}
+    CONST  {$$ = 0;}
+    | VOLATILE  {$$ = 1;}
     ;
 
 declarator:
@@ -382,12 +386,11 @@ declarator:
 
 direct_declarator:
     IDENTIFIER  { $$ = create_dir_declarator_id( $1 ); }
-    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE 
-	| direct_declarator LEFT_SQUARE RIGHT_SQUARE 
-    | LEFT_PAREN declarator RIGHT_PAREN 
-    | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN 
-    | direct_declarator LEFT_PAREN identifier_list RIGHT_PAREN 
-    | direct_declarator LEFT_PAREN RIGHT_PAREN 
+    /* | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_declarator_array($1, $3);}
+	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_declarator_array($1, nullptr);} */
+    /* | LEFT_PAREN declarator RIGHT_PAREN { $$ = create_direct_declarator($2); } */
+    /* | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_declarator_function($1, $3);}
+    | direct_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_declarator_function($1, nullptr);} */
     ;
 
 pointer:
