@@ -576,6 +576,7 @@ int main(int argc, char **argv) {
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     has_error |= symbolTable.has_error();
+    symbolTable.printSymbolTable();
     // if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;

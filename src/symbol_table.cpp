@@ -113,48 +113,6 @@ bool Type::isPrimitive()
 //     }
 //     return ss.str();
 // }
-int Type::get_size()
-{
-    if (is_array)
-    {
-        unsigned int p = 1;
-        for (int i = 0; i < array_dim; i++)
-        {
-            p *= array_dims[i];
-        }
-        int size;
-        if (isPrimitive())
-            size = primitive_type_size[typeIndex];
-        else
-        {
-            if (symbolTable.get_defined_type(defined_type_name).type_definition != nullptr)
-                size = symbolTable.get_defined_type(defined_type_name).type_definition->get_size();
-            else
-            {
-                string error_msg = "Type " + defined_type_name + " declared but not defined at ";
-                yyerror(error_msg.c_str());
-                symbolTable.set_error();
-            }
-        }
-        return size * p;
-    }
-    else if (ptr_level > 0 || is_function)
-        return WORD_SIZE;
-    else if (!isPrimitive())
-    {
-        if (symbolTable.get_defined_type(defined_type_name).type_definition != nullptr)
-            return symbolTable.get_defined_type(defined_type_name).type_definition->get_size();
-        else
-        {
-            string error_msg = "Type " + defined_type_name + " declared but not defined at ";
-            yyerror(error_msg.c_str());
-            symbolTable.set_error();
-            return 0;
-        }
-    }
-    else
-        return primitive_type_size[typeIndex];
-}
 
 bool Type::isInt()
 {
@@ -197,17 +155,17 @@ bool Type::isChar()
 bool Type::isFloat()
 {
     if (typeIndex >= 10 && typeIndex <= 12 && ptr_level == 0)
-        return true;
-    else
-        return false;
+    return true;
+else
+return false;
 }
 
 bool Type::isIntorFloat()
 {
     if (typeIndex <= 12 && ptr_level == 0)
-        return true;
-    else
-        return false;
+    return true;
+else
+return false;
 }
 
 bool Type::isUnsigned()
@@ -264,18 +222,18 @@ bool Type::isVoid()
 
 bool Type::is_invalid()
 {
-
+    
     if (typeIndex == -1)
     {
         return true;
     }
-
+    
     return false;
 }
 
 bool Type::is_ea()
 {
-
+    
     if (is_array)
     {
         return true;
@@ -288,18 +246,56 @@ bool Type::is_ea()
     {
         return false;
     }
-
+    
     return false;
 }
 
-bool operator!=(Type &obj1, Type &obj2)
+int Type::get_size()
 {
-    return !(obj1 == obj2);
+    if (is_array)
+    {
+        unsigned int p = 1;
+        for (int i = 0; i < array_dim; i++)
+        {
+            p *= array_dims[i];
+        }
+        int size;
+        if (isPrimitive())
+            size = primitive_type_size[typeIndex];
+        else
+        {
+            if (symbolTable.get_defined_type(defined_type_name).type_definition != nullptr)
+                size = symbolTable.get_defined_type(defined_type_name).type_definition->get_size();
+            else
+            {
+                string error_msg = "Type " + defined_type_name + " declared but not defined at ";
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+            }
+        }
+        return size * p;
+    }
+    else if (ptr_level > 0 || is_function)
+        return WORD_SIZE;
+    else if (!isPrimitive())
+    {
+        if (symbolTable.get_defined_type(defined_type_name).type_definition != nullptr)
+            return symbolTable.get_defined_type(defined_type_name).type_definition->get_size();
+        else
+        {
+            string error_msg = "Type " + defined_type_name + " declared but not defined at ";
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
+            return 0;
+        }
+    }
+    else
+        return primitive_type_size[typeIndex];
 }
 
 bool operator==(Type &obj1, Type &obj2)
 {
-
+    
     if (obj1.typeIndex != obj2.typeIndex)
     {
         return false;
@@ -323,7 +319,7 @@ bool operator==(Type &obj1, Type &obj2)
                     return false;
                 }
             }
-
+            
             return true;
         }
     }
@@ -365,7 +361,7 @@ bool operator==(Type &obj1, Type &obj2)
                     return false;
                 }
             }
-
+            
             return true;
         }
     }
@@ -373,30 +369,26 @@ bool operator==(Type &obj1, Type &obj2)
     {
         return false;
     }
-
+    
     else
     {
         return true;
     }
-
+    
     return false;
 }
+
+bool operator!=(Type &obj1, Type &obj2)
+{
+    return !(obj1 == obj2);
+}
+
 
 // ##############################################################################
 // ################################## TYPE DEFINITION ###########################
 // ##############################################################################
 
 // Not fully implemented:- Basic is done only for the sake of testing, since without this, the code will not compile
-
-int TypeDefinition::get_size()
-{
-    int size = 0;
-    for (auto it = members.begin(); it != members.end(); it++)
-    {
-        size += it->second.get_size();
-    }
-    return size;
-}
 
 Type *TypeDefinition::get_member(Identifier *id)
 {
@@ -410,10 +402,22 @@ Type *TypeDefinition::get_member(Identifier *id)
     }
 }
 
+int TypeDefinition::get_size()
+{
+    int size = 0;
+    for (auto it = members.begin(); it != members.end(); it++)
+    {
+        size += it->second.get_size();
+    }
+    return size;
+}
+
+
 // ##############################################################################
 // ################################## DEFINED TYPES ######################################
 // ##############################################################################
 int DefinedTypes::t_index_count = PrimitiveTypes::NUM_PRIMITIVE_TYPES;
+
 DefinedTypes ::DefinedTypes() : Type(t_index_count++, 0, false)
 {
     is_defined_type = true;
@@ -422,19 +426,20 @@ DefinedTypes ::DefinedTypes() : Type(t_index_count++, 0, false)
 // ##############################################################################
 // ################################## TYPE QUALIFIER LIST ######################################
 // ##############################################################################
+
 TypeQualifierList ::TypeQualifierList() : NonTerminal("TYPE QUALIFIER LIST") {}
 
-TypeQualifierList *create_type_qualifier_list(int tq)
+TypeQualifierList *create_type_qualifier_list(int typequalifier)
 {
     TypeQualifierList *P = new TypeQualifierList();
-    P->type_qualifier_list.push_back(tq);
+    P->type_qualifier_list.push_back(typequalifier);
     return P;
 }
 
-TypeQualifierList *create_type_qualifier_list(TypeQualifierList *x, int tq)
+TypeQualifierList *create_type_qualifier_list(TypeQualifierList *typequalifierlist, int typequalifier)
 {
-    x->type_qualifier_list.push_back(tq);
-    return x;
+    typequalifierlist->type_qualifier_list.push_back(typequalifier);
+    return typequalifierlist;
 }
 
 // ##############################################################################
@@ -1580,6 +1585,7 @@ SymbolTable::SymbolTable()
 void SymbolTable::enterScope()
 {
     currentScope++;
+    cerr<<currentScope<<"hello\n";
 }
 
 void SymbolTable::set_error() { error = true; }

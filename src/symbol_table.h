@@ -87,6 +87,12 @@ enum StorageClassSpecifiers
     REGISTER_ = 4
 };
 
+extern Type ERROR_TYPE;
+
+// ##############################################################################
+// ################################## TYPE ######################################
+// ##############################################################################
+
 class Type
 {
 public:
@@ -106,11 +112,12 @@ public:
     bool is_defined_type;
     string defined_type_name;
 
+    bool is_const_variable;
+    bool is_const_literal;
+
     Type();
 
     Type(int idx, int p_lvl, bool is_con);
-    bool is_const_variable;
-    bool is_const_literal;
     bool isPrimitive();
     bool isInt();
     bool isChar();
@@ -124,16 +131,17 @@ public:
     bool isVoid();
     bool is_invalid();
     bool is_ea();
-    std::string get_name();
     int get_size();
 
     friend bool operator==(Type &obj1, Type &obj2);
     friend bool operator!=(Type &obj1, Type &obj2);
 };
 
-extern Type ERROR_TYPE;
+// ##############################################################################
+// ################################## TYPE DEFINITION ######################################
+// ##############################################################################
 
-class TypeDefinition
+class TypeDefinition 
 {
 public:
     unordered_map<string, Type> members;
@@ -141,14 +149,18 @@ public:
     int get_size();
 };
 
-class DefinedTypes : Type
+// ##############################################################################
+// ################################## DEFINED TYPES ######################################
+// ##############################################################################
+
+class DefinedTypes : public Type
 {
 public:
     static int t_index_count;
     bool is_class;
     bool is_struct;
     bool is_union;
-    TypeDefinition *type_definition;
+    TypeDefinition* type_definition;
     DefinedTypes();
 };
 
@@ -161,6 +173,10 @@ public:
 
 // } DIRECT_DECLARATOR_TYPE;
 
+// ##############################################################################
+// ################################## TYPE QUALIFIER LIST ######################################
+// ##############################################################################
+
 class TypeQualifierList : public NonTerminal
 {
     // Fully implemented
@@ -169,8 +185,12 @@ public:
     TypeQualifierList();
 };
 
-TypeQualifierList *create_type_qualifier_list(int tq);
-TypeQualifierList *create_type_qualifier_list(TypeQualifierList *x, int tq);
+TypeQualifierList *create_type_qualifier_list(int typequalifier);
+TypeQualifierList *create_type_qualifier_list(TypeQualifierList *typequalifierlist, int typequalifier);
+
+// ##############################################################################
+// ################################## DECLARATION ######################################
+// ##############################################################################
 
 class Declaration : public NonTerminal
 {
@@ -187,20 +207,36 @@ public:
 Declaration *new_declaration(DeclarationSpecifiers *declaraion_specifiers,
                              DeclaratorList *init_declarator_list);
 
+// ##############################################################################
+// ################################## DECLARATION LIST ######################################
+// ##############################################################################
+
 class DeclarationList : public NonTerminal
 {
     // implement after declaration
 };
+
+// ##############################################################################
+// ################################## INITIALIZER LIST ######################################
+// ##############################################################################
 
 class InitializerList : public NonTerminal
 {
     // Implement after initializer
 };
 
+// ##############################################################################
+// ################################## INITIALIZER ######################################
+// ##############################################################################
+
 class Initializer : public NonTerminal
 {
     // Implement after assignment expression
 };
+
+// ##############################################################################
+// ################################## IDENTIFIER LIST ######################################
+// ##############################################################################
 
 class IdentifierList : public NonTerminal
 {
@@ -212,6 +248,10 @@ public:
 
 IdentifierList *create_identifier_list(Identifier *id);
 IdentifierList *create_identifier_list(IdentifierList *x, Identifier *id);
+
+// ##############################################################################
+// ################################## DECLARATION SPECIFIER ######################################
+// ##############################################################################
 
 class DeclarationSpecifiers : public NonTerminal
 {
@@ -231,6 +271,10 @@ DeclarationSpecifiers *create_declaration_specifiers(SpecifierQualifierList *sql
 DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *x, int sc);
 DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *x, SpecifierQualifierList *sql);
 
+// ##############################################################################
+// ################################## POINTER ######################################
+// ##############################################################################
+
 class Pointer : public NonTerminal
 {
     // Fully Implemented
@@ -243,15 +287,27 @@ public:
 Pointer *create_pointer(TypeQualifierList *tql);
 Pointer *create_pointer(Pointer *x, TypeQualifierList *tql);
 
+// ##############################################################################
+// ################################## INIT DECLARATOR LIST ######################################
+// ##############################################################################
+
 class InitDeclaratorList : public NonTerminal
 {
     // Implement after InitDeclarator
 };
 
+// ##############################################################################
+// ################################## INIT DECLARATOR ######################################
+// ##############################################################################
+
 class InitDeclarator : public NonTerminal
 {
     // Implement after Declarator, Initializer
 };
+
+// ##############################################################################
+// ################################## DIRECT DECLARATOR ######################################
+// ##############################################################################
 
 class DirectDeclarator : public NonTerminal
 {
@@ -273,6 +329,10 @@ DirectDeclarator *create_direct_declarator(Declarator *x);
 DirectDeclarator *create_direct_declarator_array(DirectDeclarator *x, Expression *c);
 DirectDeclarator *create_direct_declarator_function(DirectDeclarator *x, ParameterTypeList *p);
  
+// ##############################################################################
+// ################################## DECLARATOR ######################################
+// ##############################################################################
+
 class Declarator : public NonTerminal
 {
     // Implement after Pointer and DirectDeclarator
@@ -292,6 +352,10 @@ Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declar
 // Declarator *create_declarator( // Pointer *pointer,
 //     DirectDeclarator *direct_declarator);
 
+// ##############################################################################
+// ################################## PARAMETER DECLARATION ######################################
+// ##############################################################################
+
 class ParameterDeclaration : public NonTerminal
 {
     // Implement after Declaration Specifiers and Declarator
@@ -307,6 +371,10 @@ public:
 ParameterDeclaration *create_parameter_declaration(DeclarationSpecifiers *ds, AbstractDeclarator *d);
 ParameterDeclaration *create_paramater_declaration(DeclarationSpecifiers *ds, Declarator *d);
 
+// ##############################################################################
+// ################################## PARAMETER LIST ######################################
+// ##############################################################################
+
 class ParameterList : public NonTerminal
 {
     // Fully Implemented
@@ -317,6 +385,10 @@ public:
 
 ParameterList *create_parameter_list(ParameterDeclaration *pd);
 ParameterList *create_parameter_list(ParameterList *p, ParameterDeclaration *pd);
+
+// ##############################################################################
+// ################################## PARAMETER TYPE LIST ######################################
+// ##############################################################################
 
 class ParameterTypeList : public NonTerminal
 {
