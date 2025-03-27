@@ -204,7 +204,7 @@ public:
     Declaration();
 };
 
-Declaration *create_declaration(DeclarationSpecifiers *declaraion_specifiers,
+Declaration* create_declaration(DeclarationSpecifiers *declaraion_specifiers,
                              DeclaratorList *init_declarator_list);
 
 // ##############################################################################
@@ -334,7 +334,7 @@ class Declarator : public NonTerminal
 {
     // Implement after Pointer and DirectDeclarator
 public:
-    Pointer* ptr;
+    Pointer* pointer;
     DirectDeclarator *direct_declarator;
     // Expression* initialising_expression;
     // Terminal* eq;

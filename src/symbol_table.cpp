@@ -450,22 +450,27 @@ Declaration ::Declaration()
     init_declarator_list = nullptr;
 }
 
-Declaration *new_declaration(DeclarationSpecifiers *declaration_specifiers,
+Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
                              DeclaratorList *init_declarator_list)
 {
-    Declaration *d = new Declaration();
+    Declaration *P = new Declaration();
 
-    d->declaration_specifiers = declaration_specifiers;
-    d->init_declarator_list = init_declarator_list;
+    P->declaration_specifiers = declaration_specifiers;
+    P->init_declarator_list = init_declarator_list;
 
-    int number_of_variables = init_declarator_list->declarator_list.size();
-
-    for (int index = 0; index < number_of_variables; index++)
-    {
-        Declarator *variable = init_declarator_list->declarator_list[index];
-        symbolTable.insert(variable->name, d->type, d->type.get_size());
+    // int number_of_variables = init_declarator_list->declarator_list.size();
+    if(init_declarator_list != nullptr){
+        for (int index = 0; index < init_declarator_list->declarator_list.size(); index++)
+        {
+            Declarator *variable = init_declarator_list->declarator_list[index];
+            int ptr_level = 0;
+            if (variable->pointer != nullptr)
+                ptr_level = variable->pointer->pointer_level;
+            Type t = Type(P->declaration_specifiers->type_index, ptr_level, false);
+            symbolTable.insert(variable->name, t, t.get_size());
+        }
+        return P;
     }
-    return d;
 }
 
 // ##############################################################################
@@ -690,7 +695,7 @@ DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *ds, 
     ds->set_type();
     if (ds->type_index == -1)
     {
-        string error_msg = "Invalid Type at line " + to_string(x->type_specifiers[0]->line_no) + ", column " + to_string(x->type_specifiers[0]->column_no);
+        string error_msg = "Invalid Type at line " + to_string(ds->type_specifiers[0]->line_no) + ", column " + to_string(ds->type_specifiers[0]->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
@@ -720,24 +725,6 @@ Pointer *create_pointer(Pointer *p, TypeQualifierList *tql)
     p->type_qualifier_list = tql;
     return p;
 }
-
-// ##############################################################################
-// ################################## INIT DECLARATOR LIST ######################################
-// ##############################################################################
-
-class InitDeclaratorList : public NonTerminal
-{
-    // Implement after InitDeclarator
-};
-
-// ##############################################################################
-// ################################## INIT DECLARATOR ######################################
-// ##############################################################################
-
-class InitDeclarator : public NonTerminal
-{
-    // Implement after Declarator, Initializer
-};
 
 // ##############################################################################
 // ############################ DIRECT DECLARATOR ###############################
@@ -820,7 +807,7 @@ DirectDeclarator *create_direct_declarator_function(DirectDeclarator *dd, Parame
 
 Declarator ::Declarator()
     : NonTerminal("declarator"){
-    ptr = nullptr;
+    pointer = nullptr;
     direct_declarator = nullptr;
 };
 
@@ -831,7 +818,7 @@ Declarator *create_declarator(Pointer *p, DirectDeclarator *dd)
         return NULL;
     }
     Declarator *d = new Declarator();
-    d->ptr = p;
+    d->pointer = p;
     d->direct_declarator = dd;
     // d->add_children( direct_declarator );
     return d;
