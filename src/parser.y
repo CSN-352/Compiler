@@ -50,6 +50,9 @@ void yyerror(const char *msg);
     ParameterDeclaration* parameter_declaration;
     Enumerator* enumerator;
     EnumeratorList* enumerator_list;
+    EnumSpecifier* enum_specifier;
+    StructUnionSpecifier* struct_or_union_specifier;
+    ClassSpecifier* class_specifier;
     int intval;
     char* strval;
 }
@@ -71,7 +74,10 @@ void yyerror(const char *msg);
 %type <parameter_type_list> parameter_type_list
 %type <direct_declarator> direct_declarator
 %type <parameter_list> parameter_list
-%type <type_specifier> type_specifier struct_or_union_specifier class_specifier enum_specifier
+%type <type_specifier> type_specifier 
+%type <struct_or_union_specifier> struct_or_union_specifier
+%type <class_specifier> class_specifier
+%type <enum_specifier> enum_specifier
 %type <intval> type_qualifier storage_class_specifier
 %type <specifier_qualifier_list> specifier_qualifier_list
 %type <pointer> pointer
@@ -116,7 +122,7 @@ primary_expression:
     | F_CONSTANT {$$ = create_primary_expression($1);}
     | CHAR_CONSTANT {$$ = create_primary_expression($1);}
     | STRING_LITERAL {$$ = create_primary_expression($1);}
-    | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($1);}
+    /* | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($1);} */
     ;
 
 argument_expression_list:
@@ -276,19 +282,19 @@ storage_class_specifier:
     ;
 
 type_specifier:
-    VOID      
-    | CHAR    
-	| SHORT   
-	| INT   
-	| LONG    
-	| FLOAT   
-	| DOUBLE  
-	| SIGNED  
-	| UNSIGNED 
-    | TYPE_NAME
-	| struct_or_union_specifier  
-	| enum_specifier  
-    | class_specifier 
+    VOID        {$$ = create_type_specifier($1);}
+    | CHAR      {$$ = create_type_specifier($1);}
+	| SHORT     {$$ = create_type_specifier($1);}
+	| INT       {$$ = create_type_specifier($1);}  
+	| LONG      {$$ = create_type_specifier($1);}
+	| FLOAT     {$$ = create_type_specifier($1);}
+	| DOUBLE    {$$ = create_type_specifier($1);}
+	| SIGNED    {$$ = create_type_specifier($1);}
+	| UNSIGNED  {$$ = create_type_specifier($1);}
+    | TYPE_NAME {$$ = create_type_specifier($1);}
+	| struct_or_union_specifier {$$ = create_struct_or_union_type_specifier($1);}
+	| enum_specifier            {$$ = create_enum_type_specifier($1);}
+    /* | class_specifier           {$$ = create_class_type_specifier($1);} */
 	;
 
 struct_or_union_specifier:
@@ -380,12 +386,11 @@ declarator:
 
 direct_declarator:
     IDENTIFIER  { $$ = create_dir_declarator_id( $1 ); }
-    | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE 
-	| direct_declarator LEFT_SQUARE RIGHT_SQUARE 
-    | LEFT_PAREN declarator RIGHT_PAREN 
-    | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN 
-    | direct_declarator LEFT_PAREN identifier_list RIGHT_PAREN 
-    | direct_declarator LEFT_PAREN RIGHT_PAREN 
+    /* | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_declarator_array($1, $3);}
+	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_declarator_array($1, nullptr);} */
+    /* | LEFT_PAREN declarator RIGHT_PAREN { $$ = create_direct_declarator($2); } */
+    /* | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_declarator_function($1, $3);}
+    | direct_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_declarator_function($1, nullptr);} */
     ;
 
 pointer:

@@ -48,7 +48,7 @@ class StringLiteral;
 class Symbol;
 class SymbolTable;
 
-int type;
+static int type;
 
 enum PrimitiveTypes
 {
@@ -71,7 +71,7 @@ enum PrimitiveTypes
 
 
 
-unordered_map<int,int> primitive_type_size = {{0,2},{1,2},{2,2},{3,2},{4,4},{5,4},{6,4},{7,4},{8,8},{9,8},{10,4},{11,8},{12,4}};
+static unordered_map<int,int> primitive_type_size = {{0,2},{1,2},{2,2},{3,2},{4,4},{5,4},{6,4},{7,4},{8,8},{9,8},{10,4},{11,8},{12,4}};
 
 enum TypeQualifiers
 {
@@ -258,15 +258,18 @@ class DirectDeclarator : public NonTerminal
     // Implement after identifier_list and conditional expression
 public:
     // DIRECT_DECLARATOR_TYPE direct_declarator_type;
+    Declarator *declarator;
     Identifier *identifier;
-    // vector<unsigned int> array_dimensions;
-    // ParameterTypeList* parameter_list;
+    bool is_function;              // Flag to check if it's a function
+    bool is_array;                 // Flag to check if it's an array
+    ParameterTypeList *parameters; // Stores function parameters if applicable
+    vector<int> array_dimensions;  // Stores array dimensions if applicable
     DirectDeclarator();
 };
 
 DirectDeclarator *create_dir_declarator_id( // DIRECT_DECLARATOR_TYPE type,
-    Identifier *id);
-
+Identifier *id);
+ 
 class Declarator : public NonTerminal
 {
     // Implement after Pointer and DirectDeclarator
@@ -461,26 +464,21 @@ class TypeSpecifier : public NonTerminal
     // Implement after StructUnionSpecifier, ClassSpecifier
 public:
     int type_specifier;
-    EnumSpecifier* enum_specifier;
-    ClassSpecifier* class_specifier;
-    StructUnionSpecifier* struct_union_specifier;
-    int type_index;
+    EnumSpecifier *enum_specifier;
+    StructUnionSpecifier *struct_union_specifier;
+    // ClassSpecifier *class_specifier;
+    // int type_index;
 
-    TypeSpecifier(int type_specifier, unsigned int line_no, unsigned int column_no);
-    TypeSpecifier(int type_specifier, Identifier *identifier, StructDeclarationList *struct_declaration_list);
-    TypeSpecifier(int type_specifier, Identifier *identifier, EnumeratorList *enumerator_list);
+    TypeSpecifier(int type_specifier);
+    TypeSpecifier(EnumSpecifier *enum_specifier);
+    TypeSpecifier(StructUnionSpecifier *struct_union_specifier);
+    // TypeSpecifier(ClassSpecifier* class_specifier);
 };
 
-TypeSpecifier *create_type_specifier(int type_specifier,
-                                     unsigned int line_num,
-                                     unsigned int column);
-TypeSpecifier *
-create_struct_type(int type_specifier, Identifier *id);
-
-TypeSpecifier *add_struct_declaration(TypeSpecifier *ts,
-                                      StructDeclarationList *struct_declaration_list);
-TypeSpecifier *create_type_specifier(int type_specifier, Identifier *id,
-                                     EnumeratorList *enumerator_list);
+TypeSpecifier *create_type_specifier(int type_specifier);
+TypeSpecifier *create_enum_type_specifier(EnumSpecifier *enum_specifier);
+TypeSpecifier *create_struct_or_union_type_specifier(StructUnionSpecifier *struct_union_specifier);
+// TypeSpecifier* create_type_specifier(ClassSpecifier* class_specifier);
 
 class SpecifierQualifierList : public NonTerminal
 {
@@ -549,13 +547,12 @@ public:
 
 class SymbolTable
 {
-private:
+public:
     std::unordered_map<std::string, std::list<Symbol *>> table;
     std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes>>> defined_types;
     int currentScope;
     bool error;
 
-public:
     SymbolTable();
     void enterScope();
     void exitScope();
