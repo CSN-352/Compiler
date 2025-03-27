@@ -155,17 +155,17 @@ bool Type::isChar()
 bool Type::isFloat()
 {
     if (typeIndex >= 10 && typeIndex <= 12 && ptr_level == 0)
-    return true;
-else
-return false;
+        return true;
+    else
+        return false;
 }
 
 bool Type::isIntorFloat()
 {
     if (typeIndex <= 12 && ptr_level == 0)
-    return true;
-else
-return false;
+        return true;
+    else
+        return false;
 }
 
 bool Type::isUnsigned()
@@ -222,18 +222,18 @@ bool Type::isVoid()
 
 bool Type::is_invalid()
 {
-    
+
     if (typeIndex == -1)
     {
         return true;
     }
-    
+
     return false;
 }
 
 bool Type::is_ea()
 {
-    
+
     if (is_array)
     {
         return true;
@@ -246,7 +246,7 @@ bool Type::is_ea()
     {
         return false;
     }
-    
+
     return false;
 }
 
@@ -295,7 +295,7 @@ int Type::get_size()
 
 bool operator==(Type &obj1, Type &obj2)
 {
-    
+
     if (obj1.typeIndex != obj2.typeIndex)
     {
         return false;
@@ -319,7 +319,7 @@ bool operator==(Type &obj1, Type &obj2)
                     return false;
                 }
             }
-            
+
             return true;
         }
     }
@@ -361,7 +361,7 @@ bool operator==(Type &obj1, Type &obj2)
                     return false;
                 }
             }
-            
+
             return true;
         }
     }
@@ -369,12 +369,12 @@ bool operator==(Type &obj1, Type &obj2)
     {
         return false;
     }
-    
+
     else
     {
         return true;
     }
-    
+
     return false;
 }
 
@@ -382,7 +382,6 @@ bool operator!=(Type &obj1, Type &obj2)
 {
     return !(obj1 == obj2);
 }
-
 
 // ##############################################################################
 // ################################## TYPE DEFINITION ###########################
@@ -523,21 +522,68 @@ TypeQualifierList *create_type_qualifier_list(TypeQualifierList *typequalifierli
 }
 
 // ##############################################################################
-// ################################## IDENTIFIER LIST ######################################
+// ############################# DECLARATION ####################################
 // ##############################################################################
+
+Declaration ::Declaration()
+    : NonTerminal("declaration")
+{
+    declaration_specifiers = nullptr;
+    init_declarator_list = nullptr;
+}
+
+Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
+                             DeclaratorList *init_declarator_list)
+{
+    Declaration *P = new Declaration();
+
+    P->declaration_specifiers = declaration_specifiers;
+    P->init_declarator_list = init_declarator_list;
+
+    // int number_of_variables = init_declarator_list->declarator_list.size();
+    if(init_declarator_list != nullptr){
+        for (int index = 0; index < init_declarator_list->declarator_list.size(); index++)
+        {
+            Declarator *variable = init_declarator_list->declarator_list[index];
+            int ptr_level = 0;
+            if (variable->pointer != nullptr)
+                ptr_level = variable->pointer->pointer_level;
+            Type t = Type(P->declaration_specifiers->type_index, ptr_level, false);
+            symbolTable.insert(variable->name, t, t.get_size());
+        }
+        return P;
+    }
+}
+
+// ##############################################################################
+// ############################# DECLARATION LIST ####################################
+// ##############################################################################
+
+// ##############################################################################
+// ############################# INITIALIZER LIST ####################################
+// ##############################################################################
+
+// ##############################################################################
+// ################################## INITIALIZER ######################################
+// ##############################################################################
+
+// ##############################################################################
+// ############################# IDENTIFIER LIST ####################################
+// ##############################################################################
+
 IdentifierList ::IdentifierList() : NonTerminal("IDENTIFIER LIST") {}
 
-IdentifierList *create_identifier_list(Identifier *id)
+IdentifierList *create_identifier_list(Identifier *i)
 {
     IdentifierList *P = new IdentifierList();
-    P->identifiers.push_back(id);
+    P->identifiers.push_back(i);
     return P;
 }
 
-IdentifierList *create_identifier_list(IdentifierList *x, Identifier *id)
+IdentifierList *create_identifier_list(IdentifierList *il, Identifier *i)
 {
-    x->identifiers.push_back(id);
-    return x;
+    il->identifiers.push_back(i);
+    return il;
 }
 
 // ##############################################################################
@@ -719,23 +765,23 @@ DeclarationSpecifiers *create_declaration_specifiers(SpecifierQualifierList *sql
     return P;
 }
 
-DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *x, int sc)
+DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *ds, int storage_class)
 {
-    x->storage_class_specifiers.push_back(sc);
-    return x;
+    ds->storage_class_specifiers.push_back(storage_class);
+    return ds;
 }
 
-DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *x, SpecifierQualifierList *sql)
+DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *ds, SpecifierQualifierList *sql)
 {
-    x->type_specifiers.insert(x->type_specifiers.end(), sql->type_specifiers.begin(), sql->type_specifiers.end());
-    x->set_type();
-    if (x->type_index == -1)
+    ds->type_specifiers.insert(ds->type_specifiers.end(), sql->type_specifiers.begin(), sql->type_specifiers.end());
+    ds->set_type();
+    if (ds->type_index == -1)
     {
-        string error_msg = "Invalid Type at line " + to_string(x->type_specifiers[0]->line_no) + ", column " + to_string(x->type_specifiers[0]->column_no);
+        string error_msg = "Invalid Type at line " + to_string(ds->type_specifiers[0]->line_no) + ", column " + to_string(ds->type_specifiers[0]->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
-    return x;
+    return ds;
 }
 
 // ##############################################################################
@@ -743,8 +789,8 @@ DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *x, S
 // ##############################################################################
 Pointer ::Pointer() : NonTerminal("POINTER")
 {
-    pointer_level = 0;
     type_qualifier_list = nullptr;
+    pointer_level = 0;
 }
 
 Pointer *create_pointer(TypeQualifierList *tql)
@@ -755,11 +801,11 @@ Pointer *create_pointer(TypeQualifierList *tql)
     return P;
 }
 
-Pointer *create_pointer(Pointer *x, TypeQualifierList *tql)
+Pointer *create_pointer(Pointer *p, TypeQualifierList *tql)
 {
-    x->pointer_level++;
-    x->type_qualifier_list = tql;
-    return x;
+    p->pointer_level++;
+    p->type_qualifier_list = tql;
+    return p;
 }
 
 // ##############################################################################
@@ -767,100 +813,95 @@ Pointer *create_pointer(Pointer *x, TypeQualifierList *tql)
 // ##############################################################################
 
 DirectDeclarator ::DirectDeclarator()
-    : NonTerminal("direct_declarator"), identifier(nullptr)
-{
-}
+    : NonTerminal("direct_declarator"){
+        declarator = nullptr;
+        identifier = nullptr;
+        parameters = nullptr;
+        is_function = false;
+        is_array = false;
+    }
 
-DirectDeclarator *create_dir_declarator_id( // DIRECT_DECLARATOR_TYPE type,
-    Identifier *identifier)
+DirectDeclarator *create_dir_declarator_id(Identifier *i)
 {
     // assert( type == ID );
     DirectDeclarator *dd = new DirectDeclarator();
     // dd->type = type;
-    assert(identifier != nullptr);
-    dd->identifier = identifier;
-    dd->add_children(identifier);
+    assert(i != nullptr);
+    dd->identifier = i;
+    dd->add_children(i);
     return dd;
 }
 
-DirectDeclarator *create_direct_declarator(Declarator *x)
+DirectDeclarator *create_direct_declarator(Declarator *d)
 {
     DirectDeclarator *P = new DirectDeclarator();
-    P->declarator = x;
+    P->declarator = d;
     return P;
 }
 
-DirectDeclarator *create_direct_declarator_array(DirectDeclarator *x, Expression *c)
+DirectDeclarator *create_direct_declarator_array(DirectDeclarator *dd, Expression *e)
 {
-    if (x->is_function)
+    if (dd->is_function)
     {
-        string error_msg = "Type name cannot be an array of functions " + to_string(c->line_no) + ", column " + to_string(c->column_no);
+        string error_msg = "Type name cannot be an array of functions " + to_string(e->line_no) + ", column " + to_string(e->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-        return x;
+        return dd;
     }
-    if (c == nullptr || (c->type.isInt() && c->type.is_const_literal))
+    if (e == nullptr || (e->type.isInt() && e->type.is_const_literal))
     {
-        PrimaryExpression *c_cast = dynamic_cast<PrimaryExpression *>(c);
-        x->array_dimensions.push_back(stoi(c_cast->constant->value));
+        PrimaryExpression *c_cast = dynamic_cast<PrimaryExpression *>(e);
+        dd->array_dimensions.push_back(stoi(c_cast->constant->value));
     }
     else
     {
-        string error_msg = "Array size must be a constant integer at line " + to_string(c->line_no) + ", column " + to_string(c->column_no);
+        string error_msg = "Array size must be a constant integer at line " + to_string(e->line_no) + ", column " + to_string(e->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
-    return x;
+    return dd;
 }
 
-DirectDeclarator *create_direct_declarator_function(DirectDeclarator *x, ParameterTypeList *p)
+DirectDeclarator *create_direct_declarator_function(DirectDeclarator *dd, ParameterTypeList *ptl)
 {
-    if (x->is_function)
+    if (dd->is_function)
     {
-        string error_msg = "Type name cannot be a function returning a function " + to_string(p->line_no) + ", column " + to_string(p->column_no);
+        string error_msg = "Type name cannot be a function returning a function " + to_string(ptl->line_no) + ", column " + to_string(ptl->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-        return x;
+        return dd;
     }
-    if (x->is_array)
+    if (dd->is_array)
     {
-        string error_msg = "Type name cannot be a function returning an array " + to_string(p->line_no) + ", column " + to_string(p->column_no);
+        string error_msg = "Type name cannot be a function returning an array " + to_string(ptl->line_no) + ", column " + to_string(ptl->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-        return x;
+        return dd;
     }
-    x->is_function = true;
-    x->parameters = p;
-    return x;
+    dd->is_function = true;
+    dd->parameters = ptl;
+    return dd;
 }
 
 // ##############################################################################
 // ############################ DECLARATOR ###############################
 // ##############################################################################
 
-Declarator ::Declarator(DirectDeclarator *dd, Pointer* pointer)
-    : NonTerminal("declarator"), direct_declarator(dd),
-      identifier(nullptr)
-{
-    if (dd == nullptr)
-    {
-        identifier = nullptr;
-    }
-    else
-    {
-        assert(dd->identifier != nullptr);
-        id = dd->id;
-        this->ptr = pointer;
-    }
+Declarator ::Declarator()
+    : NonTerminal("declarator"){
+    pointer = nullptr;
+    direct_declarator = nullptr;
 };
 
-Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declarator)
+Declarator *create_declarator(Pointer *p, DirectDeclarator *dd)
 {
-    if (direct_declarator == NULL)
+    if (dd == NULL)
     {
         return NULL;
     }
-    Declarator *d = new Declarator(direct_declarator, pointer);
+    Declarator *d = new Declarator();
+    d->pointer = p;
+    d->direct_declarator = dd;
     // d->add_children( direct_declarator );
     return d;
 }
@@ -868,31 +909,43 @@ Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declar
 // ##############################################################################
 // ################################## PARAMETER DECLARATION ######################################
 // ##############################################################################
-ParameterDeclaration ::ParameterDeclaration(DeclarationSpecifiers *ds) : NonTerminal("PARAMETER DECLARATION")
+
+ParameterDeclaration ::ParameterDeclaration() : NonTerminal("PARAMETER DECLARATION")
 {
-    declarations_specifiers = ds;
-    declarator = nullptr;
+    declarations_specifiers = nullptr;
     abstract_declarator = nullptr;
-    Type type;
-    void set_type();
+    declarator = nullptr;
+}
+
+ParameterDeclaration *create_parameter_declaration(DeclarationSpecifiers *ds, AbstractDeclarator *ad){
+    ParameterDeclaration* pd = new ParameterDeclaration();
+
+    return pd;
+}
+
+ParameterDeclaration *create_paramater_declaration(DeclarationSpecifiers *ds, Declarator *d){
+    ParameterDeclaration* pd = new ParameterDeclaration();
+
+    return pd;
 }
 
 // ##############################################################################
 // ################################## PARAMETER LIST ######################################
 // ##############################################################################
+
 ParameterList ::ParameterList() : NonTerminal("PARAMETER LIST") {}
 
 ParameterList *create_parameter_list(ParameterDeclaration *pd)
 {
-    ParameterList *P = new ParameterList();
-    P->parameter_declarations.push_back(pd);
-    return P;
+    ParameterList *pl = new ParameterList();
+    pl->parameter_declarations.push_back(pd);
+    return pl;
 }
 
-ParameterList *create_parameter_list(ParameterList *p, ParameterDeclaration *pd)
+ParameterList *create_parameter_list(ParameterList *pl, ParameterDeclaration *pd)
 {
-    p->parameter_declarations.push_back(pd);
-    return p;
+    pl->parameter_declarations.push_back(pd);
+    return pl;
 }
 
 // ##############################################################################
@@ -905,10 +958,10 @@ ParameterTypeList ::ParameterTypeList() : NonTerminal("PARAMETER TYPE LIST")
     is_variadic = false;
 }
 
-ParameterTypeList *create_parameter_type_list(ParameterList *p, bool var)
+ParameterTypeList *create_parameter_type_list(ParameterList *pl, bool var)
 {
     ParameterTypeList *P = new ParameterTypeList();
-    P->paramater_list = p;
+    P->paramater_list = pl;
     P->is_variadic = var;
     return P;
 }
@@ -967,8 +1020,8 @@ AbstractDeclarator *create_abstract_declarator(Pointer *p, DirectAbstractDeclara
 DirectAbstractDeclarator ::DirectAbstractDeclarator() : NonTerminal("DIRECT ABSTRACT DECLARATOR")
 {
     abstract_declarator = nullptr;
-    parameters = nullptr;
     is_function = false;
+    parameters = nullptr;
     is_array = false;
 }
 
@@ -1206,8 +1259,7 @@ TypeSpecifier ::TypeSpecifier(EnumSpecifier *es)
     struct_union_specifier = nullptr;
     // class_specifier = nullptr;
     // type_index = nullptr;
-    }
-
+}
 
 TypeSpecifier ::TypeSpecifier(StructUnionSpecifier *sus)
     : NonTerminal("TYPE SPECIFIER")
@@ -1216,48 +1268,48 @@ TypeSpecifier ::TypeSpecifier(StructUnionSpecifier *sus)
     enum_specifier = nullptr;
     struct_union_specifier = sus;
     // class_specifier = nullptr;
-    // type_index = nullptr;    
+    // type_index = nullptr;
 }
 
-TypeSpecifier* create_type_specifier(int type_specifier)
+TypeSpecifier *create_type_specifier(int type_specifier)
 {
     TypeSpecifier *type_specifier_obj = new TypeSpecifier(type_specifier);
     string name;
-    switch(type_specifier)
+    switch (type_specifier)
     {
-        case VOID:
-            name = ": void";
-            break;
-        case CHAR:
-            name = ": char";
-            break;
-        case SHORT:
-            name = ": short";
-            break;
-        case INT:
-            name = ": int";
-            break;
-        case LONG:
-            name = ": long";
-            break;
-        case FLOAT:
-            name = ": float";
-            break;
-        case DOUBLE:
-            name = ": double";
-            break;
-        case SIGNED:
-            name = ": signed";
-            break;
-        case UNSIGNED:
-            name = ": unsigned";
-            break;
-        case TYPE_NAME:
-            name = ": type_name";
-            break;
-        default:
-            name = ": ERROR";
-            break;
+    case VOID:
+        name = ": void";
+        break;
+    case CHAR:
+        name = ": char";
+        break;
+    case SHORT:
+        name = ": short";
+        break;
+    case INT:
+        name = ": int";
+        break;
+    case LONG:
+        name = ": long";
+        break;
+    case FLOAT:
+        name = ": float";
+        break;
+    case DOUBLE:
+        name = ": double";
+        break;
+    case SIGNED:
+        name = ": signed";
+        break;
+    case UNSIGNED:
+        name = ": unsigned";
+        break;
+    case TYPE_NAME:
+        name = ": type_name";
+        break;
+    default:
+        name = ": ERROR";
+        break;
     }
     type_specifier_obj->name += name;
 
@@ -1271,23 +1323,22 @@ TypeSpecifier *create_enum_type_specifier(EnumSpecifier *es)
     return type_specifier_obj;
 }
 
-TypeSpecifier* create_struct_or_union_type_specifier(StructUnionSpecifier *sus)
+TypeSpecifier *create_struct_or_union_type_specifier(StructUnionSpecifier *sus)
 {
     TypeSpecifier *type_specifier_obj = new TypeSpecifier(sus);
     // if(sus.is_struct)
     //     type_specifier_obj->name += ": Struct";
     // else
-        // type_specifier_obj->name += ": Union";
+    // type_specifier_obj->name += ": Union";
     type_specifier_obj->name += ": Struct/Union";
     return type_specifier_obj;
 }
-
 
 // ##############################################################################
 // ################################## SPECIFIER QUALIFIER LIST ######################################
 // ##############################################################################
 
-    SpecifierQualifierList ::SpecifierQualifierList() : NonTerminal("SPECIFIER QUALIFIER LIST")
+SpecifierQualifierList ::SpecifierQualifierList() : NonTerminal("SPECIFIER QUALIFIER LIST")
 {
 }
 
@@ -1558,32 +1609,6 @@ Identifier ::Identifier(string value, unsigned int line_no, unsigned int column_
 {
 }
 
-// ############################# DECLARATION ####################################
-// ##############################################################################
-
-Declaration ::Declaration() : NonTerminal("DECLARATION"){
-    declaration_specifiers = nullptr;
-    init_declarator_list = nullptr;
-};
-
-Declaration* create_declaration(DeclarationSpecifiers *declaration_specifiers,
-                             DeclaratorList *init_declarator_list)
-{
-    Declaration* P = new Declaration();
-    P->declaration_specifiers = declaration_specifiers;
-    P->init_declarator_list = init_declarator_list;
-
-    if(init_declarator_list != nullptr){
-        for (int i = 0; i < init_declarator_list->declarator_list.size(); i++)
-            {
-                Declarator* variable = init_declarator_list->declarator_list[i];
-                symbolTable.insert(variable->name, P->type, P->type.get_size());
-            }
-    }
-    
-    return P;
-}
-
 // ##############################################################################
 // ################################## CONSTANT ######################################
 // ##############################################################################
@@ -1723,7 +1748,7 @@ SymbolTable::SymbolTable()
 void SymbolTable::enterScope()
 {
     currentScope++;
-    cerr<<currentScope<<"hello\n";
+    cerr << currentScope << "hello\n";
 }
 
 void SymbolTable::set_error() { error = true; }

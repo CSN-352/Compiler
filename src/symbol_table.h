@@ -48,6 +48,8 @@ class StringLiteral;
 class Symbol;
 class SymbolTable;
 
+extern Type ERROR_TYPE;
+
 enum PrimitiveTypes
 {
     TYPE_ERROR_T = -1,
@@ -202,13 +204,10 @@ class Declaration : public NonTerminal
 public:
     DeclarationSpecifiers *declaration_specifiers;
     DeclaratorList *init_declarator_list;
-    Type type;
     Declaration();
-    void add_to_symbol_table(SymbolTable &sym_tab);
-    void dotify();
 };
 
-Declaration *create_declaration(DeclarationSpecifiers *declaraion_specifiers,
+Declaration* create_declaration(DeclarationSpecifiers *declaraion_specifiers,
                              DeclaratorList *init_declarator_list);
 
 // ##############################################################################
@@ -250,30 +249,28 @@ public:
     IdentifierList();
 };
 
-IdentifierList *create_identifier_list(Identifier *id);
-IdentifierList *create_identifier_list(IdentifierList *x, Identifier *id);
+IdentifierList *create_identifier_list(Identifier* i);
+IdentifierList *create_identifier_list(IdentifierList* il, Identifier* i);
 
 // ##############################################################################
-// ################################## DECLARATION SPECIFIER ######################################
+// ################################## DECLARATION SPECIFIERS ######################################
 // ##############################################################################
 
 class DeclarationSpecifiers : public NonTerminal
 {
-    // Fully Implemented
 public:
     vector<int> storage_class_specifiers;
     vector<TypeSpecifier *> type_specifiers;
     vector<int> type_qualifiers;
     bool is_const_variable;
-    bool is_const;
     int type_index;
-    void set_type();
     DeclarationSpecifiers();
+    void set_type();
 };
 
 DeclarationSpecifiers *create_declaration_specifiers(SpecifierQualifierList *sql);
-DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *x, int sc);
-DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *x, SpecifierQualifierList *sql);
+DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *ds, int storage_class);
+DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *ds, SpecifierQualifierList *sql);
 
 // ##############################################################################
 // ################################## POINTER ######################################
@@ -289,7 +286,7 @@ public:
 };
 
 Pointer *create_pointer(TypeQualifierList *tql);
-Pointer *create_pointer(Pointer *x, TypeQualifierList *tql);
+Pointer *create_pointer(Pointer *p, TypeQualifierList *tql);
 
 // ##############################################################################
 // ################################## INIT DECLARATOR LIST ######################################
@@ -320,18 +317,17 @@ public:
     // DIRECT_DECLARATOR_TYPE direct_declarator_type;
     Declarator *declarator;
     Identifier *identifier;
+    ParameterTypeList *parameters; // Stores function parameters if applicable
     bool is_function;              // Flag to check if it's a function
     bool is_array;                 // Flag to check if it's an array
-    ParameterTypeList *parameters; // Stores function parameters if applicable
     vector<int> array_dimensions;  // Stores array dimensions if applicable
     DirectDeclarator();
 };
 
-DirectDeclarator *create_dir_declarator_id( // DIRECT_DECLARATOR_TYPE type,
-Identifier *id);
-DirectDeclarator *create_direct_declarator(Declarator *x);
-DirectDeclarator *create_direct_declarator_array(DirectDeclarator *x, Expression *c);
-DirectDeclarator *create_direct_declarator_function(DirectDeclarator *x, ParameterTypeList *p);
+DirectDeclarator *create_dir_declarator_id(Identifier *i);
+DirectDeclarator *create_direct_declarator(Declarator *d);
+DirectDeclarator *create_direct_declarator_array(DirectDeclarator *dd, Expression *e);
+DirectDeclarator *create_direct_declarator_function(DirectDeclarator *dd, ParameterTypeList *ptl);
  
 // ##############################################################################
 // ################################## DECLARATOR ######################################
@@ -341,13 +337,12 @@ class Declarator : public NonTerminal
 {
     // Implement after Pointer and DirectDeclarator
 public:
-    Identifier *identifier;
-    Pointer* ptr;
+    Pointer* pointer;
     DirectDeclarator *direct_declarator;
     // Expression* initialising_expression;
     // Terminal* eq;
     // int get_pointer_level();
-    Declarator(DirectDeclarator *dd, Pointer *pointer);
+    Declarator();
     // Declarator(Pointer* p, DirectDeclarator* direct_declarator);
 };
 
@@ -369,10 +364,10 @@ public:
     Declarator *declarator;
     Type type;
     Type set_type(DeclarationSpecifiers *ds);
-    ParameterDeclaration(DeclarationSpecifiers *ds);
+    ParameterDeclaration();
 };
 
-ParameterDeclaration *create_parameter_declaration(DeclarationSpecifiers *ds, AbstractDeclarator *d);
+ParameterDeclaration *create_parameter_declaration(DeclarationSpecifiers *ds, AbstractDeclarator *ad);
 ParameterDeclaration *create_paramater_declaration(DeclarationSpecifiers *ds, Declarator *d);
 
 // ##############################################################################
@@ -405,6 +400,10 @@ public:
 
 ParameterTypeList *create_parameter_type_list(ParameterList *p, bool var);
 
+// ##############################################################################
+// ################################## DECLARATOR LIST ######################################
+// ##############################################################################
+
 class DeclaratorList : public NonTerminal
 {
 public:
@@ -426,14 +425,18 @@ public:
 
 AbstractDeclarator *create_abstract_declarator(Pointer *p, DirectAbstractDeclarator *dad);
 
+// ##############################################################################
+// ################################## DIRECT ABSTRACT DECLARATOR ######################################
+// ##############################################################################
+
 class DirectAbstractDeclarator : public NonTerminal
 {
     // Fully Implemented
 public:
     AbstractDeclarator *abstract_declarator;
     bool is_function;              // Flag to check if it's a function
-    bool is_array;                 // Flag to check if it's an array
     ParameterTypeList *parameters; // Stores function parameters if applicable
+    bool is_array;                 // Flag to check if it's an array
     vector<int> array_dimensions;  // Stores array dimensions if applicable
     DirectAbstractDeclarator();
 };
