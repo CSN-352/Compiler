@@ -412,6 +412,87 @@ int TypeDefinition::get_size()
     return size;
 }
 
+TypeDefinition* create_struct_or_union_definition(TypeCategory type_category, StructDeclarationList *sdl)
+{
+    if(type_category != STRUCT && type_category != UNION)
+    {
+        string error_msg = "Invalid type category";
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return nullptr;
+    }
+
+    TypeDefinition *type_definition = new TypeDefinition();
+    type_definition->type_category = type_category;
+    
+    return type_definition;
+}
+
+TypeDefinition *create_struct_or_union_definition(TypeCategory type_category, StructDeclarationList *struct_declaration_list) {
+    if(type_category != STRUCT && type_category != UNION)
+    {
+        string error_msg = "Invalid type category";
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return nullptr;
+    }
+    TypeDefinition *struct_type_definition = new TypeDefinition();
+    struct_type_definition->type_category = type_category;
+
+    size_t currentOffset = 0;
+
+    // Iterate over each struct member declaration
+    for (auto &member_struct_declaration : struct_declaration_list->struct_declaration_list) {
+        int type_index = member_struct_declaration->specifier_qualifier_list->type_index;
+        bool is_const = member_struct_declaration->specifier_qualifier_list->is_const_variable;
+
+        assert(type_index != PrimitiveTypes::TYPE_ERROR_T);
+        if (type_index >= N_PRIMITIVE_TYPES || type_index < 0) {
+            continue;
+        }
+
+        // Process each declarator within the member declaration
+        for (auto &declarator : member_struct_declaration->declarator_list->declarator_list) {
+            int pointerLevel = declarator->get_pointer_level();
+            DirectDeclarator *directDecl = declarator->direct_declarator;
+            Type memberType(type_index, pointerLevel, is_const);
+
+            if (directDecl->type == ID) {
+                // Regular variable, nothing to modify
+            } 
+            else if (directDecl->type == ARRAY) {
+                // Handle array type
+                memberType = Type(type_index, directDecl->array_dims.size(), true);
+                memberType.isArray = true;
+                memberType.isPointer = true;
+                memberType.arrayDim = directDecl->array_dims.size();
+                memberType.arrayDims = directDecl->array_dims;
+            } 
+            else if (directDecl->type == FUNCTION) {
+                error_msg("Function cannot be a member of struct/union",
+                          declarator->id->line_num, declarator->id->column);
+                continue;
+            }
+
+            // Store the offset for this member
+            struct_type_definition->offsets.insert({declarator->id->value, currentOffset});
+
+            // Calculate and align size
+            size_t memberSize = memberType.get_size();
+            if (memberSize % WORD_SIZE != 0) {
+                memberSize += WORD_SIZE - (memberSize % WORD_SIZE);
+            }
+            currentOffset += memberSize;
+
+            // Add member to struct definition
+            struct_type_definition->members.insert({declarator->id->value, memberType});
+        }
+    }
+
+    return struct_type_definition;
+}
+
+
 
 // ##############################################################################
 // ################################## DEFINED TYPES ######################################
@@ -1077,6 +1158,31 @@ StructDeclaration* create_struct_declaration(SpecifierQualifierList *specifier_q
     return P;
 }
 
+
+// ##############################################################################
+// ############################ STRUCT DECLARATION LIST #########################
+// ##############################################################################
+
+StructDeclarationList::StructDeclarationList() : NonTerminal("STRUCT DECLARATION LIST") {}
+
+StructDeclarationList *create_struct_declaration_list(StructDeclaration *sd)
+{
+    if(sd == nullptr)
+        return nullptr;
+
+    StructDeclarationList *P = new StructDeclarationList();
+    P->struct_declaration_list.push_back(sd);
+    return P;
+}
+
+StructDeclarationList *add_to_struct_declaration_list(StructDeclarationList *sdl, StructDeclaration *sd)
+{
+    if(sd == nullptr)
+        return sdl;
+
+    sdl->struct_declaration_list.push_back(sd);
+    return sdl;
+}
 
 // ##############################################################################
 // ################################## TYPE SPECIFIER ############################

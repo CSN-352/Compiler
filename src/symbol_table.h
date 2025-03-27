@@ -149,9 +149,12 @@ class TypeDefinition
 {
 public:
     unordered_map<string, Type> members;
+    TypeCategory type_category;
     Type *get_member(Identifier *id);
     int get_size();
 };
+
+TypeDefinition *create_struct_or_union_definition(TypeCategory tc, StructDeclarationList *sdl);
 
 // ##############################################################################
 // ################################## DEFINED TYPES ######################################
@@ -453,7 +456,11 @@ public:
 
 class StructUnionSpecifier : public NonTerminal
 {
-    // Implement after StructDeclarationList
+    TypeCategory type_category;
+    Identifier *identifier;
+    StructDeclarationList *struct_declaration_list;
+
+    StructUnionSpecifier(TypeCategory type_category, Identifier *identifier, StructDeclarationList *struct_declaration_list);
 };
 
 class StructDeclaration : public NonTerminal
@@ -490,6 +497,9 @@ public:
     vector<StructDeclaration *> struct_declaration_list;
     StructDeclarationList();
 };
+
+StructDeclarationList *create_struct_declaration_list(StructDeclaration *sd);
+StructDeclarationList *add_to_struct_declaration_list(StructDeclarationList *sdl, StructDeclaration *sd);
 
 // Implemented as DeclaratorList
 // class StructDeclaratorList : public NonTerminal

@@ -54,6 +54,7 @@ void yyerror(const char *msg);
     StructUnionSpecifier* struct_or_union_specifier;
     ClassSpecifier* class_specifier;
     StructDeclaration* struct_declaration;
+    StructDeclarationList* struct_declaration_list;
     int intval;
     char* strval;
 }
@@ -79,7 +80,7 @@ void yyerror(const char *msg);
 %type <struct_or_union_specifier> struct_or_union_specifier
 %type <class_specifier> class_specifier
 %type <enum_specifier> enum_specifier
-%type <intval> type_qualifier storage_class_specifier
+%type <intval> type_qualifier storage_class_specifier struct_or_union
 %type <specifier_qualifier_list> specifier_qualifier_list
 %type <pointer> pointer
 %type <type_qualifier_list> type_qualifier_list;
@@ -90,6 +91,7 @@ void yyerror(const char *msg);
 %type <declarator> struct_declarator
 %type <init_declarator_list> struct_declarator_list
 %type <struct_declaration> struct_declaration
+%type <struct_declaration_list> struct_declaration_list
 %token <intval> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
 %token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
@@ -100,7 +102,7 @@ void yyerror(const char *msg);
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
-%type <strval> error_case struct_or_union
+%type <strval> error_case
 %type <strval> class_declaration class_declaration_list access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
@@ -307,13 +309,13 @@ struct_or_union_specifier:
 	;
 
 struct_or_union:
-    STRUCT
-    | UNION
+    STRUCT {$$ = $1;}
+    | UNION {$$ = $1;}
     ;
 
 struct_declaration_list:
-    struct_declaration
-    | struct_declaration_list struct_declaration
+    struct_declaration {$$ = create_struct_declaration_list($1);}
+    | struct_declaration_list struct_declaration {$$ = add_to_struct_declaration_list($1, $2);}
     ;
 
 class_specifier:
@@ -339,6 +341,7 @@ access_specifier:
     | PROTECTED 
     ;
 
+// DONE
 struct_declaration:
     specifier_qualifier_list struct_declarator_list SEMICOLON {$$ = create_struct_declaration($1,$2);}
     ;
