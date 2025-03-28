@@ -19,9 +19,7 @@
 extern void yyerror(const char *msg);
 
 using namespace std;
-Type ERROR_TYPE(-1,0,false);
-extern unsigned int line_no;
-extern unsigned int column_no;
+Type ERROR_TYPE;
 
 // ##############################################################################
 // ################################## EXPRESSION ######################################
@@ -45,7 +43,6 @@ PrimaryExpression :: PrimaryExpression() : Expression() {
 Expression* create_primary_expression(Identifier* i){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION IDENTIFIER";
-    P->add_children(i);
     P->line_no = i->line_no;
     P->column_no = i->column_no;
     P->identifier = i;
@@ -53,7 +50,7 @@ Expression* create_primary_expression(Identifier* i){
     if(sym) P->type = sym->type;
     else {
         P->type = ERROR_TYPE;
-        string error_msg = "Undeclared Symbol " + x->value + " at line " + to_string(x->line_no) + ", column " + to_string(x->column_no);
+        string error_msg = "Undeclared Symbol " + i->value + " at line " + to_string(i->line_no) + ", column " + to_string(i->column_no);
 		yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
@@ -63,7 +60,7 @@ Expression* create_primary_expression(Identifier* i){
 Expression* create_primary_expression(Constant* x){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION CONSTANT";
-    P->add_children(x);
+    //P->add_children(x);
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->constant = x;
@@ -74,7 +71,7 @@ Expression* create_primary_expression(Constant* x){
 Expression* create_primary_expression(StringLiteral* x){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION STRING LITERAL";
-    P->add_children(x);
+    //P->add_children(x);
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->string_literal = x;
@@ -94,16 +91,16 @@ ArgumentExpressionList :: ArgumentExpressionList() : Expression() {
     name = "ARGUMENT EXPRESSION LIST";
 };
 
-ArgumentExpressionList* create_argument_expression_list(ArgumentExpression* x){
+ArgumentExpressionList* create_argument_expression_list(Expression* x){
     ArgumentExpressionList* P = new ArgumentExpressionList();
     P->arguments.push_back(x);
-    P->add_children(x);
+    //P->add_children(x);
     return P;
 }
 
-ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* args_expr_list, ArgumentExpression* x){
+ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* args_expr_list, Expression* x){
     args_expr_list->arguments.push_back(x);
-    args_expr_list->add_children(x);
+    //args_expr_list->add_children(x);
     return args_expr_list;
 }
 
@@ -125,7 +122,7 @@ Expression* create_postfix_expression(Expression* x){
 
 Expression* create_postfix_expression(Expression* x, Terminal* op){
     PostfixExpression* P = new PostfixExpression();
-    P->add_children(x);
+    //P->add_children(x);
     P->base_expression = dynamic_cast<PostfixExpression *>(x);
     P->op = op;
     if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";

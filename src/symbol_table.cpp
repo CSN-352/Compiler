@@ -3,7 +3,6 @@
 #include <list>
 #include <iomanip>
 #include <algorithm>
-#include <assert.h>
 #include <ast.h>
 #include <sstream>
 #include <vector>
@@ -251,7 +250,7 @@ int Type::get_size()
         return primitive_type_size[typeIndex];
 }
 
-bool operator==(Type &obj1, Type &obj2)
+bool operator==(const Type &obj1, const Type &obj2)
 {
 
     if (obj1.typeIndex != obj2.typeIndex)
@@ -336,7 +335,7 @@ bool operator==(Type &obj1, Type &obj2)
     return false;
 }
 
-bool operator!=(Type &obj1, Type &obj2)
+bool operator!=(const Type &obj1, const Type &obj2)
 {
     return !(obj1 == obj2);
 }
@@ -404,12 +403,8 @@ TypeDefinition* create_type_definition(TypeCategory type_category, StructDeclara
 // ##############################################################################
 int DefinedTypes::t_index_count = PrimitiveTypes::N_PRIMITIVE_TYPES;
 
-<<<<<<< Updated upstream
-DefinedTypes :: DefinedTypes(TypeCategory tc, TypeDefinition* td) : Type(t_index_count++, 0, false){
-=======
-DefinedTypes ::DefinedTypes() : Type(t_index_count++, 0, false)
+DefinedTypes ::DefinedTypes(TypeCategory tc, TypeDefinition* td) : Type(t_index_count++, 0, false)
 {
->>>>>>> Stashed changes
     is_defined_type = true;
     type_category = tc;
     type_definition = td;
@@ -474,32 +469,23 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
             }
             symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size());
         }
-        return P;
     }
+    return P;
 }
 
 // ##############################################################################
 // ############################# DECLARATION LIST ####################################
 // ##############################################################################
 
-DeclarationList ::DeclarationList()
-    : NonTerminal("DECLARATION LIST") {}
+DeclarationList ::DeclarationList(): NonTerminal("DECLARATION LIST") {}
+
+DeclarationList *create_declaration_list(Declaration *d){
+    DeclarationList* P = new DeclarationList();
+    P->declaration_list.push_back(d);
+    return P;
+}
 
 DeclarationList* create_declaration_list(DeclarationList* dl, Declaration* d){
-    
-    if(d == nullptr){
-        string error_msg = "No declaration found " + to_string(d->line_no) + ", column " + to_string(d->column_no);
-        yyerror(error_msg.c_str());
-        symbolTable.set_error();
-        return dl;
-    }
-
-    if(dl == nullptr){
-        DeclarationList* P = new DeclarationList();
-        P->declaration_list.push_back(d);
-        return P;
-    }
-    
     dl->declaration_list.push_back(d);
     return dl;
 }
@@ -758,9 +744,8 @@ DirectDeclarator *create_dir_declarator_id(Identifier *i)
     // assert( type == ID );
     DirectDeclarator *dd = new DirectDeclarator();
     // dd->type = type;
-    assert(i != nullptr);
     dd->identifier = i;
-    dd->add_children(i);
+    //dd->add_children(i);
     return dd;
 }
 
@@ -1529,6 +1514,104 @@ TypeName *create_type_name(SpecifierQualifierList *sql, AbstractDeclarator *ad)
                 P->type.num_args = arg_types.size();
             }
         }
+    }
+    return P;
+}
+
+
+// ##############################################################################
+// ################################## TRANSLATION UNIT ######################################
+// ##############################################################################
+TranslationUnit :: TranslationUnit() : NonTerminal("TRANSLATION UNIT"){}
+
+TranslationUnit* create_translation_unit(ExternalDeclaration* ed){
+    TranslationUnit* P = new TranslationUnit();
+    P->external_declarations.push_back(ed);
+    return P;
+}
+
+TranslationUnit* create_translation_unit(TranslationUnit* tu, ExternalDeclaration* ed){
+    tu->external_declarations.push_back(ed);
+    return tu;
+}
+
+// ##############################################################################
+// ################################## EXTERNAL DECLARATION ######################################
+// ##############################################################################
+ExternalDeclaration ::ExternalDeclaration() : NonTerminal("EXTERNAL DECLARATION")
+{
+    function_definition = nullptr;
+    declaration = nullptr;
+}
+
+ExternalDeclaration *create_external_declaration(FunctionDefinition *fd)
+{
+    ExternalDeclaration *P = new ExternalDeclaration();
+    P->function_definition = fd;
+    return P;
+}
+
+ExternalDeclaration *create_external_declaration(Declaration *d)
+{
+    ExternalDeclaration *P = new ExternalDeclaration();
+    P->declaration = d;
+    return P;
+}
+
+// ##############################################################################
+// ################################## FUNCTION DEFINITION ######################################
+// ##############################################################################
+FunctionDefinition ::FunctionDefinition() : NonTerminal("FUNCTION DEFINITION")
+{
+    declaration_specifiers = nullptr;
+    declarator = nullptr;
+    compound_statement = nullptr;
+}
+
+FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declarator *d, Statement *cs){
+    FunctionDefinition* P = new FunctionDefinition();
+    P->declaration_specifiers = ds;
+    P->declarator = d;
+    CompoundStatement* cs_cast = dynamic_cast<CompoundStatement*>(cs);
+    P->compound_statement = cs_cast;
+    if(d->direct_declarator->is_function){
+        string function_name = d->direct_declarator->identifier->value;
+        int pointer_level = 0;
+        if(d->pointer != nullptr)pointer_level = d->pointer->pointer_level;
+        Type type = Type(ds->type_index, pointer_level, ds->is_const_variable);
+        vector<Type> arg_types;
+        if(d->direct_declarator->parameters != nullptr){
+            vector<ParameterDeclaration *> parameters = d->direct_declarator->parameters->paramater_list->parameter_declarations;
+            for (int i = 0; i < parameters.size(); i++)
+            {
+                arg_types.push_back(parameters[i]->type);
+            }
+        }
+        type.is_function = true;
+        type.arg_types = arg_types;
+        type.num_args = arg_types.size();
+        Symbol* sym = symbolTable.getSymbol(function_name);
+        if(sym != nullptr){
+            if(sym->function_definition == nullptr && sym->type == type){
+                sym->function_definition = P;
+            }
+            else if(sym->type.arg_types == arg_types){
+                string error_msg = "Function " + function_name + " redefined at line " + to_string(d->direct_declarator->identifier->line_no) + ", column " + to_string(d->direct_declarator->identifier->column_no);
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+            }  
+        }
+        else{
+            symbolTable.insert(function_name, type, type.get_size());
+            Symbol* sym = symbolTable.getSymbol(function_name);
+            sym->function_definition = P;
+        } 
+        
+    }
+    else{
+        string error_msg = "Function definition must have a function declarator at line " + to_string(d->direct_declarator->identifier->line_no) + ", column " + to_string(d->direct_declarator->identifier->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
     }
     return P;
 }

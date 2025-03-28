@@ -58,6 +58,10 @@ void yyerror(const char *msg);
     StructDeclaratorList* struct_declarator_list;
     StructDeclaration* struct_declaration;
     StructDeclarationList* struct_declaration_list;
+    FunctionDefinition* function_definition;
+    ExternalDeclaration* external_declaration;
+    TranslationUnit* translation_unit;
+    Statement* statement;
     int intval;
     char* strval;
 }
@@ -70,8 +74,10 @@ void yyerror(const char *msg);
 %token <terminal> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME
 %token <terminal> STRUCT UNION
 %type <terminal> unary_operator
+
 %type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression
 %type <argument_expression_list> argument_expression_list
+
 %type <type_name> type_name
 %type <direct_abstract_declarator> direct_abstract_declarator
 %type <abstract_declarator> abstract_declarator
@@ -99,6 +105,12 @@ void yyerror(const char *msg);
 %type <struct_declaration> struct_declaration
 %type <struct_declaration_list> struct_declaration_list
 %type <terminal> struct_or_union
+%type <translation_unit> translation_unit
+%type <external_declaration> external_declaration
+%type <function_definition> function_definition
+
+%type <statement> compound_statement
+
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
 %token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
 %token <strval> IF RETURN SWITCH
@@ -114,7 +126,6 @@ void yyerror(const char *msg);
 %nonassoc ELSE 
 %nonassoc LOW_PREC
 %nonassoc HIGH_PREC
-%type <node> translation_unit external_declaration 
 %debug
 %start translation_unit
 
@@ -317,8 +328,8 @@ struct_or_union_specifier:
 
 // DONE
 struct_or_union:
-    STRUCT /* {$$ = $1;} */
-    | UNION /* {$$ = $1;} */
+    STRUCT {$$ = $1;}
+    | UNION {$$ = $1;}
     ;
 
 // DONE
@@ -506,7 +517,7 @@ declaration_statement_list:
     ;
 
 declaration_list:
-    declaration { $$ = create_declaration_list(nullptr, $1);}
+    declaration { $$ = create_declaration_list($1);}
     | declaration_list declaration { $$ = create_declaration_list($1, $2);}
     ;
 
@@ -544,20 +555,17 @@ jump_statement:
 	;
 
 translation_unit:
-    external_declaration
-    | translation_unit external_declaration
+    external_declaration {$$ = create_translation_unit($1);}
+    | translation_unit external_declaration {$$ = create_translation_unit($1,$2);}
     ;
 
 external_declaration:
-	function_definition
-	| declaration 
+	function_definition {create_external_declaration($1);}
+	| declaration {create_external_declaration($1);}
 	;
 
 function_definition:
-    declaration_specifiers declarator declaration_list compound_statement 
-    | declaration_specifiers declarator compound_statement 
-    | declarator declaration_list compound_statement 
-    | declarator compound_statement 
+    declaration_specifiers declarator compound_statement {$$ = create_function_definition($1,$2,$3);}
     ;
 
 skip_until_semicolon:

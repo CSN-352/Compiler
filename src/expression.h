@@ -12,6 +12,8 @@ class ArgumentExpressionList;
 class PostfixExpression;
 class UnaryExpression;
 class CastExpression;
+
+class Type;
 class Identifier;
 class Constant;
 class StringLiteral;
@@ -53,7 +55,7 @@ Expression* create_primary_expression(Expression* x);
 
 class ArgumentExpressionList : public Expression{
     public:
-      vector <ArgumentExpression*> arguments;
+      vector <Expression*> arguments;
       ArgumentExpressionList();
 };
   

@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <list>
 #include "ast.h"
+#include "statement.h"
 
 class Expression;
 class PrimaryExpression;
@@ -43,6 +44,9 @@ class EnumeratorList;
 class TypeSpecifier;
 class SpecifierQualifierList;
 class TypeName;
+class FunctionDefinition;
+class ExternalDeclaration;
+class TranslationUnit;
 class Identifier;
 class Constant;
 class StringLiteral;
@@ -139,8 +143,8 @@ public:
     bool is_ea();
     int get_size();
 
-    friend bool operator==(Type &obj1, Type &obj2);
-    friend bool operator!=(Type &obj1, Type &obj2);
+    friend bool operator==(const Type &obj1, const Type &obj2);
+    friend bool operator!=(const Type &obj1, const Type &obj2);
 };
 
 // ##############################################################################
@@ -221,6 +225,7 @@ public:
 };
 
 DeclarationList* create_declaration_list(DeclarationList* dl, Declaration* d);
+DeclarationList* create_declaration_list(Declaration* d);
 
 // ##############################################################################
 // ################################## INITIALIZER LIST ######################################
@@ -610,6 +615,39 @@ public:
 
 TypeName *create_type_name(SpecifierQualifierList *sql, AbstractDeclarator *ad);
 
+class TranslationUnit : public NonTerminal
+{
+    // Fully Implemented
+    public: 
+        vector<ExternalDeclaration*> external_declarations;
+        TranslationUnit();
+};
+
+TranslationUnit *create_translation_unit(ExternalDeclaration* ed);
+TranslationUnit *create_translation_unit(TranslationUnit* tu, ExternalDeclaration* ed);
+
+class ExternalDeclaration : public NonTerminal{
+    // Fully Implemented
+    public:
+        FunctionDefinition* function_definition;
+        Declaration* declaration;
+        ExternalDeclaration();
+};
+
+ExternalDeclaration* create_external_declaration(FunctionDefinition* fd);
+ExternalDeclaration* create_external_declaration(Declaration* d);
+
+class FunctionDefinition : public NonTerminal{
+    // Fully Implemented
+    public:
+        DeclarationSpecifiers *declaration_specifiers;
+        Declarator *declarator;
+        CompoundStatement* compound_statement;
+        FunctionDefinition();
+};
+
+FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declarator *d, Statement *cs);
+
 // ##############################################################################
 // ################################ IDENTIFIER ##################################
 // ##############################################################################
@@ -643,8 +681,11 @@ public:
     Type type;
     int scope;
     int offset;
+    FunctionDefinition* function_definition;
 
-    Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o) {}
+    Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o) {
+        function_definition = nullptr;
+    }
 };
 
 class SymbolTable
@@ -673,4 +714,4 @@ public:
 
 extern SymbolTable symbolTable;
 
-#endif;
+#endif

@@ -23,7 +23,7 @@ class Node{
         unsigned int column_no;
         Node(unsigned int line_no, unsigned int column_no);
         Node();
-        virtual void add_children(Node* node1);
+        //virtual void add_children(Node* node1);
 
         virtual ~Node() {}  // Virtual destructor for proper cleanup
 };
@@ -35,7 +35,7 @@ class NonTerminal : public Node{
         NonTerminal(string name, unsigned int line_no, unsigned int column_no);
         NonTerminal(string name);
         // template<typename... Nodes>
-        void add_children(Node* node1);
+        //void add_children(Node* node1);
 };
 
 class Terminal : public Node{
