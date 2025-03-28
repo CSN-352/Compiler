@@ -109,11 +109,11 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
 // ##############################################################################
 
 PostfixExpression :: PostfixExpression() : Expression() {
+    name = "POSTFIX EXPRESSION";
     base_expression = nullptr;
+    index_expression = nullptr;
     op = nullptr;
     member_name = nullptr;
-    expression = nullptr;
-    name = "POSTFIX EXPRESSION";
 }
 
 Expression* create_postfix_expression(Expression* x){
@@ -126,9 +126,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     P->base_expression = dynamic_cast<PostfixExpression *>(x);
     P->op = op;
     if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
-    if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
     else P->name = "POSTFIX EXPRESSION DEC OP";
-    if(x->type.is_const_variable){
+    if(x->type.is_const_variable || x->type.is_array || x->type.is_function){
         P->type = ERROR_TYPE;
         string error_msg = "Invalid operator " + op->value + " at line  " + to_string(op->line_no) + ", column " + to_string(op->column_no);
 		yyerror(error_msg.c_str());
@@ -154,17 +153,111 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     return P;
 }
 
-// Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id){
-//     PostfixExpression* P = new PostfixExpression();
-//     P->add_children(x);
-//     P->member_name = id;
-//     if(x->type.is_error()){
-//         P->type = ERROR_TYPE;
-//         return P;
-//     }
+Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id){
+    PostfixExpression* P = new PostfixExpression();
+    P->base_expression = dynamic_cast<PostfixExpression *>(x);
+    P->op = op;
+    P->member_name = id;
+    if(x->type.is_error()){
+        P->type = ERROR_TYPE;
+        return P;
+    }
     
-//     return x;
-// }
+    if(op->name = "PTR_OP"){
+        P->name = "POSTFIX EXPRESSION PTR_OP";
+        if(!(x->type.is_pointer) && !(x->type.is_defined_type)){
+            P->type = ERROR_TYPE;
+            string error_msg = "Operator '->' applied to non-pointer-to-struct/union/class at line " +
+                         to_string(op->line_no) + ", column " + to_string(op->column_no);
+            yyerror(err.c_str());
+            symbolTable.set_error();
+            return P;
+        }
+    }
+    else if (op->name == "DOT") {
+        P->name = "POSTFIX EXPRESSION DOT";
+        if (!base_type.is_defined_type) {
+            P->type = ERROR_TYPE;
+            string error_msg = "Operator '.' applied to non-struct/union/class at line " +
+                         to_string(op->line_no) + ", column " + to_string(op->column_no);
+            yyerror(err.c_str());
+            symbolTable.set_error();
+            return P;
+        }
+    }
+    else {
+        P->type = x->type;
+    }
+    return P;
+}
+
+Expression* create_postfix_expression(Expression* x, Expression* index_expression) {
+    PostfixExpression* P = new PostfixExpression();
+    P->name = "POSTFIX EXPRESSION ARRAY ACCESS";
+    P->base_expression = dynamic_cast<PostfixExpression*>(x);
+    P->index_expression = index_expression;
+
+    // Type checking
+    if (!x->type.is_pointer && !x->type.is_array) {
+        P->type = ERROR_TYPE;
+        string error_msg = "Cannot index non-array/pointer at line " + to_string(index_expr->line_no);
+        yyerror(err.c_str());
+        symbolTable.set_error();
+    } else if (!index_expression->type.isInt()) {
+        P->type = ERROR_TYPE;
+        string err = "Array index must be integer at line " + to_string(index_expr->line_no);
+        yyerror(err.c_str());
+        symbolTable.set_error();
+    } else {
+        P->type = x->type;
+    }
+
+    return P;
+}
+
+Expression* create_postfix_expression(Expression* x, ArgumentExpressionList* argument_expression_list) {
+    // check if exist in symbol table and arguements no. and types
+    PostfixExpression* P = new PostfixExpression();
+    P->name = "POSTFIX EXPRESSION FUNCTION CALL WITH ARGS";
+    P->base_expression = dynamic_cast<PostfixExpression*>(x);
+    P->argument_expression_list = argument_expression_list;
+
+    // Type check: should be a function or function pointer
+    if (!x->type.is_function && !(x->type.is_function && x->type.is_pointer)) {
+        P->type = ERROR_TYPE;
+        string error_msg = "Called object is not a function at line " + to_string(x->line_no);
+        yyerror(err.c_str());
+        symbolTable.set_error();
+    } else {
+        P->type = x->type;
+    }
+
+    return P;
+}
+
+Expression* create_postfix_expression(Expression* func_expr, Terminal* left_paren, Terminal* right_paren) {
+    // correct the function
+    PostfixExpression* P = new PostfixExpression();
+    P->name = "POSTFIX EXPRESSION FUNCTION CALL EMPTY";
+    P->add_children(func_expr);
+    P->add_children(left_paren);
+    P->add_children(right_paren);
+    P->base_expression = dynamic_cast<PostfixExpression*>(func_expr);
+
+    // Type check: should be a function or function pointer
+    if (!func_expr->type.is_function && !func_expr->type.is_function_pointer()) {
+        P->type = ERROR_TYPE;
+        string err = "Called object is not a function at line " + to_string(left_paren->line_no);
+        yyerror(err.c_str());
+        symbolTable.set_error();
+    } else {
+        P->type = *(func_expr->type.return_type);
+    }
+
+    return P;
+}
+
+
 
 // ##############################################################################
 // ################################## UNARY EXPRESSION ######################################

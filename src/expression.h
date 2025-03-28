@@ -27,7 +27,7 @@ class Expression : public NonTerminal{
     public:
         Type type;
         int operand_cnt;
-
+        vector<AssignmentExpression*> assignment_expression_list;
         Expression();
 };
 
@@ -69,16 +69,16 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
 class PostfixExpression : public Expression{
     public:
         PostfixExpression* base_expression;
-        vector<Expression*> arguments;
+        Expression* index_expression;
+        ArgumentExpressionList* argument_expression_list;
         Terminal* op;
         Identifier* member_name;
-        Expression* expression;
         PostfixExpression();
 };
 
 Expression* create_postfix_expression(Expression* x);
 Expression* create_postfix_expression(Expression* x, Terminal* op);
-//Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id);
+Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id);
 
 class UnaryExpression : public Expression{
     public:
