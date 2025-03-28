@@ -27,24 +27,29 @@ extern unsigned int column_no;
 // ################################## EXPRESSION ######################################
 // ##############################################################################
 
-Expression :: Expression() : NonTerminal("EXPRESSION"), operand_cnt(0) {}
-
-// ##############################################################################
-// ################################## PRIMARY EXPRESSIOn ######################################
-// ##############################################################################
-
-PrimaryExpression :: PrimaryExpression() : Expression(), identifier(nullptr), constant(nullptr), string_literal(nullptr) {
-    name = "PRIMARY EXPRESSION";
+Expression :: Expression() : NonTerminal("EXPRESSION"){
+    operand_cnt = 0;
 }
 
-Expression* create_primary_expression(Identifier* x){
+// ##############################################################################
+// ################################## PRIMARY EXPRESSION ######################################
+// ##############################################################################
+
+PrimaryExpression :: PrimaryExpression() : Expression() {
+    name = "PRIMARY EXPRESSION";
+    identifier = nullptr;
+    constant = nullptr;
+    string_literal = nullptr;
+}
+
+Expression* create_primary_expression(Identifier* i){
     PrimaryExpression* P = new PrimaryExpression();
     P->name = "PRIMARY EXPRESSION IDENTIFIER";
-    P->add_children(x);
-    P->line_no = x->line_no;
-    P->column_no = x->column_no;
-    P->identifier = x;
-    Symbol* sym = symbolTable.getSymbol(x->value);
+    P->add_children(i);
+    P->line_no = i->line_no;
+    P->column_no = i->column_no;
+    P->identifier = i;
+    Symbol* sym = symbolTable.getSymbol(i->value);
     if(sym) P->type = sym->type;
     else {
         P->type = ERROR_TYPE;
@@ -89,14 +94,14 @@ ArgumentExpressionList :: ArgumentExpressionList() : Expression() {
     name = "ARGUMENT EXPRESSION LIST";
 };
 
-ArgumentExpressionList* create_argument_expression_list(Expression* x){
+ArgumentExpressionList* create_argument_expression_list(ArgumentExpression* x){
     ArgumentExpressionList* P = new ArgumentExpressionList();
     P->arguments.push_back(x);
     P->add_children(x);
     return P;
 }
 
-ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* args_expr_list, Expression* x){
+ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* args_expr_list, ArgumentExpression* x){
     args_expr_list->arguments.push_back(x);
     args_expr_list->add_children(x);
     return args_expr_list;

@@ -214,9 +214,13 @@ Declaration* create_declaration(DeclarationSpecifiers *declaraion_specifiers,Dec
 // ##############################################################################
 
 class DeclarationList : public NonTerminal
-{
-    // implement after declaration
+{   
+public:
+    vector<Declaration*> declaration_list;
+    DeclarationList();
 };
+
+DeclarationList* create_declaration_list(DeclarationList* dl, Declaration* d);
 
 // ##############################################################################
 // ################################## INITIALIZER LIST ######################################

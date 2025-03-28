@@ -30,6 +30,7 @@ void yyerror(const char *msg);
 	Terminal* terminal;
     Identifier* identifier;
     Declaration * declaration;
+    DeclarationList* declaration_list;
     Declarator* declarator;
     DirectDeclarator* direct_declarator;
     DeclaratorList * init_declarator_list;
@@ -77,6 +78,7 @@ void yyerror(const char *msg);
 %type <declarator> init_declarator declarator
 %type <init_declarator_list> init_declarator_list
 %type <declaration> declaration
+%type <declaration_list> declaration_list
 %type <parameter_type_list> parameter_type_list
 %type <direct_declarator> direct_declarator
 %type <parameter_list> parameter_list
@@ -315,8 +317,8 @@ struct_or_union_specifier:
 
 // DONE
 struct_or_union:
-    STRUCT {$$ = $1;}
-    | UNION {$$ = $1;}
+    STRUCT /* {$$ = $1;} */
+    | UNION /* {$$ = $1;} */
     ;
 
 // DONE
@@ -504,8 +506,8 @@ declaration_statement_list:
     ;
 
 declaration_list:
-    declaration
-    | declaration_list declaration
+    declaration { $$ = create_declaration_list(nullptr, $1);}
+    | declaration_list declaration { $$ = create_declaration_list($1, $2);}
     ;
 
 statement_list:
@@ -567,7 +569,7 @@ skip_until_semicolon:
 %%
 
 void yyerror(const char *msg) {
-    fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
+    fprintf(stderr, "Syntax error at line %d: %F\n", yylineno, msg);
 }
 
 

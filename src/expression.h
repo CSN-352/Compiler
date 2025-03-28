@@ -17,6 +17,10 @@ class Constant;
 class StringLiteral;
 class TypeName;
 
+// ##############################################################################
+// ################################## EXPRESSION ######################################
+// ##############################################################################
+
 class Expression : public NonTerminal{
     public:
         Type type;
@@ -42,14 +46,23 @@ Expression* create_primary_expression(Constant* x);
 Expression* create_primary_expression(StringLiteral* x);
 Expression* create_primary_expression(Expression* x);
 
+// ##############################################################################
+// ################################## ARGUMENT EXPRESSION LIST ######################################
+// ##############################################################################
+
+
 class ArgumentExpressionList : public Expression{
     public:
-      vector <Expression*> arguments;
+      vector <ArgumentExpression*> arguments;
       ArgumentExpressionList();
 };
   
 ArgumentExpressionList* create_argument_expression_list(Expression* x);
 ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* args_expr_list, Expression* x);
+
+// ##############################################################################
+// ################################## POSTFIX EXPRESSION ######################################
+// ##############################################################################
 
 class PostfixExpression : public Expression{
     public:

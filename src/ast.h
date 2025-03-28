@@ -30,7 +30,7 @@ class Node{
 
 class NonTerminal : public Node{
     public:
-        string name; // Type of terminal (e.g., "IDENTIFIER", "CONSTANT")
+        string name; // Type of non-terminal 
         vector <Node*> children; 
         NonTerminal(string name, unsigned int line_no, unsigned int column_no);
         NonTerminal(string name);

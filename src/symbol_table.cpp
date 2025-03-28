@@ -404,7 +404,12 @@ TypeDefinition* create_type_definition(TypeCategory type_category, StructDeclara
 // ##############################################################################
 int DefinedTypes::t_index_count = PrimitiveTypes::N_PRIMITIVE_TYPES;
 
+<<<<<<< Updated upstream
 DefinedTypes :: DefinedTypes(TypeCategory tc, TypeDefinition* td) : Type(t_index_count++, 0, false){
+=======
+DefinedTypes ::DefinedTypes() : Type(t_index_count++, 0, false)
+{
+>>>>>>> Stashed changes
     is_defined_type = true;
     type_category = tc;
     type_definition = td;
@@ -434,7 +439,7 @@ TypeQualifierList *create_type_qualifier_list(TypeQualifierList *typequalifierli
 // ##############################################################################
 
 Declaration ::Declaration()
-    : NonTerminal("declaration")
+    : NonTerminal("DECLARATION")
 {
     declaration_specifiers = nullptr;
     init_declarator_list = nullptr;
@@ -476,6 +481,28 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
 // ##############################################################################
 // ############################# DECLARATION LIST ####################################
 // ##############################################################################
+
+DeclarationList ::DeclarationList()
+    : NonTerminal("DECLARATION LIST") {}
+
+DeclarationList* create_declaration_list(DeclarationList* dl, Declaration* d){
+    
+    if(d == nullptr){
+        string error_msg = "No declaration found " + to_string(d->line_no) + ", column " + to_string(d->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return dl;
+    }
+
+    if(dl == nullptr){
+        DeclarationList* P = new DeclarationList();
+        P->declaration_list.push_back(d);
+        return P;
+    }
+    
+    dl->declaration_list.push_back(d);
+    return dl;
+}
 
 // ##############################################################################
 // ############################# INITIALIZER LIST ####################################
