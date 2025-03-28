@@ -11,7 +11,10 @@
 class Expression;
 class PrimaryExpression;
 class ConditionalExpression;
+class AssignmentExpression;
 class Type;
+class TypeDefinition;
+class DefinedTypes;
 class TypeQualifierList;
 class DeclarationList;
 class Declaration;
@@ -27,23 +30,25 @@ class Declarator;
 class ParameterDeclaration;
 class ParameterList;
 class ParameterTypeList;
-class DeclaratorList;
 class AbstractDeclarator;
 class DirectAbstractDeclarator;
-class StructDefinition;
 class StructUnionSpecifier;
 class StructDeclarator;
 class StructDeclaration;
 class ClassSpecifier;
 class ClassDeclarationList;
+class ClassDeclarator;
 class ClassDeclaration;
-class StructDeclarationList;
+class ClassDeclaratorList;
+class StructDeclarationSet;
+class StructDeclarationListAccess;
 class StructDeclaratorList;
 class Enumerator;
 class EnumeratorList;
 class TypeSpecifier;
 class SpecifierQualifierList;
 class TypeName;
+class Initializer;
 class FunctionDefinition;
 class ExternalDeclaration;
 class TranslationUnit;
@@ -102,6 +107,12 @@ enum StorageClassSpecifiers
     STORAGE_CLASS_REGISTER,
 };
 
+enum AccessSpecifiers{
+    ACCESS_SPECIFIER_PUBLIC = 0,
+    ACCESS_SPECIFIER_PRIVATE,
+    ACCESS_SPECIFIER_PROTECTED,
+};
+
 static unordered_map<int,int> primitive_type_size = {{0,2},{1,2},{2,2},{3,2},{4,4},{5,4},{6,4},{7,4},{8,8},{9,8},{10,4},{11,8},{12,4}};
 
 class Type
@@ -140,7 +151,9 @@ public:
     void make_signed();
     void make_unsigned();
     bool isVoid();
-    bool is_ea();
+    bool is_ea(); // is effective array
+    bool is_convertible_to(Type t); // whether implicit conversion is possible
+    Type promote_to_int(Type t); // IMPLEMENT
     int get_size();
 
     friend bool operator==(const Type &obj1, const Type &obj2);
@@ -155,12 +168,14 @@ class TypeDefinition
 {
 public:
     TypeCategory type_category;
-    vector<string> members;
-    bool get_member(Identifier* id);
+    unordered_map<string,AccessSpecifiers> members;
+    bool get_member(string member);
+    AccessSpecifiers get_member_access_specifier(string member);
     int get_size();
 };
 
-TypeDefinition *create_type_definition(TypeCategory tc, StructDeclarationList *sdl);
+TypeDefinition *create_type_definition(TypeCategory type_category, StructDeclarationSet *sds);
+TypeDefinition *create_type_definition(TypeCategory type_category, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
 
 // ##############################################################################
 // ################################## DEFINED TYPES ######################################
@@ -168,11 +183,11 @@ TypeDefinition *create_type_definition(TypeCategory tc, StructDeclarationList *s
 
 class DefinedTypes : public Type
 {
-public:
-    static int t_index_count;
-    TypeCategory type_category;
-    TypeDefinition *type_definition;
-    DefinedTypes(TypeCategory tc, TypeDefinition *td);
+    public:
+        static int t_index_count;
+        TypeCategory type_category;
+        TypeDefinition *type_definition;
+        DefinedTypes(TypeCategory tc, TypeDefinition *td);
 };
 
 // typedef enum direct_declarator_enum {
@@ -207,11 +222,11 @@ class Declaration : public NonTerminal
 {
 public:
     DeclarationSpecifiers *declaration_specifiers;
-    DeclaratorList *init_declarator_list;
+    InitDeclaratorList *init_declarator_list;
     Declaration();
 };
 
-Declaration* create_declaration(DeclarationSpecifiers *declaraion_specifiers,DeclaratorList *init_declarator_list);
+Declaration* create_declaration(DeclarationSpecifiers *declaraion_specifiers, InitDeclaratorList *init_declarator_list);
 
 // ##############################################################################
 // ################################## DECLARATION LIST ######################################
@@ -271,6 +286,7 @@ public:
     vector<TypeSpecifier *> type_specifiers;
     vector<int> type_qualifiers;
     bool is_const_variable;
+    bool is_typedef;
     int type_index;
     DeclarationSpecifiers();
     void set_type();
@@ -297,22 +313,19 @@ Pointer *create_pointer(TypeQualifierList *tql);
 Pointer *create_pointer(Pointer *p, TypeQualifierList *tql);
 
 // ##############################################################################
-// ################################## INIT DECLARATOR LIST ######################################
-// ##############################################################################
-
-class InitDeclaratorList : public NonTerminal
-{
-    // Implement after InitDeclarator
-};
-
-// ##############################################################################
 // ################################## INIT DECLARATOR ######################################
 // ##############################################################################
 
 class InitDeclarator : public NonTerminal
 {
     // Implement after Declarator, Initializer
+    public:
+        Declarator* declarator;
+        Initializer* initializer;
+        InitDeclarator();
 };
+
+InitDeclarator* create_init_declarator(Declarator* d, Initializer* i);
 
 // ##############################################################################
 // ################################## DIRECT DECLARATOR ######################################
@@ -336,28 +349,21 @@ DirectDeclarator *create_dir_declarator_id(Identifier *i);
 DirectDeclarator *create_direct_declarator(Declarator *d);
 DirectDeclarator *create_direct_declarator_array(DirectDeclarator *dd, Expression *e);
 DirectDeclarator *create_direct_declarator_function(DirectDeclarator *dd, ParameterTypeList *ptl);
- 
+  
 // ##############################################################################
 // ################################## DECLARATOR ######################################
 // ##############################################################################
 
 class Declarator : public NonTerminal
 {
-    // Implement after Pointer and DirectDeclarator
+    // Fully Implemented
 public:
     Pointer* pointer;
     DirectDeclarator *direct_declarator;
-    // Expression* initialising_expression;
-    // Terminal* eq;
-    // int get_pointer_level();
     Declarator();
-    // Declarator(Pointer* p, DirectDeclarator* direct_declarator);
 };
 
 Declarator *create_declarator( Pointer *pointer, DirectDeclarator *direct_declarator);
-
-// Declarator *create_declarator( // Pointer *pointer,
-//     DirectDeclarator *direct_declarator);
 
 // ##############################################################################
 // ################################## PARAMETER DECLARATION ######################################
@@ -412,15 +418,15 @@ ParameterTypeList *create_parameter_type_list(ParameterList *p, bool var);
 // ################################## DECLARATOR LIST ######################################
 // ##############################################################################
 
-class DeclaratorList : public NonTerminal
+class InitDeclaratorList : public NonTerminal
 {
 public:
-    vector<Declarator *> declarator_list;
-    DeclaratorList();
+    vector<InitDeclarator *> init_declarator_list;
+    InitDeclaratorList();
 };
 
-DeclaratorList *create_init_declarator_list(Declarator *init_declarator);
-DeclaratorList *add_to_init_declarator_list(DeclaratorList *init_declarator_list, Declarator *init_declarator);
+InitDeclaratorList *create_init_declarator_list(Declarator *init_declarator);
+InitDeclaratorList *add_to_init_declarator_list(InitDeclaratorList *init_declarator_list, Declarator *init_declarator);
 
 class AbstractDeclarator : public NonTerminal
 {
@@ -455,42 +461,89 @@ DirectAbstractDeclarator *create_direct_abstract_declarator_function(ParameterTy
 DirectAbstractDeclarator *create_direct_abstract_declarator_array(DirectAbstractDeclarator *x, Expression *c);
 DirectAbstractDeclarator *create_direct_abstract_declarator_function(DirectAbstractDeclarator *x, ParameterTypeList *p);
 
-class StructDefinition
-{
-public:
-    unordered_map<string, Type> struct_members;
-    int is_union;
-    int is_struct;
-    StructDefinition();
-    Type get_member_type();
-};
-
 class StructUnionSpecifier : public NonTerminal
 {
     public:
         TypeCategory type_category;
         Identifier *identifier;
-        StructDeclarationList *struct_declaration_list;
+        StructDeclarationSet *struct_declaration_set;
 
         StructUnionSpecifier();
 };
 
-StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationList *sdl);
+StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationSet *sds);
 
 class ClassSpecifier : public NonTerminal
 {
-    // Implement after ClassDeclarationList, InitDeclaratorList
+    public:
+        TypeCategory type_category;
+        Identifier *identifier;
+        ClassDeclarationList *class_declaration_list;
+        ClassDeclaratorList* class_declarator_list;
+        ClassSpecifier();
 };
+
+ClassSpecifier *create_class_specifier(Identifier *id, ClassDeclaratorList* idl, ClassDeclarationList *cdl);
+
+class ClassDeclaratorList : public NonTerminal{
+    public:
+        vector<ClassDeclarator*> class_declarator_list;
+        ClassDeclaratorList();
+};
+
+ClassDeclaratorList* create_class_declarator_list(ClassDeclarator* cd);
+ClassDeclaratorList* create_class_declarator_list(ClassDeclaratorList* cdl, ClassDeclarator* cd);
+
+class ClassDeclarator : public NonTerminal
+{
+    // Fully Implemented
+    public:
+        Terminal* access_specifier;
+        Declarator* declarator;
+        ClassDeclarator();
+};
+
+ClassDeclarator *create_class_declarator(Terminal* access_specifier, Declarator* d);
 
 class ClassDeclarationList : public NonTerminal
 {
-    // Implement after ClassDeclaration
+    // Fully Implemented
+    public:
+        vector<ClassDeclaration*> class_declaration_list;
+        ClassDeclarationList();
 };
+
+ClassDeclarationList* create_class_declaration_list(ClassDeclaration* cd);
+ClassDeclarationList* create_class_declaration_list(ClassDeclarationList* cdl, ClassDeclaration* cd);
 
 class ClassDeclaration : public NonTerminal
 {
-    // Implement after access specifier and TranslationUnit
+    // Fully Implemented
+    public:
+        Terminal* access_specifier;
+        TranslationUnit* translation_unit;
+        ClassDeclaration();
 };
+
+ClassDeclaration* create_class_declaration(Terminal* access_specifier, TranslationUnit* tu);
+
+class StructDeclarationSet : public NonTerminal{
+    public:
+        vector<StructDeclarationListAccess*> struct_declaration_lists;
+        StructDeclarationSet();
+};
+
+StructDeclarationSet* create_struct_declaration_set(StructDeclarationList* sdl);
+StructDeclarationSet* create_struct_declaration_set(StructDeclarationSet* sds, StructDeclarationListAccess* sdla);
+
+class StructDeclarationListAccess : public NonTerminal{
+    public:
+        StructDeclarationList* struct_declaration_list;
+        Terminal* access_specifier;
+        StructDeclarationListAccess();
+}; 
+
+StructDeclarationListAccess* create_struct_declaration_list_access(Terminal* access_specifier, StructDeclarationList* sdl);
 
 class StructDeclarationList : public NonTerminal
 {
@@ -568,24 +621,27 @@ class EnumSpecifier : public NonTerminal
 EnumSpecifier *create_enumerator_specifier(EnumeratorList *enum_list);
 EnumSpecifier *create_enumerator_specifier(Identifier *id, EnumeratorList *enum_list);
 
+
+
 class TypeSpecifier : public NonTerminal
 {
     // Fully Implemented
 public:
     Terminal* primitive_type_specifier;
+    string type_name;
     EnumSpecifier *enum_specifier;
     StructUnionSpecifier *struct_union_specifier;
-    // ClassSpecifier *class_specifier;
+    ClassSpecifier *class_specifier;
     // int type_index;
 
     TypeSpecifier();
-    // TypeSpecifier(ClassSpecifier* class_specifier);
 };
 
 TypeSpecifier *create_type_specifier(Terminal* t);
+TypeSpecifier *create_type_specifier(Terminal* t, bool is_type_name);
 TypeSpecifier *create_type_specifier(EnumSpecifier* es);
 TypeSpecifier *create_type_specifier(StructUnionSpecifier* sus);
-// TypeSpecifier* create_type_specifier(ClassSpecifier* class_specifier);
+TypeSpecifier* create_type_specifier(ClassSpecifier* cs);
 
 class SpecifierQualifierList : public NonTerminal
 {
@@ -594,6 +650,7 @@ public:
     vector<TypeSpecifier *> type_specifiers;
     vector<int> type_qualifiers;
     bool is_const_variable;
+    bool is_type_name;
     int type_index;
     void set_type();
     SpecifierQualifierList();
@@ -614,6 +671,16 @@ public:
 };
 
 TypeName *create_type_name(SpecifierQualifierList *sql, AbstractDeclarator *ad);
+
+class Initializer : public NonTerminal
+{
+    // 
+    public:
+        AssignmentExpression *assignment_expression;
+        Initializer();
+};
+
+Initializer *create_initializer(Expression *e);
 
 class TranslationUnit : public NonTerminal
 {
@@ -693,19 +760,25 @@ class SymbolTable
 public:
     std::unordered_map<std::string, std::list<Symbol *>> table;
     std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes>>> defined_types;
+    std::unordered_map<std::string, std::list<Symbol *>> typedefs;
     int currentScope;
     bool error;
 
     SymbolTable();
     void enterScope();
     void exitScope();
-    void insert(std::string name, Type type, int offset);
+    void insert(std::string name, Type type, int offset, int overloaded);
     void insert_defined_type(std::string name, DefinedTypes type);
+    void insert_typedef(std::string name, Type type, int offset);
     bool lookup(std::string name);
+    bool lookup_function(std::string name, vector<Type> arg_types);
     bool lookup_defined_type(string name);
-    bool check_member_variable(string name, string member_variable); // IMPLEMENT
-    Type get_type_of_member_variable(string name, string member_variable); // IMPLEMENT
+    bool lookup_typedef(string name);
+    bool check_member_variable(string name, string member);
+    Type get_type_of_member_variable(string name, string member);
     Symbol *getSymbol(std::string name);
+    Symbol *getFunction(std::string name, vector<Type> arg_types);
+    Type getTypedef(std::string name);
     DefinedTypes get_defined_type(std::string name);
     void update(std::string name, Type newType);
     void remove(std::string name);

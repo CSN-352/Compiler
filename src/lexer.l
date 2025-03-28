@@ -268,9 +268,9 @@ NEWLINE        \n
 {WHILE}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(WHILE); }
 {UNTIL}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(UNTIL); }
 {CLASS}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CLASS); }
-{PRIVATE}             { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PRIVATE); }
-{PUBLIC}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PUBLIC); }
-{PROTECTED}           { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PROTECTED); }
+{PRIVATE}             { Terminal* t = new Terminal("PRIVATE",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PRIVATE); }
+{PUBLIC}              { Terminal* t = new Terminal("PUBLIC",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PUBLIC); }
+{PROTECTED}           { Terminal* t = new Terminal("PROTECTED",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PROTECTED); }
 {ASSEMBLY_DIRECTIVE}  { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ASSEMBLY_DIRECTIVE); }
 {IDENTIFIER}          { Identifier* id = new Identifier(yytext, line_no, column_no); yylval.identifier = id;
                         if(!checkIdentifierLength(yytext)) {
@@ -278,12 +278,9 @@ NEWLINE        \n
                             return(ERROR);
                         }
                         updateColumn(yyleng); 
-                        if(is_typedef) {
-                            addToSymbolTable(yytext, "type_name");
-                            is_typedef=0;
-                        } else 
+                        else 
                             addToSymbolTable(yytext, "identifier"); 
-                        if(check_type_name(yytext))
+                        if(symbolTable.lookup_typedef(yytext))
                             return(TYPE_NAME);
                         RETURN_IF_NOT_MAIN(IDENTIFIER);
             }

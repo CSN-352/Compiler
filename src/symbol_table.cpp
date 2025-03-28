@@ -200,12 +200,27 @@ bool Type::is_ea()
     {
         return true;
     }
-    else
-    {
-        return false;
-    }
-
     return false;
+}
+
+bool Type::is_convertible_to(Type t){ //CHECK
+    if(*this == t) return true;
+    if(isPrimitive() && !is_pointer) return true;
+    if(is_pointer && t.is_pointer && ptr_level == t.ptr_level){
+        if(typeIndex == VOID_T || t.typeIndex == VOID_T) return true;
+    }
+    return false;
+}
+
+Type promote_to_int(Type t) {
+    if (t.typeIndex >= PrimitiveTypes::U_CHAR_T && t.typeIndex <= PrimitiveTypes::SHORT_T) {
+        Type promoted(INT_T, 0, false); // or UNSIGNED_INT_T based on signedness
+        if (t.isUnsigned()) {
+            promoted.typeIndex = PrimitiveTypes::U_INT_T;
+        }
+        return promoted;
+    }
+    return t;
 }
 
 int Type::get_size()
@@ -346,52 +361,134 @@ bool operator!=(const Type &obj1, const Type &obj2)
 
 // Not fully implemented
 
-bool TypeDefinition::get_member(Identifier* id)
+bool TypeDefinition::get_member(string member)
 {
-    if (find(members.begin(),members.end(),id->name) != members.end()) return true;
+    if (members.find(member) != members.end()) return true;
     return false;
 }
 
 int TypeDefinition::get_size()
 {
     int size = 0;
-    for (string member : members){
-        Symbol* sym = symbolTable.getSymbol(member);
+    if(type_category == TYPE_CATEGORY_UNION){
+        for (auto member : members){
+            Symbol* sym = symbolTable.getSymbol(member.first);
+            size = max(size, sym->type.get_size());
+        }
+        return size;
+    }
+    for (auto member : members){
+        Symbol* sym = symbolTable.getSymbol(member.first);
         size += sym->type.get_size();
     }
     return size;
 }
 
-TypeDefinition* create_type_definition(TypeCategory type_category, StructDeclarationList* sdl)
+AccessSpecifiers TypeDefinition :: get_member_access_specifier(string member){
+    return members[member];
+}
+
+TypeDefinition* create_type_definition(TypeCategory type_category, StructDeclarationSet* sds)
 {
     TypeDefinition* P = new TypeDefinition();
     P->type_category = type_category;
-    if(sdl != nullptr){
-        for(StructDeclaration* sd : sdl->struct_declaration_list){
-            for(int i = 0; i < sd->struct_declarator_list->struct_declarator_list.size(); i++){
-                StructDeclarator* d = sd->struct_declarator_list->struct_declarator_list[i];
-                if(d != nullptr){
-                    Identifier* id = d->declarator->direct_declarator->identifier;
-                    int pointer_level = 0;
-                    if(d->declarator->pointer != nullptr)pointer_level = d->declarator->pointer->pointer_level;
-                    Type t = Type(sd->specifier_qualifier_list->type_index, pointer_level, sd->specifier_qualifier_list->is_const_variable);
-                    if (d->declarator->direct_declarator->is_array){
-                        t.is_array = true;
-                        t.is_pointer = true;
-                        t.array_dim = d->declarator->direct_declarator->array_dimensions.size();
-                        t.array_dims = d->declarator->direct_declarator->array_dimensions;
+    if(sds != nullptr){
+        for(StructDeclarationListAccess* sdla : sds->struct_declaration_lists){
+            for(int j = 0; j<sdla->struct_declaration_list->struct_declaration_list.size(); j++){
+                StructDeclaration* sd = sdla->struct_declaration_list->struct_declaration_list[j];
+                for(int i = 0; i < sd->struct_declarator_list->struct_declarator_list.size(); i++){
+                    StructDeclarator* d = sd->struct_declarator_list->struct_declarator_list[i];
+                    if(d != nullptr){
+                        Identifier* id = d->declarator->direct_declarator->identifier;
+                        int pointer_level = 0;
+                        if(d->declarator->pointer != nullptr)pointer_level = d->declarator->pointer->pointer_level;
+                        Type t = Type(sd->specifier_qualifier_list->type_index, pointer_level, sd->specifier_qualifier_list->is_const_variable);
+                        if (d->declarator->direct_declarator->is_array){
+                            t.is_array = true;
+                            t.is_pointer = true;
+                            t.array_dim = d->declarator->direct_declarator->array_dimensions.size();
+                            t.array_dims = d->declarator->direct_declarator->array_dimensions;
+                        }
+                        else if (d->declarator->direct_declarator->is_function){
+                            string error_msg = "Function cannot be part of Struct/Union at line " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->line_no) + ", column " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->column_no);
+                            yyerror(error_msg.c_str());
+                            symbolTable.set_error();
+                            return P;
+                        }
+                        if(d->bit_field_width == -1)symbolTable.insert(id->value, t, t.get_size(),0);
+                        else symbolTable.insert(id->value, t, d->bit_field_width,0);
+                        if(sdla->access_specifier->name == "PUBLIC") P->members.insert({id->value, ACCESS_SPECIFIER_PUBLIC});
+                        else if(sdla->access_specifier->name == "PROTECTED") P->members.insert({id->value, ACCESS_SPECIFIER_PROTECTED});
+                        else if(sdla->access_specifier->name == "PRIVATE") P->members.insert({id->value, ACCESS_SPECIFIER_PRIVATE});
                     }
-                    else if (d->declarator->direct_declarator->is_function){
-                        string error_msg = "Function cannot be part of Struct/Union at line " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->line_no) + ", column " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->column_no);
-                        yyerror(error_msg.c_str());
-                        symbolTable.set_error();
-                        
-                    }
-                    if(d->bit_field_width == -1)symbolTable.insert(id->value, t, t.get_size());
-                    else symbolTable.insert(id->value, t, d->bit_field_width);
-                    P->members.push_back(id->value);
+                    else currAddress += d->bit_field_width;
                 }
-                else currAddress += d->bit_field_width;
+            }
+        }
+    }
+    return P;
+}
+
+TypeDefinition* create_type_definition(TypeCategory type_category, ClassDeclaratorList* idl, ClassDeclarationList* cdl){
+    TypeDefinition* P = new TypeDefinition();
+    P->type_category = type_category;
+    if(cdl != nullptr){
+        for(ClassDeclaration* cd : cdl->class_declaration_list){
+            for(int i = 0; i < cd->translation_unit->external_declarations.size() ; i++){
+                Declaration* d = cd->translation_unit->external_declarations[i]->declaration;
+                if(d->init_declarator_list == nullptr){
+                    string error_msg = "Struct/Union/Class cannot be part of Class at line " + to_string(d->declaration_specifiers->type_specifiers[0]->line_no) + ", column " + to_string(d->declaration_specifiers->type_specifiers[0]->column_no);
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return P;
+                }
+                for(int j = 0; j < d->init_declarator_list->init_declarator_list.size(); j++){
+                    Declarator* dd = d->init_declarator_list->init_declarator_list[j]->declarator;
+                    // int overload = 0;
+                    if(d != nullptr){
+                        Identifier* id = dd->direct_declarator->identifier;
+                        // int pointer_level = 0;
+                        // if(dd->pointer != nullptr)pointer_level = dd->pointer->pointer_level;
+                        // Type t = Type(d->declaration_specifiers->type_index, pointer_level, d->declaration_specifiers->is_const_variable);
+                        // if (dd->direct_declarator->is_array){
+                        //     t.is_array = true;
+                        //     t.is_pointer = true;
+                        //     t.array_dim = dd->direct_declarator->array_dimensions.size();
+                        //     t.array_dims = dd->direct_declarator->array_dimensions;
+                        // }
+                        // else if (dd->direct_declarator->is_function){
+                        //     t.is_function = true;
+                        //     overload = 1;
+                        //     t.num_args = dd->direct_declarator->parameters->paramater_list->parameter_declarations.size();
+                        //     for (int i = 0; i < t.num_args; i++) t.arg_types.push_back(dd->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
+                        // }
+                        // symbolTable.insert(id->value, t, t.get_size(),overload);
+                        if(cd->access_specifier->name == "PUBLIC")P->members.insert({id->value, ACCESS_SPECIFIER_PUBLIC});
+                        else if(cd->access_specifier->name == "PROTECTED")P->members.insert({id->value, ACCESS_SPECIFIER_PROTECTED});
+                        else if(cd->access_specifier->name == "PRIVATE")P->members.insert({id->value, ACCESS_SPECIFIER_PRIVATE});
+                    }
+                }
+            }
+        }
+        if(idl != nullptr){
+            for(ClassDeclarator* cd : idl->class_declarator_list){
+                TypeDefinition* t = symbolTable.get_defined_type(cd->declarator->direct_declarator->identifier->value).type_definition;
+                if(t != nullptr){
+                    for(auto it : t->members){
+                        string member = it.first;
+                        AccessSpecifiers access_specifier = it.second;
+                        if(access_specifier == ACCESS_SPECIFIER_PUBLIC){
+                            if(cd->access_specifier->name == "PUBLIC") P->members.insert({member,ACCESS_SPECIFIER_PUBLIC});
+                            else if(cd->access_specifier->name == "PROTECTED") P->members.insert({member,ACCESS_SPECIFIER_PROTECTED});
+                            else if (cd->access_specifier->name == "PRIVATE") P->members.insert({member,ACCESS_SPECIFIER_PRIVATE});
+                        }
+                        else if(access_specifier == ACCESS_SPECIFIER_PROTECTED){
+                            if(cd->access_specifier->name == "PUBLIC") P->members.insert({member,ACCESS_SPECIFIER_PROTECTED});
+                            else if(cd->access_specifier->name == "PROTECTED") P->members.insert({member,ACCESS_SPECIFIER_PROTECTED});
+                            else if (cd->access_specifier->name == "PRIVATE") P->members.insert({member,ACCESS_SPECIFIER_PRIVATE});
+                        }
+                    }
+                }
             }
         }
     }
@@ -441,7 +538,7 @@ Declaration ::Declaration()
 }
 
 Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
-                             DeclaratorList *init_declarator_list)
+                             InitDeclaratorList *init_declarator_list)
 {
     Declaration *P = new Declaration();
 
@@ -449,10 +546,11 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
     P->init_declarator_list = init_declarator_list;
 
     if(init_declarator_list != nullptr){
-        for (int index = 0; index < init_declarator_list->declarator_list.size(); index++)
+        for (int index = 0; index < init_declarator_list->init_declarator_list.size(); index++)
         {
-            Declarator *variable = init_declarator_list->declarator_list[index];
+            Declarator *variable = init_declarator_list->init_declarator_list[index]->declarator;
             int ptr_level = 0;
+            int overloaded = 0;
             if (variable->pointer != nullptr) ptr_level = variable->pointer->pointer_level;
             Type t = Type(P->declaration_specifiers->type_index, ptr_level, P->declaration_specifiers->is_const_variable);
             if (variable->direct_declarator->is_array){
@@ -465,9 +563,25 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
                 t.is_function = true;
                 t.num_args = variable->direct_declarator->parameters->paramater_list->parameter_declarations.size();
                 for (int i = 0; i < t.num_args; i++) t.arg_types.push_back(variable->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
-                
+                overloaded = 1;
             }
-            symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size());
+            if(ptr_level == 0 && declaration_specifiers->type_index == 13){
+                string error_msg = "Variable of field '" + variable->direct_declarator->identifier->value + "' declared void at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return;
+            }
+            if(init_declarator_list->init_declarator_list[index]->initializer != nullptr){
+                bool compatible = init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.is_convertible_to(t);
+                if(!compatible){
+                    string error_msg = "Incompatible types while initializing variable '" + variable->direct_declarator->identifier->value + "' at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return;
+                }
+            }
+            if(declaration_specifiers->is_typedef)symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
+            else symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
         }
     }
     return P;
@@ -686,6 +800,7 @@ DeclarationSpecifiers *create_declaration_specifiers(SpecifierQualifierList *sql
 DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *ds, int storage_class)
 {
     ds->storage_class_specifiers.push_back(storage_class);
+    if (storage_class == STORAGE_CLASS_TYPEDEF) ds->is_typedef = true;
     return ds;
 }
 
@@ -899,32 +1014,22 @@ ParameterTypeList *create_parameter_type_list(ParameterList *pl, bool var)
 }
 
 // ##############################################################################
-// ############################# DECLARATOR LIST ################################
+// ############################# INIT DECLARATOR LIST ################################
 // ##############################################################################
 
-DeclaratorList ::DeclaratorList() : NonTerminal("init_declarator_list") {};
+InitDeclaratorList ::InitDeclaratorList() : NonTerminal("INIT DECLARATOR LIST") {};
 
-DeclaratorList *create_init_declarator_list(Declarator *d)
+InitDeclaratorList *create_init_declarator_list(InitDeclarator *id)
 {
-
-    if (d == nullptr)
-    {
-        return nullptr;
-    }
-    DeclaratorList *dl = new DeclaratorList();
-    dl->declarator_list.push_back(d);
-    // dl->add_children( d );
-    return dl;
+    InitDeclaratorList *P = new InitDeclaratorList();
+    P->init_declarator_list.push_back(id);
+    return P;
 }
 
-DeclaratorList* add_to_init_declarator_list(DeclaratorList *init_declarator_list, Declarator *init_declarator)
+InitDeclaratorList* create_init_declarator_list(InitDeclaratorList *idl, InitDeclarator *id)
 {
-    if (init_declarator == nullptr)
-    {
-        return init_declarator_list;
-    }
-    init_declarator_list->declarator_list.push_back(init_declarator);
-    return init_declarator_list;
+    idl->init_declarator_list.push_back(id);
+    return idl;
 }
 
 // ##############################################################################
@@ -1040,25 +1145,149 @@ DirectAbstractDeclarator *create_direct_abstract_declarator_function(DirectAbstr
 StructUnionSpecifier :: StructUnionSpecifier() : NonTerminal("STRUCT UNION SPECIFIER")
 {
     identifier = nullptr;
-    struct_declaration_list = nullptr;
+    struct_declaration_set = nullptr;
     type_category = TYPE_CATEGORY_ERROR;
 }
 
-StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationList *sdl)
+StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationSet *sds)
 {
     StructUnionSpecifier *P = new StructUnionSpecifier();
     if(struct_or_union == "STRUCT") P->type_category = TYPE_CATEGORY_STRUCT;
     else P->type_category = TYPE_CATEGORY_UNION;
     P->identifier = id;
-    P->struct_declaration_list = sdl;
+    P->struct_declaration_set = sds;
     TypeDefinition *td;
-    if (sdl != nullptr)td = create_type_definition(P->type_category, sdl);
+    if (sds != nullptr)td = create_type_definition(P->type_category, sds);
     else td = nullptr;
-    if (id != nullptr){
-        DefinedTypes dt = DefinedTypes(P->type_category, td);
-        dt.defined_type_name = id->value;
-        symbolTable.insert_defined_type(id->value, dt);
+    DefinedTypes dt = DefinedTypes(P->type_category, td);
+    dt.defined_type_name = id->value;
+    symbolTable.insert_defined_type(id->value, dt);
+    return P;
+}
+
+
+// ##############################################################################
+// ############################ CLASS SPECIFIER #########################
+// ##############################################################################
+ClassSpecifier :: ClassSpecifier() : NonTerminal("CLASS SPECIFIER")
+{
+    type_category = TYPE_CATEGORY_CLASS;
+    identifier = nullptr;
+    class_declarator_list = nullptr;
+    class_declaration_list = nullptr;
+}
+
+ClassSpecifier *create_class_specifier(Identifier *id, ClassDeclaratorList* idl, ClassDeclarationList *cdl){
+    ClassSpecifier* P = new ClassSpecifier();
+    P->identifier = id;
+    P->class_declarator_list = idl;
+    P->class_declaration_list = cdl;
+    TypeDefinition* td;
+    if(cdl != nullptr){
+        td = create_type_definition(TYPE_CATEGORY_CLASS, idl, cdl);
     }
+    else td = nullptr;
+    DefinedTypes dt = DefinedTypes(TYPE_CATEGORY_CLASS, td);
+    dt.defined_type_name = id->value;
+    symbolTable.insert_defined_type(id->value, dt);
+    return P;
+}
+
+// ##############################################################################
+// ############################ CLASS DECLARATOR LIST #########################
+// ##############################################################################
+ClassDeclaratorList :: ClassDeclaratorList() : NonTerminal("CLASS DECLARATOR LIST") {}
+
+ClassDeclaratorList* create_class_declarator_list(ClassDeclarator* cd){
+    ClassDeclaratorList* P = new ClassDeclaratorList();
+    P->class_declarator_list.push_back(cd);
+    return P;
+}
+
+ClassDeclaratorList* create_class_declarator_list(ClassDeclaratorList* cdl, ClassDeclarator* cd){
+    cdl->class_declarator_list.push_back(cd);
+    return cdl;
+}
+
+// ##############################################################################
+// ############################ CLASS DECLARATOR #########################
+// ##############################################################################
+ClassDeclarator :: ClassDeclarator() : NonTerminal("CLASS DECLARATOR")
+{
+    access_specifier = nullptr;
+    declarator = nullptr;
+}  
+
+ClassDeclarator* create_class_declarator(Terminal* access_specifier, Declarator* d){
+    ClassDeclarator* P = new ClassDeclarator();
+    if(access_specifier == nullptr) access_specifier = new Terminal("PRIVATE","private",0,0);
+    P->access_specifier = access_specifier;
+    P->declarator = d;
+    return P;
+}
+
+// ##############################################################################
+// ############################ CLASS DECLARATION LIST #########################
+// ##############################################################################
+ClassDeclarationList :: ClassDeclarationList() : NonTerminal("CLASS DECLARATION LIST") {}
+
+ClassDeclarationList* create_class_declaration_list(ClassDeclaration* cd){
+    ClassDeclarationList* P = new ClassDeclarationList();
+    P->class_declaration_list.push_back(cd);
+    return P;
+}
+
+ClassDeclarationList* create_class_declaration_list(ClassDeclarationList* cdl, ClassDeclaration* cd){
+    cdl->class_declaration_list.push_back(cd);
+    return cdl;
+}
+
+// ##############################################################################
+// ############################ CLASS DECLARATION #########################
+// ##############################################################################
+ClassDeclaration ::ClassDeclaration() : NonTerminal("CLASS DECLARATION")
+{
+    access_specifier = nullptr;
+    translation_unit = nullptr;
+}
+
+ClassDeclaration* create_class_declaration(Terminal* access_specifier, TranslationUnit* tu){
+    ClassDeclaration* P = new ClassDeclaration();
+    if(access_specifier == nullptr) access_specifier = new Terminal("PRIVATE","private",0,0);
+    P->access_specifier = access_specifier;
+    P->translation_unit = tu;
+    return P;
+}
+
+// ##############################################################################
+// ############################ STRUCT DECLARATION SET #########################
+// ##############################################################################
+StructDeclarationSet::StructDeclarationSet() : NonTerminal("STRUCT DECLARATION SET") {}
+
+StructDeclarationSet* create_struct_declaration_set(StructDeclarationListAccess* sdla){
+    StructDeclarationSet* P = new StructDeclarationSet();
+    P->struct_declaration_lists.push_back(sdla);
+    return P;
+}
+
+StructDeclarationSet* create_struct_declaration_set(StructDeclarationSet* sds, StructDeclarationListAccess* sdla){
+    sds->struct_declaration_lists.push_back(sdla);
+    return sds;
+}
+
+// ##############################################################################
+// ############################ STRUCT DECLARATION LIST ACCESS #########################
+// ##############################################################################
+StructDeclarationListAccess::StructDeclarationListAccess() : NonTerminal("STRUCT DECLARATION LIST ACCESS") {
+    access_specifier = nullptr;
+    struct_declaration_list = nullptr;
+}
+
+StructDeclarationListAccess* create_struct_declaration_list_access(Terminal* access_specifier, StructDeclarationList* sdl){
+    StructDeclarationListAccess* P = new StructDeclarationListAccess();
+    if(access_specifier == nullptr) access_specifier = new Terminal("PUBLIC","public",0,0);
+    P->access_specifier = access_specifier;
+    P->struct_declaration_list = sdl;
     return P;
 }
 
@@ -1207,7 +1436,7 @@ EnumSpecifier *create_enumerator_specifier(Identifier *id, EnumeratorList *el)
     {
         Type type(PrimitiveTypes::INT_T, 0, true);
         for (Enumerator *e : el->enumerator_list)
-            symbolTable.insert(e->identifier->value, type, 0);
+            symbolTable.insert(e->identifier->value, type, 4, 0);
     }
     return P;
 }
@@ -1220,11 +1449,27 @@ EnumSpecifier *create_enumerator_specifier(EnumeratorList *el)
     {
         Type type(PrimitiveTypes::INT_T, 0, true);
         for (Enumerator *e : el->enumerator_list)
-            symbolTable.insert(e->identifier->value, type, 0);
+            symbolTable.insert(e->identifier->value, type, 4, 0);
     }
     return P;
 }
 
+// ##############################################################################
+// ################################## INIT DECLARATOR ############################
+// ##############################################################################
+InitDeclarator :: InitDeclarator() : NonTerminal("INIT DECLARATOR")
+{
+    declarator = nullptr;
+    initializer = nullptr;
+}
+
+InitDeclarator *create_init_declarator(Declarator *d, Initializer* i)
+{
+    InitDeclarator *P = new InitDeclarator();
+    P->declarator = d;
+    P->initializer = i;
+    return P;
+}
 
 // ##############################################################################
 // ################################## TYPE SPECIFIER ############################
@@ -1242,6 +1487,13 @@ TypeSpecifier *create_type_specifier(Terminal* t)
     TypeSpecifier* P = new TypeSpecifier();
     P->primitive_type_specifier = t;
     P->name += ": " + t->name; // for debugging purposes
+    return P;
+}
+
+TypeSpecifier *create_type_specifier(Terminal* t, bool is_type_name){
+    TypeSpecifier* P = new TypeSpecifier();
+    P->name += ": " + t->name; // for debugging purposes
+    P->type_name = t->value;
     return P;
 }
 
@@ -1265,6 +1517,14 @@ TypeSpecifier *create_type_specifier(StructUnionSpecifier *sus)
     return P;
 }
 
+TypeSpecifier* create_type_specifier(ClassSpecifier* cs)
+{
+    TypeSpecifier* P = new TypeSpecifier();
+    P->class_specifier = cs;
+    P->name += ": CLASS";
+    return P;
+}
+
 // ##############################################################################
 // ################################## SPECIFIER QUALIFIER LIST ######################################
 // ##############################################################################
@@ -1273,7 +1533,7 @@ SpecifierQualifierList ::SpecifierQualifierList() : NonTerminal("SPECIFIER QUALI
 {
 }
 
-void SpecifierQualifierList ::set_type()
+void SpecifierQualifierList :: set_type()
 {
     is_const_variable = false;
     type_index = -1;
@@ -1518,6 +1778,19 @@ TypeName *create_type_name(SpecifierQualifierList *sql, AbstractDeclarator *ad)
     return P;
 }
 
+// ##############################################################################
+// ################################## INITIALIZER ######################################
+// ##############################################################################
+Initializer :: Initializer(): NonTerminal("INITIALIZER"){
+    assignment_expression = nullptr;
+}
+
+Initializer* create_initializer(Expression* e){
+    Initializer* P = new Initializer();
+    AssignmentExpression* e_cast = dynamic_cast<AssignmentExpression*>(e);
+    P->assignment_expression = e_cast;
+    return P;
+}
 
 // ##############################################################################
 // ################################## TRANSLATION UNIT ######################################
@@ -1556,7 +1829,7 @@ ExternalDeclaration *create_external_declaration(Declaration *d)
     ExternalDeclaration *P = new ExternalDeclaration();
     P->declaration = d;
     return P;
-}
+} 
 
 // ##############################################################################
 // ################################## FUNCTION DEFINITION ######################################
@@ -1590,9 +1863,9 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declar
         type.is_function = true;
         type.arg_types = arg_types;
         type.num_args = arg_types.size();
-        Symbol* sym = symbolTable.getSymbol(function_name);
+        Symbol* sym = symbolTable.getFunction(function_name, arg_types);
         if(sym != nullptr){
-            if(sym->function_definition == nullptr && sym->type == type){
+            if(sym->function_definition == nullptr){
                 sym->function_definition = P;
             }
             else if(sym->type.arg_types == arg_types){
@@ -1602,7 +1875,7 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declar
             }  
         }
         else{
-            symbolTable.insert(function_name, type, type.get_size());
+            symbolTable.insert(function_name, type, type.get_size(), 1);
             Symbol* sym = symbolTable.getSymbol(function_name);
             sym->function_definition = P;
         } 
@@ -1799,16 +2072,23 @@ void SymbolTable::exitScope()
         currentScope--;
 }
 
-void SymbolTable::insert(string name, Type type, int size)
+void SymbolTable::insert(string name, Type type, int size, int overloaded)
 {
     for (const Symbol *sym : table[name])
     {
         if (sym->scope == currentScope)
         {
-            string error_msg = "Symbol '" + name + "' already declared in this scope.";
-            yyerror(error_msg.c_str());
-            set_error();
-            return;
+            if(overloaded == 1){
+                if(sym->type.arg_types != type.arg_types){
+                    continue;
+                }
+            }
+            else{
+                string error_msg = "Symbol '" + name + "' already declared in this scope.";
+                yyerror(error_msg.c_str());
+                set_error();
+                return;
+            }
         }
     }
     Symbol *sym = new Symbol(name, type, currentScope, currAddress);
@@ -1831,6 +2111,22 @@ void SymbolTable::insert_defined_type(std::string name, DefinedTypes type)
     defined_types[name].push_front({currentScope, type});
 }
 
+void SymbolTable :: insert_typedef(std::string name, Type type, int offset){
+    for (const Symbol *sym : typedefs[name])
+    {
+        if (sym->scope == currentScope)
+        {
+            string error_msg = "Symbol '" + name + "' already declared in this scope.";
+            yyerror(error_msg.c_str());
+            set_error();
+            return;
+        }
+    }
+    Symbol *sym = new Symbol(name, type, currentScope, currAddress);
+    currAddress += offset;
+    typedefs[name].push_front(sym);
+}
+
 bool SymbolTable::lookup(string name)
 {
     auto it = table.find(name);
@@ -1840,6 +2136,19 @@ bool SymbolTable::lookup(string name)
     for (const Symbol *sym : it->second)
     {
         if (sym->scope <= currentScope)
+            return true;
+    }
+    return false;
+}
+
+bool SymbolTable::lookup_function(std::string name, vector<Type> arg_types){
+    auto it = table.find(name);
+    if (it == table.end())
+        return false;
+
+    for (const Symbol *sym : it->second)
+    {
+        if (sym->scope <= currentScope && sym->type.arg_types == arg_types)
             return true;
     }
     return false;
@@ -1859,6 +2168,44 @@ bool SymbolTable::lookup_defined_type(string name)
     return false;
 }
 
+bool SymbolTable :: lookup_typedef(string name){
+    auto it = typedefs.find(name);
+    if (it == typedefs.end())
+        return false;
+
+    for (const Symbol *sym : it->second)
+    {
+        if (sym->scope <= currentScope)
+            return true;
+    }
+    return false;
+}
+
+bool SymbolTable :: check_member_variable(string name, string member){
+    auto t = get_defined_type(name);
+    if(t.type_definition->get_member(member) && t.type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PUBLIC){
+        return true;
+    }
+    else if(t.type_definition->get_member(member) && t.type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PRIVATE){
+        string error_msg = "Member variable '" + member + "' is private in class '" + name;
+        yyerror(error_msg.c_str());
+        set_error();
+        return false;
+    }
+    else if(t.type_definition->get_member(member) && t.type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PROTECTED){
+        string error_msg = "Member variable '" + member + "' is protected in class '" + name ;
+        yyerror(error_msg.c_str());
+        set_error();
+        return false;
+    }
+    return false;
+}
+
+Type SymbolTable :: get_type_of_member_variable(string name, string member){
+    Symbol* sym = getSymbol(member);
+    return sym->type;
+}
+
 Symbol *SymbolTable::getSymbol(string name)
 {
     auto it = table.find(name);
@@ -1870,6 +2217,27 @@ Symbol *SymbolTable::getSymbol(string name)
     for (Symbol *_sym : it->second)
     {
         if (_sym->scope <= currentScope)
+        {
+            if (sym == nullptr || _sym->scope > sym->scope)
+            {
+                sym = _sym;
+            }
+        }
+    }
+
+    return sym;
+}
+
+Symbol *SymbolTable::getFunction(std::string name, vector<Type> arg_types){
+    auto it = table.find(name);
+    if (it == table.end() || it->second.empty())
+        return nullptr;
+
+    Symbol *sym = nullptr;
+
+    for (Symbol *_sym : it->second)
+    {
+        if (_sym->scope <= currentScope && _sym->type.arg_types == arg_types)
         {
             if (sym == nullptr || _sym->scope > sym->scope)
             {
@@ -1897,6 +2265,24 @@ DefinedTypes SymbolTable::get_defined_type(std::string name)
     }
 
     return *types;
+}
+
+Type SymbolTable :: getTypedef(std::string name){
+    auto it = typedefs.find(name);
+    Symbol *sym = nullptr;
+
+    for (Symbol *_sym : it->second)
+    {
+        if (_sym->scope <= currentScope)
+        {
+            if (sym == nullptr || _sym->scope > sym->scope)
+            {
+                sym = _sym;
+            }
+        }
+    }
+
+    return sym->type;
 }
 
 void SymbolTable::update(string name, Type newType)

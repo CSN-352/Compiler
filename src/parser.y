@@ -37,6 +37,7 @@ void yyerror(const char *msg);
     Constant* constant;
 	StringLiteral* string_literal;
     Expression* expression;
+    IdentfierList* identifier_list;
     ArgumentExpressionList* argument_expression_list;
     DirectAbstractDeclarator* direct_abstract_declarator;
     AbstractDeclarator* abstract_declarator;
@@ -53,14 +54,21 @@ void yyerror(const char *msg);
     EnumeratorList* enumerator_list;
     EnumSpecifier* enum_specifier;
     StructUnionSpecifier* struct_or_union_specifier;
+    ClassDeclaration* class_declaration;
+    ClassDeclarationList* class_declaration_list;
+    ClassDeclarator* class_declarator;
+    ClassDeclaratorList* class_declarator_list;
     ClassSpecifier* class_specifier;
     StructDeclarator* struct_declarator;
     StructDeclaratorList* struct_declarator_list;
     StructDeclaration* struct_declaration;
     StructDeclarationList* struct_declaration_list;
+    StructDeclarationListAccess* struct_declaration_list_access;
+    StructDeclarationSet* struct_declaration_set;
     FunctionDefinition* function_definition;
     ExternalDeclaration* external_declaration;
     TranslationUnit* translation_unit;
+    Initializer* initializer
     Statement* statement;
     int intval;
     char* strval;
@@ -71,9 +79,9 @@ void yyerror(const char *msg);
 %token <constant> I_CONSTANT F_CONSTANT CHAR_CONSTANT
 %token <string_literal> STRING_LITERAL
 %token <terminal> INC_OP DEC_OP PTR_OP DOT
-%token <terminal> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME
-%token <terminal> STRUCT UNION
-%type <terminal> unary_operator
+%token <terminal> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME 
+%token <terminal> STRUCT UNION PUBLIC PRIVATE PROTECTED
+%type <terminal> unary_operator access_specifier
 
 %type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression
 %type <argument_expression_list> argument_expression_list
@@ -100,6 +108,10 @@ void yyerror(const char *msg);
 %type <parameter_declaration> parameter_declaration;
 %type <enumerator> enumerator
 %type <enumerator_list> enumerator_list
+%type <class_declaration> class_declaration
+%type <class_declaration_list> class_declaration_list
+%type <class_declarator> class_declarator
+%type <class_declarator_list> class_declarator_list
 %type <struct_declarator> struct_declarator
 %type <struct_declarator_list> struct_declarator_list
 %type <struct_declaration> struct_declaration
@@ -108,20 +120,23 @@ void yyerror(const char *msg);
 %type <translation_unit> translation_unit
 %type <external_declaration> external_declaration
 %type <function_definition> function_definition
+%type <initializer> initializer
+%type <identifier_list> identifier_list
+%type <struct_declaration_list_access> struct_declaration_list_access
+%type <struct_declaration_set> struct_declaration_set
 
 %type <statement> compound_statement
 
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
 %token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
 %token <strval> IF RETURN SWITCH
-%token <strval> WHILE UNTIL CLASS PRIVATE PUBLIC PROTECTED ASSEMBLY_DIRECTIVE
+%token <strval> WHILE UNTIL CLASS ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
 %token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
 %token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case
-%type <strval> class_declaration class_declaration_list access_specifier
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
 %nonassoc LOW_PREC
@@ -138,6 +153,7 @@ error_case:
     | error {  has_error=1; yyclearin;}
     ;
 
+//DONE
 primary_expression:
     IDENTIFIER {$$ = create_primary_expression($1);}
     | I_CONSTANT {$$ = create_primary_expression($1);}
@@ -147,31 +163,35 @@ primary_expression:
     | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($2);} 
     ;
 
+//DONE
 argument_expression_list:
     assignment_expression {$$ = create_argument_expression_list($1);}
     | argument_expression_list COMMA assignment_expression {$$ = create_argument_expression_list($1, $3);}
     ;
 
+//DONE
 postfix_expression:
-    primary_expression 
-    | postfix_expression LEFT_SQUARE expression RIGHT_SQUARE
-    | postfix_expression LEFT_PAREN argument_expression_list RIGHT_PAREN
-    | postfix_expression LEFT_PAREN RIGHT_PAREN 
-    | postfix_expression DOT IDENTIFIER
-    | postfix_expression PTR_OP IDENTIFIER
+    primary_expression {$$ = create_postfix_expression($1);}
+    | postfix_expression LEFT_SQUARE expression RIGHT_SQUARE { $$ = create_postfix_expression($1, $3);}
+    | postfix_expression LEFT_PAREN argument_expression_list RIGHT_PAREN {$$ = create_postfix_expression($1, $3);}
+    | postfix_expression LEFT_PAREN RIGHT_PAREN  { $$ = create_postfix_expression($1, $2, $3);}
+    | postfix_expression DOT IDENTIFIER {$$ = create_postfix_expression($1, nullptr);}
+    | postfix_expression PTR_OP IDENTIFIER {$$ = create_postfix_expression($1, $2, $3);}
     | postfix_expression INC_OP {$$ = create_postfix_expression($1,$2);}
     | postfix_expression DEC_OP {$$ = create_postfix_expression($1,$2);}
     ;
 
+//DONE
 unary_expression:
-    postfix_expression
-    | INC_OP unary_expression
-    | DEC_OP unary_expression
-    | unary_operator cast_expression 
-    | SIZEOF unary_expression
-    | SIZEOF LEFT_PAREN type_name RIGHT_PAREN
+    postfix_expression {$$ = create_unary_expression($1);}
+    | INC_OP unary_expression {$$ = create_unary_expression($2, $1);}
+    | DEC_OP unary_expression {$$ = create_unary_expression($2, $1);}
+    | SIZEOF unary_expression {$$ = create_unary_expression($2, $1);}
+    | unary_operator cast_expression {$$ = create_unary_expression_cast($2, $1);}
+    | SIZEOF LEFT_PAREN type_name RIGHT_PAREN {$$ = create_unary_expression($3, $1);}
     ;
 
+//DONE
 unary_operator:
     BITWISE_AND {$$ = $1;}
     | MULTIPLY {$$ = $1;}
@@ -181,11 +201,13 @@ unary_operator:
     | BITWISE_NOT   {$$ = $1;}
     ;
 
+//DONE
 cast_expression: 
-    unary_expression
+    unary_expression {$$ = $1} 
     | LEFT_PAREN type_name RIGHT_PAREN cast_expression
     ;
 
+//DO NOW
 multiplicative_expression:
     cast_expression
     | multiplicative_expression MULTIPLY cast_expression
@@ -273,28 +295,33 @@ expression:
     | expression COMMA assignment_expression
     ;
 
+// DONE
 declaration:
     declaration_specifiers SEMICOLON     { $$ = create_declaration($1, nullptr);}                      
     | declaration_specifiers init_declarator_list SEMICOLON  {$$ = create_declaration( $1, $2 );}
     | error_case skip_until_semicolon SEMICOLON
     ;
 
+// DONE
 declaration_specifiers:
     storage_class_specifier declaration_specifiers {$$ = create_declaration_specifiers($2,$1);}
 	| specifier_qualifier_list {$$ = create_declaration_specifiers($1);}                                                         
 	| declaration_specifiers specifier_qualifier_list {$$ = create_declaration_specifiers($1,$2);}
     ;
 
+// DONE
 init_declarator_list:
     init_declarator { $$ = create_init_declarator_list( $1 ); }
     | init_declarator_list COMMA init_declarator {$$ = add_to_init_declarator_list($1, $3);}
     ;
 
+// DONE
 init_declarator:
-    declarator {$$ = $1;}
-    | declarator ASSIGN initializer
+    declarator {$$ = create_init_declarator($1);}
+    | declarator ASSIGN initializer {$$ = create_init_declarator($1,$3);}
     ;
 
+// DONE
 storage_class_specifier:
     TYPEDEF {$$ = 0;}
     | EXTERN {$$ = 1;}
@@ -303,6 +330,7 @@ storage_class_specifier:
     | REGISTER {$$ = 4;}
     ;
 
+// DO NOW (class and type_name)
 type_specifier:
     VOID        {$$ = create_type_specifier($1);}
     | CHAR      {$$ = create_type_specifier($1);}
@@ -313,16 +341,16 @@ type_specifier:
 	| DOUBLE    {$$ = create_type_specifier($1);}
 	| SIGNED    {$$ = create_type_specifier($1);}
 	| UNSIGNED  {$$ = create_type_specifier($1);}
-    | TYPE_NAME {$$ = create_type_specifier($1);}
+    | TYPE_NAME {$$ = create_type_specifier($1, true);}
 	| struct_or_union_specifier {$$ = create_type_specifier($1);}
 	| enum_specifier            {$$ = create_type_specifier($1);}
-    | class_specifier           /*{$$ = create_type_specifier($1);} */
+    | class_specifier           {$$ = create_type_specifier($1);} 
 	;
 
 // DONE
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} struct_declaration_list RIGHT_CURLY {create_struct_union_specifier($1->name,$2,$5); symbolTable.exitScope();}  
-	| struct_or_union LEFT_CURLY {symbolTable.enterScope();} struct_declaration_list RIGHT_CURLY {create_struct_union_specifier($1->name,nullptr,$4); symbolTable.exitScope();}  
+    struct_or_union IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,$2,$5); symbolTable.exitScope();}  
+	// | struct_or_union LEFT_CURLY {symbolTable.enterScope();} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,nullptr,$4); symbolTable.exitScope();}  
 	| struct_or_union IDENTIFIER {create_struct_union_specifier($1->name,$2,nullptr);}                  
 	;
 
@@ -332,33 +360,59 @@ struct_or_union:
     | UNION {$$ = $1;}
     ;
 
+struct_declaration_set:
+    struct_declaration_list_access {$$ = create_struct_declaration_set($1);}
+    | struct_declaration_set struct_declaration_list_access {$$ = create_struct_declaration_set($1,$2);}
+    ;
+
+struct_declaration_list_access:
+    struct_declaration_list {$$ = create_struct_declaration_list_access(nullptr,$1);}
+    | access_specifier COLON struct_declaration_list {$$ = create_struct_declaration_list_access($1,$3);}
+    ;
+
 // DONE
 struct_declaration_list:
     struct_declaration {$$ = create_struct_declaration_list($1);}
     | struct_declaration_list struct_declaration {$$ = create_struct_declaration_list($1, $2);}
     ;
 
+// DONE
 class_specifier:
-    CLASS IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {symbolTable.exitScope();} 
-    | CLASS IDENTIFIER INHERITANCE_OP init_declarator_list LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {symbolTable.exitScope();} 
-    | CLASS LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {symbolTable.exitScope();} 
-    | CLASS IDENTIFIER 
+    CLASS IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,nullptr,$4); symbolTable.exitScope();} 
+    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,$4,$6); symbolTable.exitScope();} 
+    // | CLASS LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {symbolTable.exitScope();} 
+    | CLASS IDENTIFIER {$$ = create_class_specifier($2,nullptr,nullptr);}
     ;
 
+// DONE
+class_declarator_list:
+    class_declarator {$$ = create_class_declarator_list($1);}
+    | class_declarator_list COMMA class_declarator {$$ = create_class_declarator_list($1,$3);}
+    ;
+
+// DONE
+class_declarator:
+    access_specifier declarator {$$ = create_class_declarator($1,$2);}
+    | declarator {$$ = create_class_declarator(nullptr,$1);}
+    ;
+
+// DONE
 class_declaration_list:
-    class_declaration
-    | class_declaration_list class_declaration
+    class_declaration {$$ = create_class_declaration_list($1);}
+    | class_declaration_list class_declaration {$$ = create_class_declaration_list($1,$2);}
     ;
 
-
+// DONE
 class_declaration:
-    access_specifier LEFT_CURLY {symbolTable.enterScope();} translation_unit RIGHT_CURLY {symbolTable.exitScope();} 
+    access_specifier COLON translation_unit {$$ = create_class_declaration($1,$3);}
+    | translation_unit {$$ = create_class_declaration(nullptr,$1);}
     ;
 
+// DONE
 access_specifier:
-    PUBLIC  
-    | PRIVATE 
-    | PROTECTED 
+    PUBLIC  {$$ = $1;}
+    | PRIVATE {$$ = $1;}
+    | PROTECTED {$$ = $1;}
     ;
 
 // DONE
@@ -366,6 +420,7 @@ struct_declaration:
     specifier_qualifier_list struct_declarator_list SEMICOLON {$$ = create_struct_declaration($1,$2);}
     ;
 
+// DONE
 specifier_qualifier_list:
     type_specifier {$$ = create_specifier_qualifier_list($1);}
     | specifier_qualifier_list type_specifier {$$ = create_specifier_qualifier_list($1,$2);}                      
@@ -386,32 +441,38 @@ struct_declarator:
 	| declarator COLON conditional_expression {$$ = create_struct_declarator($1,$3);}
 	;
 
+// DONE
 enum_specifier:
     ENUM LEFT_CURLY enumerator_list RIGHT_CURLY { $$ = create_enumerator_specifier($3); }                
 	| ENUM IDENTIFIER LEFT_CURLY enumerator_list RIGHT_CURLY { $$ = create_enumerator_specifier($2, $4); }    
 	| ENUM IDENTIFIER { $$ = create_enumerator_specifier($2, nullptr); }                        
 	;
 
+// DONE
 enumerator_list:
     enumerator { $$ = create_enumerator_list(nullptr,$1);}
     | enumerator_list COMMA enumerator { $$ = create_enumerator_list($1, $3);}
     ;
 
+// DONE
 enumerator:
     IDENTIFIER {$$ = create_enumerator($1,nullptr);}
     | IDENTIFIER ASSIGN conditional_expression {$$ = create_enumerator($1,$3);} 
     ;
 
+// DONE
 type_qualifier:
     CONST  {$$ = TypeQualifiers::TYPE_QUALIFIERS_CONST;}
     | VOLATILE  {$$ = TypeQualifiers::TYPE_QUALIFIERS_VOLATILE;}
     ;
 
+// DONE
 declarator:
     pointer direct_declarator { $$ = create_declarator( $1, $2 ); } 
     | direct_declarator  { $$ = create_declarator( nullptr, $1 ); }
     ;
 
+// DONE 
 direct_declarator:
     IDENTIFIER  { $$ = create_dir_declarator_id( $1 ); }
     | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_declarator_array($1, $3);}
@@ -421,6 +482,7 @@ direct_declarator:
     | direct_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_declarator_function($1, nullptr);} 
     ;
 
+// DONE
 pointer:
     MULTIPLY {$$ = create_pointer(nullptr);}
     | MULTIPLY type_qualifier_list {$$ = create_pointer($2);}
@@ -428,43 +490,51 @@ pointer:
     | MULTIPLY type_qualifier_list pointer {$$ = create_pointer($3,$2);}
     ;
 
+// DONE
 type_qualifier_list:
     type_qualifier  {$$ = create_type_qualifier_list($1);}
     | type_qualifier_list type_qualifier  {$$ = create_type_qualifier_list($1,$2);}
     ;
 
+// DONE
 parameter_type_list:
     parameter_list {$$ = create_parameter_type_list($1,false);}
     | parameter_list COMMA ELLIPSIS {$$ = create_parameter_type_list($1,true);}
     ;
 
+// DONE
 parameter_list:
     parameter_declaration {$$ = create_parameter_list($1);}
     | parameter_list COMMA parameter_declaration {$$ = create_parameter_list($1,$3);}
     ;
 
+// DONE
 parameter_declaration:
     declaration_specifiers declarator {$$ = create_parameter_declaration($1,$2);}
 	| declaration_specifiers abstract_declarator {$$ = create_parameter_declaration($1,$2);}
 	| declaration_specifiers {$$ = create_parameter_declaration($1);}                   
 	;
 
+// DONE
 identifier_list:
-    IDENTIFIER
-	| identifier_list COMMA IDENTIFIER
+    IDENTIFIER {$$ = create_identifier_list($1);}
+	| identifier_list COMMA IDENTIFIER {$$ = create_identifier_list($1,$3);}
 	;
 
+// DONE
 type_name:
     specifier_qualifier_list {$$ = create_type_name($1,nullptr);}
 	| specifier_qualifier_list abstract_declarator {$$ = create_type_name($1,$2);}
 	;
 
+// DONE
 abstract_declarator:
     pointer {$$ = create_abstract_declarator($1,nullptr);}
 	| direct_abstract_declarator {$$ = create_abstract_declarator(nullptr,$1);}
 	| pointer direct_abstract_declarator {$$ = create_abstract_declarator($1,$2);}
 	;
 
+// DONE
 direct_abstract_declarator:
     LEFT_PAREN abstract_declarator RIGHT_PAREN {$$ = create_direct_abstract_declarator($2);}
     | LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_abstract_declarator_array($2);}
@@ -477,16 +547,18 @@ direct_abstract_declarator:
 	| LEFT_PAREN parameter_type_list RIGHT_PAREN direct_abstract_declarator {$$ = create_direct_abstract_declarator_function($4,$2);}
 	;
 
+// DONE
 initializer:
-    assignment_expression
-    | LEFT_CURLY {symbolTable.enterScope();} initializer_list RIGHT_CURLY {symbolTable.exitScope();}
-    | LEFT_CURLY {symbolTable.enterScope();} initializer_list COMMA RIGHT_CURLY {symbolTable.exitScope();}
+    assignment_expression {$$ = create_initializer($1);}
+    // | LEFT_CURLY {symbolTable.enterScope();} initializer_list RIGHT_CURLY {symbolTable.exitScope();$$ = create_initializer($2);}
+    // | LEFT_CURLY {symbolTable.enterScope();} initializer_list COMMA RIGHT_CURLY {symbolTable.exitScope(); {$$ = create_initializer($2);}}
     ;
 
-initializer_list:
-    initializer
-    | initializer_list COMMA initializer
-    ;
+// REMOVED
+// initializer_list:
+//     initializer
+//     | initializer_list COMMA initializer
+//     ;
 
 statement:
     labeled_statement
@@ -516,6 +588,7 @@ declaration_statement_list:
     | declaration_statement_list statement_list
     ;
 
+// DONE
 declaration_list:
     declaration { $$ = create_declaration_list($1);}
     | declaration_list declaration { $$ = create_declaration_list($1, $2);}
@@ -554,16 +627,19 @@ jump_statement:
 	| RETURN expression SEMICOLON
 	;
 
+// DONE
 translation_unit:
     external_declaration {$$ = create_translation_unit($1);}
     | translation_unit external_declaration {$$ = create_translation_unit($1,$2);}
     ;
 
+// DONE
 external_declaration:
 	function_definition {create_external_declaration($1);}
 	| declaration {create_external_declaration($1);}
 	;
 
+// DONE
 function_definition:
     declaration_specifiers declarator compound_statement {$$ = create_function_definition($1,$2,$3);}
     ;

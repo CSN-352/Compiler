@@ -27,8 +27,9 @@ class Expression : public NonTerminal{
     public:
         Type type;
         int operand_cnt;
-        vector<AssignmentExpression*> assignment_expression_list;
+        // vector<AssignmentExpression*> assignment_expression_list;
         Expression();
+        virtual ~Expression() {}; // Virtual destructor for proper cleanup
 };
 
 // ##############################################################################
@@ -52,7 +53,6 @@ Expression* create_primary_expression(Expression* x);
 // ################################## ARGUMENT EXPRESSION LIST ######################################
 // ##############################################################################
 
-
 class ArgumentExpressionList : public Expression{
     public:
       vector <Expression*> arguments;
@@ -68,6 +68,7 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
 
 class PostfixExpression : public Expression{
     public:
+        PrimaryExpression* primary_expression;
         PostfixExpression* base_expression;
         Expression* index_expression;
         ArgumentExpressionList* argument_expression_list;
@@ -79,24 +80,71 @@ class PostfixExpression : public Expression{
 Expression* create_postfix_expression(Expression* x);
 Expression* create_postfix_expression(Expression* x, Terminal* op);
 Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id);
+Expression* create_postfix_expression(Expression* x, Expression* index_expression);
+Expression* create_postfix_expression(Expression* x, ArgumentExpressionList* argument_expression_list);
+Expression* create_postfix_expression(Expression* x, Terminal* lp, Terminal* rp);
+
+// ##############################################################################
+// ################################## UNARY EXPRESSION ######################################
+// ##############################################################################
 
 class UnaryExpression : public Expression{
     public:
+        PostfixExpression* postfix_expression;
         Terminal* op;
-        UnaryExpression* unary_expression;
+        UnaryExpression* base_expression;
         CastExpression* cast_expression;
+        TypeName* type_name;
         UnaryExpression();
 };
 
+Expression* create_unary_expression(Expression* x);
+Expression* create_unary_expression(Expression* x, Terminal* op);
+Expression* create_unary_expression_cast(Expression* x, Terminal* op);
+Expression* create_unary_expression(Terminal* op, TypeName* tn);
+
+// ##############################################################################
+// ################################## CAST EXPRESSION ######################################
+// ##############################################################################
+
 class CastExpression : public Expression{
     public:
+        UnaryExpression* unary_expression;
         CastExpression* base_expression;
         TypeName* type_name;
         CastExpression();
 };
 
-class ConditionalExpression : public Expression{
+Expression* create_cast_expression(Expression* x);
+Expression* create_cast_expression(TypeName* tn, Expression* x);
 
+// ##############################################################################
+// ################################## MULTIPLICATIVE EXPRESSION ######################################
+// ##############################################################################
+
+class MultiplicativeExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        MultiplicativeExpression();
+}
+
+Expression* create_multiplicative_expression(Expression* left, Terminal* op, Expression* right);
+
+// ##############################################################################
+// ################################## CONDITIONAL EXPRESSION ######################################
+// ##############################################################################
+class ConditionalExpression : public Expression{
+    
 };
+
+// ##############################################################################
+// ################################## ASSIGNMENT EXPRESSION ######################################
+// ##############################################################################
+class AssignmentExpression: public Expression{
+    
+};
+
 
 #endif
