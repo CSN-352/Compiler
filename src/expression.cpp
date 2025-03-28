@@ -94,13 +94,11 @@ ArgumentExpressionList :: ArgumentExpressionList() : Expression() {
 ArgumentExpressionList* create_argument_expression_list(Expression* x){
     ArgumentExpressionList* P = new ArgumentExpressionList();
     P->arguments.push_back(x);
-    //P->add_children(x);
     return P;
 }
 
 ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* args_expr_list, Expression* x){
     args_expr_list->arguments.push_back(x);
-    //args_expr_list->add_children(x);
     return args_expr_list;
 }
 
@@ -125,6 +123,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     //P->add_children(x);
     P->base_expression = dynamic_cast<PostfixExpression *>(x);
     P->op = op;
+    P->line_no = x->line_no;
+    P->column_no = x->column_no;
     if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
     else P->name = "POSTFIX EXPRESSION DEC OP";
     if(x->type.is_const_variable || x->type.is_array || x->type.is_function){
@@ -153,40 +153,61 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     return P;
 }
 
-Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id){
+Expression* create_postfix_expression(PostfixExpression* x, Terminal* op, Identifier* id){
     PostfixExpression* P = new PostfixExpression();
-    P->base_expression = dynamic_cast<PostfixExpression *>(x);
+    P->base_expression = x;
     P->op = op;
     P->member_name = id;
+    P->line_no = x->line_no;
+    P->column_no = x->column_no;
     if(x->type.is_error()){
         P->type = ERROR_TYPE;
         return P;
     }
-    
-    if(op->name = "PTR_OP"){
-        P->name = "POSTFIX EXPRESSION PTR_OP";
+
+    if(op->name == "PTR_OP") P->name = "POSTFIX EXPRESSION PTR_OP";
+    else P->name = "POSTFIX EXPRESSION DOT";
+
+    if(op->name == "PTR_OP"){
         if(!(x->type.is_pointer) && !(x->type.is_defined_type)){
             P->type = ERROR_TYPE;
             string error_msg = "Operator '->' applied to non-pointer-to-struct/union/class at line " +
                          to_string(op->line_no) + ", column " + to_string(op->column_no);
-            yyerror(err.c_str());
+            yyerror(error_msg.c_str());
             symbolTable.set_error();
             return P;
         }
     }
     else if (op->name == "DOT") {
-        P->name = "POSTFIX EXPRESSION DOT";
-        if (!base_type.is_defined_type) {
+        if (!(x->type.is_defined_type)) {
             P->type = ERROR_TYPE;
             string error_msg = "Operator '.' applied to non-struct/union/class at line " +
                          to_string(op->line_no) + ", column " + to_string(op->column_no);
-            yyerror(err.c_str());
+            yyerror(error_msg.c_str());
             symbolTable.set_error();
             return P;
         }
     }
     else {
-        P->type = x->type;
+        if(!symbolTable.lookup_defined_type(x->member_name->value)){
+            P->type = ERROR_TYPE;
+            string error_msg = "Defined_Type not found in Symbol Table " +
+                         to_string(op->line_no) + ", column " + to_string(op->column_no);
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
+            return P;
+        }
+        else if(!symbolTable.check_member_variable(x->member_name->value, id->value)) {
+            P->type = ERROR_TYPE;
+            string error_msg = "Defined_Type does not have member_variable with name " + id->value + 
+                        to_string(op->line_no) + ", column " + to_string(op->column_no);
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
+            return P;
+        }
+        else {
+            P->type = symbolTable.get_type_of_member_variable(x->member_name->value, id->value);
+        }
     }
     return P;
 }
@@ -200,12 +221,12 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     // Type checking
     if (!x->type.is_pointer && !x->type.is_array) {
         P->type = ERROR_TYPE;
-        string error_msg = "Cannot index non-array/pointer at line " + to_string(index_expr->line_no);
-        yyerror(err.c_str());
+        string error_msg = "Cannot index non-array/pointer at line " + to_string(index_expression->line_no);
+        yyerror(error_msg.c_str());
         symbolTable.set_error();
     } else if (!index_expression->type.isInt()) {
         P->type = ERROR_TYPE;
-        string err = "Array index must be integer at line " + to_string(index_expr->line_no);
+        string err = "Array index must be integer at line " + to_string(index_expression->line_no);
         yyerror(err.c_str());
         symbolTable.set_error();
     } else {
@@ -226,10 +247,9 @@ Expression* create_postfix_expression(Expression* x, ArgumentExpressionList* arg
     if (!x->type.is_function && !(x->type.is_function && x->type.is_pointer)) {
         P->type = ERROR_TYPE;
         string error_msg = "Called object is not a function at line " + to_string(x->line_no);
-        yyerror(err.c_str());
+        yyerror(error_msg.c_str());
         symbolTable.set_error();
-    } else {
-        P->type = x->type;
+    } else if(){
     }
 
     return P;
@@ -239,9 +259,6 @@ Expression* create_postfix_expression(Expression* func_expr, Terminal* left_pare
     // correct the function
     PostfixExpression* P = new PostfixExpression();
     P->name = "POSTFIX EXPRESSION FUNCTION CALL EMPTY";
-    P->add_children(func_expr);
-    P->add_children(left_paren);
-    P->add_children(right_paren);
     P->base_expression = dynamic_cast<PostfixExpression*>(func_expr);
 
     // Type check: should be a function or function pointer

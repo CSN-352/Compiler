@@ -703,6 +703,8 @@ public:
     void insert_defined_type(std::string name, DefinedTypes type);
     bool lookup(std::string name);
     bool lookup_defined_type(string name);
+    bool check_member_variable(string name, string member_variable); // IMPLEMENT
+    Type get_type_of_member_variable(string name, string member_variable); // IMPLEMENT
     Symbol *getSymbol(std::string name);
     DefinedTypes get_defined_type(std::string name);
     void update(std::string name, Type newType);
