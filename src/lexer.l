@@ -289,33 +289,33 @@ NEWLINE        \n
 {I_CONSTANT}          { Constant* c = new Constant("I_CONSTANT", yytext, line_no, column_no); yylval.constant = c;  addToSymbolTable(yytext, "integer_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(I_CONSTANT); }
 {F_CONSTANT}          { Constant* c = new Constant("F_CONSTANT", yytext, line_no, column_no); yylval.constant = c;  addToSymbolTable(yytext, "float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
 {HEX_F_CONSTANT}      { Constant* c = new Constant("F_CONSTANT", yytext, line_no, column_no); yylval.constant = c;  addToSymbolTable(yytext, "hexadecimal_float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
-{O_F_CONSTANT}      { Constant* c = new Constant("F_CONSTANT", yytext, line_no, column_no); yylval.constant = c; addToSymbolTable(yytext, "hexadecimal_float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
+{O_F_CONSTANT}        { Constant* c = new Constant("F_CONSTANT", yytext, line_no, column_no); yylval.constant = c; addToSymbolTable(yytext, "hexadecimal_float_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(F_CONSTANT); }
 {CHAR_CONSTANT}       { Constant* c = new Constant("CHAR_CONSTANT", yytext, line_no, column_no); yylval.constant = c; addToSymbolTable(yytext, "char_constant"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CHAR_CONSTANT); }
 {STRING_LITERAL}      { StringLiteral* s = new StringLiteral(yytext,line_no,column_no); yylval.string_literal = s; addToSymbolTable(yytext, "string_literal"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(STRING_LITERAL); }
 
-{RIGHT_ASSIGN}        { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_ASSIGN); }
-{LEFT_ASSIGN}         { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_ASSIGN); }
-{ADD_ASSIGN}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ADD_ASSIGN); }
-{SUB_ASSIGN}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SUB_ASSIGN); }
-{MUL_ASSIGN}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MUL_ASSIGN); }
-{DIV_ASSIGN}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DIV_ASSIGN); }
-{MOD_ASSIGN}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MOD_ASSIGN); }
-{AND_ASSIGN}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AND_ASSIGN); }
-{XOR_ASSIGN}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(XOR_ASSIGN); }
-{OR_ASSIGN}           { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(OR_ASSIGN); }
+{RIGHT_ASSIGN}        { Terminal* t = new Terminal("RIGHT_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_ASSIGN); }
+{LEFT_ASSIGN}         { Terminal* t = new Terminal("LEFT_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_ASSIGN); }
+{ADD_ASSIGN}          { Terminal* t = new Terminal("ADD_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ADD_ASSIGN); }
+{SUB_ASSIGN}          { Terminal* t = new Terminal("SUB_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SUB_ASSIGN); }
+{MUL_ASSIGN}          { Terminal* t = new Terminal("MUL_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MUL_ASSIGN); }
+{DIV_ASSIGN}          { Terminal* t = new Terminal("DIV_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DIV_ASSIGN); }
+{MOD_ASSIGN}          { Terminal* t = new Terminal("MOD_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MOD_ASSIGN); }
+{AND_ASSIGN}          { Terminal* t = new Terminal("AND_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AND_ASSIGN); }
+{XOR_ASSIGN}          { Terminal* t = new Terminal("XOR_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(XOR_ASSIGN); }
+{OR_ASSIGN}           { Terminal* t = new Terminal("OR_ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(OR_ASSIGN); }
 
-{RIGHT_OP}            { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_OP); }
-{LEFT_OP}             { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_OP); }
+{RIGHT_OP}            { Terminal* t = new Terminal("RIGHT_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_OP); }
+{LEFT_OP}             { Terminal* t = new Terminal("LEFT_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_OP); }
 {INC_OP}              { Terminal* t = new Terminal("INC_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INC_OP); }
 {DEC_OP}              { Terminal* t = new Terminal("INC_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DEC_OP); }
 {INHERITANCE_OP}      { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(INHERITANCE_OP); }
 {PTR_OP}              { Terminal* t = new Terminal("PTR_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PTR_OP); }
-{LOGICAL_AND}         { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LOGICAL_AND); }
-{LOGICAL_OR}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LOGICAL_OR); }
-{LE_OP}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LE_OP); }
-{GE_OP}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(GE_OP); }
-{EQ_OP}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(EQ_OP); }
-{NE_OP}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(NE_OP); }
+{LOGICAL_AND}         { Terminal* t = new Terminal("LOGICAL_AND",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LOGICAL_AND); }
+{LOGICAL_OR}          { Terminal* t = new Terminal("LOGICAL_OR",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LOGICAL_OR); }
+{LE_OP}               { Terminal* t = new Terminal("LE_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LE_OP); }
+{GE_OP}               { Terminal* t = new Terminal("GE_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(GE_OP); }
+{EQ_OP}               { Terminal* t = new Terminal("EQ_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(EQ_OP); }
+{NE_OP}               { Terminal* t = new Terminal("NE_OP",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(NE_OP); }
 
 {SEMICOLON}           { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(SEMICOLON); }
 {LEFT_CURLY}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_CURLY); }
@@ -336,12 +336,12 @@ NEWLINE        \n
 {MINUS}               { Terminal* t = new Terminal("MINUS",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MINUS); }
 {PLUS}                { Terminal* t = new Terminal("PLUS",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(PLUS); }
 {MULTIPLY}            { Terminal* t = new Terminal("MULTIPLY",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MULTIPLY); }
-{DIVIDE}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DIVIDE); }
-{MOD}                 { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MOD); }
-{LESS}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LESS); }
-{GREATER}             { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(GREATER); }
-{BITWISE_XOR}         { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_XOR); }
-{BITWISE_OR}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_OR); }
+{DIVIDE}              { Terminal* t = new Terminal("DIVIDE",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(DIVIDE); }
+{MOD}                 { Terminal* t = new Terminal("MOD",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(MOD); }
+{LESS}                { Terminal* t = new Terminal("LESS",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LESS); }
+{GREATER}             { Terminal* t = new Terminal("GREATER",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(GREATER); }
+{BITWISE_XOR}         { Terminal* t = new Terminal("BITWISE_XOR",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_XOR); }
+{BITWISE_OR}          { Terminal* t = new Terminal("BITWISE_OR",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_OR); }
 {BITWISE_AND}         { Terminal* t = new Terminal("BITWISE_AND",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BITWISE_AND); }
 {QUESTION}            { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "operator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(QUESTION); }
 

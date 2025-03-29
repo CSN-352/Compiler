@@ -171,18 +171,119 @@ class RelationalExpression: public Expression {
 Expression* create_relational_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
+// ################################## EQUALITY EXPRESSION ######################################
+// ##############################################################################
+
+class EqualityExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        EqualityExpression();
+};
+Expression* create_equality_expression(Expression* left, Terminal* op, Expression* right);
+
+// ##############################################################################
+// ################################## AND EXPRESSION ######################################
+// ##############################################################################
+
+class AndExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        AndExpression();
+};
+Expression* create_and_expression(Expression* left, Terminal* op, Expression* right);
+
+
+// ##############################################################################
+// ################################## XOR EXPRESSION ######################################
+// ##############################################################################
+
+class XorExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        XorExpression();
+};
+Expression* create_xor_expression(Expression* left, Terminal* op, Expression* right);
+
+// ##############################################################################
+// ################################## OR EXPRESSION ######################################
+// ##############################################################################
+
+class OrExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        OrExpression();
+};
+Expression* create_or_expression(Expression* left, Terminal* op, Expression* right);
+
+// ##############################################################################
+// ################################## LOGICAL AND EXPRESSION ######################################
+// ##############################################################################
+
+class LogicalAndExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        LogicalAndExpression();
+};
+Expression* create_logical_and_expression(Expression* left, Terminal* op, Expression* right);
+
+// ##############################################################################
+// ################################## LOGICAL OR EXPRESSION ######################################
+// ##############################################################################
+
+class LogicalOrExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        LogicalOrExpression();
+};
+Expression* create_logical_or_expression(Expression* left, Terminal* op, Expression* right);
+
+// ##############################################################################
 // ################################## CONDITIONAL EXPRESSION ######################################
 // ##############################################################################
-class ConditionalExpression : public Expression{
-    
+class ConditionalExpression : public Expression {
+    public:
+        Expression* condition;   
+        Expression* true_expr;   
+        Expression* false_expr; 
+        ConditionalExpression();
 };
+Expression* create_conditional_expression(Expression* condition, Expression* true_expr, Expression* false_expr);
 
 // ##############################################################################
 // ################################## ASSIGNMENT EXPRESSION ######################################
 // ##############################################################################
-class AssignmentExpression: public Expression{
-    
+
+class AssignmentExpression : public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        AssignmentExpression();
 };
 
+Expression* create_assignment_expression(Expression* left, Terminal* op, Expression* right);
 
+// ##############################################################################
+// ################################## EXPRESSION LIST ######################################
+// ##############################################################################
+
+class ExpressionList : public Expression{
+    public:
+        Expression* base_expression;
+        Expression* new_expression;
+        ExpressionList();
+};
+ExpressionList* create_expression_list(Expression* base_expression, Expression* new_expression);
 #endif

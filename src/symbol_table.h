@@ -794,7 +794,6 @@ class FunctionDefinition : public NonTerminal{
         CompoundStatement* compound_statement;
         FunctionDefinition();
 };
-
 FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declarator *d, Statement *cs);
 
 // ##############################################################################

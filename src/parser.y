@@ -80,14 +80,16 @@ void yyerror(const char *msg);
     char* strval;
 }
 
-%token <terminal> BITWISE_NOT NOT BITWISE_AND PLUS MINUS MULTIPLY SIZEOF
+%token <terminal> BITWISE_NOT NOT BITWISE_AND PLUS MINUS MULTIPLY DIVIDE MOD SIZEOF
 %token <identifier> IDENTIFIER
 %token <constant> I_CONSTANT F_CONSTANT CHAR_CONSTANT
 %token <string_literal> STRING_LITERAL
-%token <terminal> INC_OP DEC_OP PTR_OP DOT
+%token <terminal> INC_OP DEC_OP PTR_OP DOT RIGHT_OP LEFT_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP BITWISE_XOR BITWISE_OR LESS GREATER
+%token <terminal> RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
+%token <terminal> ASSIGN
 %token <terminal> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME 
 %token <terminal> STRUCT UNION PUBLIC PRIVATE PROTECTED
-%type <terminal> unary_operator 
+%type <terminal> unary_operator assignment_operator
 
 %type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression multiplicative_expression additive_expression shift_expression relational_expression equality_expression and_expression xor_expression or_expression logical_and_expression logical_or_expression
 %type <argument_expression_list> argument_expression_list
@@ -140,10 +142,9 @@ void yyerror(const char *msg);
 %token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
 %token <strval> IF RETURN SWITCH
 %token <strval> WHILE UNTIL CLASS ASSEMBLY_DIRECTIVE
-%token <strval> ELLIPSIS RIGHT_ASSIGN LEFT_ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN XOR_ASSIGN OR_ASSIGN
-%token <strval> RIGHT_OP LEFT_OP INHERITANCE_OP LOGICAL_AND LOGICAL_OR LE_OP GE_OP EQ_OP NE_OP
-%token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON ASSIGN QUESTION
-%token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
+%token <strval> ELLIPSIS 
+%token <strval> INHERITANCE_OP 
+%token <strval> SEMICOLON LEFT_CURLY RIGHT_CURLY LEFT_PAREN RIGHT_PAREN LEFT_SQUARE RIGHT_SQUARE COMMA COLON QUESTION
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case
 
@@ -234,78 +235,88 @@ additive_expression:
 
 //DONE
 shift_expression:
-    additive_expression
-    | shift_expression LEFT_OP additive_expression
-    | shift_expression RIGHT_OP additive_expression
+    additive_expression {$$ = $1;}
+    | shift_expression LEFT_OP additive_expression {$$ = create_shift_expression($1, $2, $3);}
+    | shift_expression RIGHT_OP additive_expression {$$ = create_shift_expression($1, $2, $3);}
     ;
 
-//DO NOW
+// DONE
 relational_expression:
-    shift_expression
-    | relational_expression LESS shift_expression
-    | relational_expression GREATER shift_expression
-    | relational_expression LE_OP shift_expression
-    | relational_expression GE_OP shift_expression
+    shift_expression {$$ = $1;}
+    | relational_expression LESS shift_expression {$$ = create_relational_expression($1, $2, $3);}
+    | relational_expression GREATER shift_expression {$$ = create_relational_expression($1, $2, $3);}
+    | relational_expression LE_OP shift_expression {$$ = create_relational_expression($1, $2, $3);}
+    | relational_expression GE_OP shift_expression {$$ = create_relational_expression($1, $2, $3);}
     ;
 
-equality_expression:
-    relational_expression
-    | equality_expression EQ_OP relational_expression
-    | equality_expression NE_OP relational_expression
+// DONE
+equality_expression: 
+    relational_expression {$$ = $1;}
+    | equality_expression EQ_OP relational_expression {$$ = create_equality_expression($1, $2, $3);}
+    | equality_expression NE_OP relational_expression  {$$ = create_equality_expression($1, $2, $3);}
     ;
 
+// DONE
 and_expression:
-    equality_expression
-    | and_expression BITWISE_AND equality_expression
+    equality_expression {$$ = $1;}
+    | and_expression BITWISE_AND equality_expression {$$ = create_and_expression($1, $2, $3);}
     ;
 
+// DONE
 xor_expression:
-    and_expression
-    | xor_expression BITWISE_XOR and_expression
+    and_expression {$$ = $1;}
+    | xor_expression BITWISE_XOR and_expression {$$ = create_xor_expression($1, $2, $3);}
     ;
 
+// DONE
 or_expression:
-    xor_expression
-    | or_expression BITWISE_OR xor_expression
+    xor_expression {$$ = $1;}
+    | or_expression BITWISE_OR xor_expression  {$$ = create_or_expression($1, $2, $3);}
     ;
 
+// DONE
 logical_and_expression:
-    or_expression
-    | logical_and_expression LOGICAL_AND or_expression
+    or_expression {$$ = $1;}
+    | logical_and_expression LOGICAL_AND or_expression {$$ = create_logical_and_expression($1, $2, $3);}
     ;
 
+// DONE
 logical_or_expression:
-    logical_and_expression
-    | logical_or_expression LOGICAL_OR logical_and_expression
+    logical_and_expression {$$ = $1;}
+    | logical_or_expression LOGICAL_OR logical_and_expression {$$ = create_logical_or_expression($1, $2, $3);}
     ;
 
+// DONE
 conditional_expression:
-    logical_or_expression
-    | logical_or_expression QUESTION expression COLON conditional_expression
+    logical_or_expression {$$ = $1;}
+    | logical_or_expression QUESTION expression COLON conditional_expression {$$ = create_conditional_expression($1, $3, $5);}
     ;
 
+// DONE
 assignment_expression:
-    conditional_expression
-    | unary_expression assignment_operator assignment_expression
+    conditional_expression {$$ = $1;}
+    | unary_expression assignment_operator assignment_expression  {$$ = create_assignment_expression($1, $2, $3);}
     ;
 
+// DONE
 assignment_operator:
-    ASSIGN
-    | MUL_ASSIGN
-    | DIV_ASSIGN
-    | MOD_ASSIGN
-	| ADD_ASSIGN
-	| SUB_ASSIGN
-	| LEFT_ASSIGN
-	| RIGHT_ASSIGN
-	| AND_ASSIGN
-	| XOR_ASSIGN
-	| OR_ASSIGN
+    ASSIGN {$$ = $1;}
+    | MUL_ASSIGN {$$ = $1;}
+    | DIV_ASSIGN {$$ = $1;}
+    | MOD_ASSIGN {$$ = $1;}
+	| ADD_ASSIGN {$$ = $1;}
+	| SUB_ASSIGN {$$ = $1;}
+	| LEFT_ASSIGN {$$ = $1;}
+	| RIGHT_ASSIGN {$$ = $1;}
+	| AND_ASSIGN {$$ = $1;}
+	| XOR_ASSIGN {$$ = $1;}
+	| OR_ASSIGN {$$ = $1;}
     ;
 
+// DONE
 expression:
-    assignment_expression
-    | expression COMMA assignment_expression
+    assignment_expression {$$ = $1;}
+    | expression COMMA assignment_expression {$$ = create_expression_list($1, $3);}
     ;
 
 // DONE
