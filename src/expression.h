@@ -132,6 +132,45 @@ class MultiplicativeExpression: public Expression {
 Expression* create_multiplicative_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
+// ################################## ADDITIVE EXPRESSION ######################################
+// ##############################################################################
+
+class AdditiveExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        AdditiveExpression();
+};
+Expression* create_additive_expression(Expression* left, Terminal* op, Expression* right);
+
+// ##############################################################################
+// ################################## SHIFT EXPRESSION ######################################
+// ##############################################################################
+
+class ShiftExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        ShiftExpression();
+};
+Expression* create_shift_expression(Expression* left, Terminal* op, Expression* right);
+
+// ##############################################################################
+// ################################## RELATIONAL EXPRESSION ######################################
+// ##############################################################################
+
+class RelationalExpression: public Expression {
+    public:
+        Expression* left;
+        Expression* right;
+        Terminal* op;
+        RelationalExpression();
+};
+Expression* create_relational_expression(Expression* left, Terminal* op, Expression* right);
+
+// ##############################################################################
 // ################################## CONDITIONAL EXPRESSION ######################################
 // ##############################################################################
 class ConditionalExpression : public Expression{

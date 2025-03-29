@@ -120,7 +120,7 @@ bool Type::isFloat()
 
 bool Type::isIntorFloat()
 {
-    if (typeIndex <= 12 && ptr_level == 0)
+    if (typeIndex >= 0 && typeIndex <= 12 && ptr_level == 0)
         return true;
     else
         return false;

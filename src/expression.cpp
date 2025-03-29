@@ -571,8 +571,257 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
     M->op = op;
     M->line_no = left->line_no;
     M->column_no = left->column_no;
+    M->name = "MULTIPLICATIVE EXPRESSION";
 
+    if (left->type.is_error() || right->type.is_error()) {
+        M->type = ERROR_TYPE;
+        return M;
+    }
+
+    if (!left->type.isIntorFloat() || !right->type.isIntorFloat()) {
+        M->type = ERROR_TYPE;
+        string error_msg = "Operands of '" + op->name + "' must be int or float at line " +
+                           to_string(M->line_no) + ", column " + to_string(M->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return M;
+    }
+
+    Type lt = left->type;
+    Type rt = right->type;
+
+    if(op->name == "MULTIPLY" || op->name == "DIVIDE"){
+        if (lt.isFloat() && rt.isFloat()) {
+            // float * float => float
+            if(lt->typeIndex > rt->typeIndex) M->type = lt;
+            else M->type = rt;
+        } else if (lt.isFloat() && rt.isInt()) {
+            // float * int => float
+            if(lt->typeIndex > rt->typeIndex) M->type = lt;
+            else M->type = rt;
+        } else if (lt.isInt() && rt.isFloat()) {
+            // int * float => float
+            if(lt->typeIndex > rt->typeIndex) M->type = lt;
+            else M->type = rt;
+        } else if (lt.isInt() && rt.isInt()) {
+            // int * int => int
+            if(lt->typeIndex > rt->typeIndex) M->type = lt;
+            else M->type = rt;
+            if(lt.isUnsigned() && rt.isUnsigned()){
+                M->type.make_unsigned();
+            }
+            else if(!lt.isUnsigned() && rt.isUnsigned()){
+                M->type.make_unsigned();
+            }
+            else if(lt.isUnsigned() && !rt.isUnsigned()){
+                M->type.make_unsigned();
+            }
+            else if(!lt.isUnsigned() && !rt.isUnsigned()){
+                M->type.make_signed();
+            }
+        }
+    }
+    else if(op->name == "MOD"){
+        if (!lt.isInt() || !rt.isInt())
+        {
+            M->type = ERROR_TYPE;
+            string error_msg = "Operands of '" + op->name + "' must be int at line " +
+                               to_string(M->line_no) + ", column " + to_string(M->column_no);
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
+            return M;
+        }
+
+        if(lt->typeIndex > rt->typeIndex) M->type = lt;
+        else M->type = rt;
+        
+        if(lt.isUnsigned() && rt.isUnsigned()){
+            M->type.make_unsigned();
+        }
+        else if(!lt.isUnsigned() && rt.isUnsigned()){
+            M->type.make_unsigned();
+        }
+        else if(lt.isUnsigned() && !rt.isUnsigned()){
+            M->type.make_unsigned();
+        }
+        else if(!lt.isUnsigned() && !rt.isUnsigned()){
+            M->type.make_signed();
+        }
+    }
     return M;
+}
+
+// ##############################################################################
+// ################################## ADDITIVE EXPRESSION ######################################
+// ##############################################################################
+
+AdditiveExpression::AdditiveExpression(){
+    left = nullptr;
+    right = nullptr;
+    op = nullptr;
+    name = "ADDITIVE EXPRESSION";
+}
+
+Expression* create_additive_expression(Expression* left, Terminal* op, Expression* right){
+    AdditiveExpression* A = new AdditiveExpression();
+    A->left = left;
+    A->right = right;
+    A->op = op;
+    A->line_no = left->line_no;
+    A->column_no = left->column_no;
+    A->name = "ADDITIVE EXPRESSION";
+
+    if (left->type.is_error() || right->type.is_error()) {
+        A->type = ERROR_TYPE;
+        return A;
+    }
+
+    Type lt = left->type;
+    Type rt = right->type;
+
+    if (lt.isFloat() && rt.isFloat()) {
+        // float * float => float
+        if(lt->typeIndex > rt->typeIndex) M->type = lt;
+        else M->type = rt;
+    } else if (lt.isFloat() && rt.isInt()) {
+        // float * int => float
+        if(lt->typeIndex > rt->typeIndex) M->type = lt;
+        else M->type = rt;
+    } else if (lt.isInt() && rt.isFloat()) {
+        // int * float => float
+        if(lt->typeIndex > rt->typeIndex) M->type = lt;
+        else M->type = rt;
+    } else if (lt.isInt() && rt.isInt()) {
+        // int * int => int
+        if(lt->typeIndex > rt->typeIndex) M->type = lt;
+        else M->type = rt;
+        if(lt.isUnsigned() && rt.isUnsigned()){
+            M->type.make_unsigned();
+        }
+        else if(!lt.isUnsigned() && rt.isUnsigned()){
+            M->type.make_unsigned();
+        }
+        else if(lt.isUnsigned() && !rt.isUnsigned()){
+            M->type.make_unsigned();
+        }
+        else if(!lt.isUnsigned() && !rt.isUnsigned()){
+            M->type.make_signed();
+        }
+    } else if (op->name == "ADD" && lt.isPointer() && rt.isInt()) {
+        A->type = lt;
+    } else if (op->name == "ADD" && lt.isInt() && rt.isPointer()) {
+        A->type = rt;
+    } else if (op->name == "MINUS" && lt.isPointer() && rt.isInt()) {
+        A->type = lt;
+    } else if (op->name == "MINUS" && lt.isPointer() && rt.isPointer()) {
+        if (lt == rt) {
+            A->type = Type(PrimitiveTypes::INT_T, 0, false); 
+        } else {
+            A->type = ERROR_TYPE;
+            string error_msg = "Pointer subtraction requires both pointers to be of the same type at line " +
+                               to_string(A->line_no) + ", column " + to_string(A->column_no);
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
+        }
+    } else {
+        A->type = ERROR_TYPE;
+        string error_msg = "Operands of '" + op->name + "' are invalid at line " +
+                           to_string(A->line_no) + ", column " + to_string(A->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }
+}
+
+// ##############################################################################
+// ################################## SHIFT EXPRESSION ######################################
+// ##############################################################################
+ShiftExpression::ShiftExpression(){
+    left = nullptr;
+    right = nullptr;
+    op = nullptr;
+    name = "SHIFT EXPRESSION";
+}
+
+// Assumptions Based on C Semantics:
+// 1.Shift operators require integral types.
+// 2.Result type is usually the left operand's type.
+// 3.The right operand must be an integer type, but in most implementations only the lower bits are used (based on width of left operand).
+// 4.Signed shift behavior is implementation-defined or undefined in certain cases (e.g., shifting into the sign bit), but compilers like GCC allow it.
+Expression* create_shift_expression(Expression* left, Terminal* op, Expression* right){
+    ShiftExpression* S = new ShiftExpression();
+    S->left = left;
+    S->right = right;
+    S->op = op;
+    S->line_no = left->line_no;
+    S->column_no = left->column_no;
+    S->name = "SHIFT EXPRESSION";
+
+    if (left->type.is_error() || right->type.is_error()) {
+        S->type = ERROR_TYPE;
+        return S;
+    }
+
+    Type lt = left->type;
+    Type rt = right->type;
+
+    if (!lt.isInt() || !rt.isInt()) {
+        S->type = ERROR_TYPE;
+        string error_msg = "Operands of '" + op->name + "' must be integers at line " +
+                           to_string(S->line_no) + ", column " + to_string(S->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return S;
+    }
+    if (lt.typeIndex >= rt.typeIndex) {
+        S->type = lt;
+    } else {
+        S->type = rt;
+    }
+
+    // Signedness: usually taken from left operand
+    if (lt.isUnsigned()) {
+        S->type.make_unsigned();
+    } else {
+        S->type.make_signed();
+    }
+    return S;
+}
+
+// ##############################################################################
+// ################################## RELATIONAL EXPRESSION ######################################
+// ##############################################################################
+
+RelationalExpression::RelationalExpression() {
+    left = nullptr;
+    right = nullptr;
+    op = nullptr;
+    name = "RELATIONAL EXPRESSION";
+}
+
+Expression* create_relational_expression(Expression* left, Terminal* op, Expression* right) {
+    RelationalExpression* R = new RelationalExpression();
+    R->left = left;
+    R->right = right;
+    R->op = op;
+    R->line_no = left->line_no;
+    R->column_no = left->column_no;
+    R->name = "RELATIONAL EXPRESSION";
+
+    if (left->type.is_error() || right->type.is_error()) {
+        R->type = ERROR_TYPE;
+        return R;
+    }
+
+    Type lt = left->type;
+    Type rt = right->type;
+
+    if ((lt.isIntorFloat() && rt.isIntorFloat())) {
+        // Usual promotions can be added here if needed
+        R->type = Type(PrimitiveTypes::INT_T, 0, true); // Result of relational is always int (true/false)
+        return R;
+    }
+    
+
 }
 
 // ##############################################################################

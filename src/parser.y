@@ -89,7 +89,7 @@ void yyerror(const char *msg);
 %token <terminal> STRUCT UNION PUBLIC PRIVATE PROTECTED
 %type <terminal> unary_operator 
 
-%type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression
+%type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression multiplicative_expression additive_expression shift_expression relational_expression equality_expression and_expression xor_expression or_expression logical_and_expression logical_or_expression
 %type <argument_expression_list> argument_expression_list
 
 %type <declaration> declaration
@@ -217,26 +217,29 @@ cast_expression:
     | LEFT_PAREN type_name RIGHT_PAREN cast_expression 
     ;
 
-//DO NOW
+//DONE
 multiplicative_expression:
-    cast_expression
-    | multiplicative_expression MULTIPLY cast_expression
-    | multiplicative_expression DIVIDE cast_expression
-    | multiplicative_expression MOD cast_expression
+    cast_expression {$$ = $1;}
+    | multiplicative_expression MULTIPLY cast_expression {$$ = create_multiplicative_expression($1, $2, $3);}
+    | multiplicative_expression DIVIDE cast_expression {$$ = create_multiplicative_expression($1, $2, $3);}
+    | multiplicative_expression MOD cast_expression {$$ = create_multiplicative_expression($1, $2, $3);}
     ;
 
+//DONE
 additive_expression:
-    multiplicative_expression
-    | additive_expression PLUS multiplicative_expression
-    | additive_expression MINUS multiplicative_expression
+    multiplicative_expression {$$ = $1;}
+    | additive_expression PLUS multiplicative_expression {$$ = create_additive_expression($1, $2, $3);}
+    | additive_expression MINUS multiplicative_expression {$$ = create_additive_expression($1, $2, $3);}
     ;
 
+//DONE
 shift_expression:
     additive_expression
     | shift_expression LEFT_OP additive_expression
     | shift_expression RIGHT_OP additive_expression
     ;
 
+//DO NOW
 relational_expression:
     shift_expression
     | relational_expression LESS shift_expression
