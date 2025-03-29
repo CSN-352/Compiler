@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <stack>
 #include <unordered_map>
 #include <list>
 #include "ast.h"
@@ -166,23 +167,6 @@ public:
 };
 
 // ##############################################################################
-// ################################## TYPE DEFINITION ######################################
-// ##############################################################################
-
-class TypeDefinition 
-{
-public:
-    TypeCategory type_category;
-    unordered_map<string,AccessSpecifiers> members;
-    bool get_member(string member);
-    AccessSpecifiers get_member_access_specifier(string member);
-    int get_size();
-};
-
-TypeDefinition *create_type_definition(TypeCategory type_category, StructDeclarationSet *sds);
-TypeDefinition *create_type_definition(TypeCategory type_category, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
-
-// ##############################################################################
 // ################################## DEFINED TYPES ######################################
 // ##############################################################################
 
@@ -194,6 +178,82 @@ class DefinedTypes : public Type
         TypeDefinition *type_definition;
         DefinedTypes(TypeCategory tc, TypeDefinition *td);
 };
+
+// ##############################################################################
+// ################################## SYMBOL ######################################
+// ##############################################################################
+
+class Symbol
+{
+public:
+    std::string name;
+    Type type;
+    int scope;
+    int offset;
+    FunctionDefinition* function_definition;
+
+    Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o) {
+        function_definition = nullptr;
+    }
+};
+
+// ##############################################################################
+// ################################## SYMBOL TABLE ######################################
+// ##############################################################################
+
+class SymbolTable
+{
+public:
+    std::unordered_map<std::string, std::list<Symbol *>> table;
+    std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes>>> defined_types;
+    std::unordered_map<std::string, std::list<Symbol *>> typedefs;
+    int currentScope;
+    bool error;
+    stack<pair<int,pair<Type,string>>> scope_stack;
+
+    SymbolTable();
+    void enterScope(Type t, string name);
+    void exitScope();
+    void insert(std::string name, Type type, int offset, int overloaded);
+    void insert_defined_type(std::string name, DefinedTypes type);
+    void insert_typedef(std::string name, Type type, int offset);
+    bool lookup(std::string name);
+    bool lookup_function(std::string name, vector<Type> arg_types);
+    bool lookup_defined_type(string name);
+    bool lookup_typedef(string name);
+    bool check_member_variable(string name, string member);
+    Type get_type_of_member_variable(string name, string member);
+    Type get_type_of_member_variable(string name, string member, vector<Type> arg_types);
+    Symbol *getSymbol(std::string name);
+    Symbol *getFunction(std::string name, vector<Type> arg_types);
+    Symbol* getTypedef(std::string name);
+    DefinedTypes get_defined_type(std::string name);
+    void update(std::string name, Type newType);
+    void remove(std::string name);
+    void print();
+    void set_error();
+    bool has_error();
+};
+
+extern SymbolTable symbolTable;
+
+// ##############################################################################
+// ################################## TYPE DEFINITION ######################################
+// ##############################################################################
+
+class TypeDefinition 
+{
+public:
+    TypeCategory type_category;
+    unordered_map<string,AccessSpecifiers> members;
+    bool get_member(string member);
+    AccessSpecifiers get_member_access_specifier(string member);
+    SymbolTable type_symbol_table;
+    int get_size();
+};
+
+TypeDefinition *create_type_definition(TypeCategory type_category, StructDeclarationSet *sds);
+TypeDefinition *create_type_definition(Identifier* id, TypeCategory type_category, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
 
 // typedef enum direct_declarator_enum {
 //     IDENTIFIER,
@@ -792,6 +852,7 @@ class FunctionDefinition : public NonTerminal{
         DeclarationSpecifiers *declaration_specifiers;
         Declarator *declarator;
         CompoundStatement* compound_statement;
+        SymbolTable function_symbol_table;
         FunctionDefinition();
 };
 FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declarator *d, Statement *cs);
@@ -830,60 +891,5 @@ public:
     StringLiteral(string value, unsigned int line_no, unsigned int column_no);
 };
 
-// ##############################################################################
-// ################################## SYMBOL ######################################
-// ##############################################################################
-
-class Symbol
-{
-public:
-    std::string name;
-    Type type;
-    int scope;
-    int offset;
-    FunctionDefinition* function_definition;
-
-    Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o) {
-        function_definition = nullptr;
-    }
-};
-
-// ##############################################################################
-// ################################## SYMBOL TABLE ######################################
-// ##############################################################################
-
-class SymbolTable
-{
-public:
-    std::unordered_map<std::string, std::list<Symbol *>> table;
-    std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes>>> defined_types;
-    std::unordered_map<std::string, std::list<Symbol *>> typedefs;
-    int currentScope;
-    bool error;
-
-    SymbolTable();
-    void enterScope();
-    void exitScope();
-    void insert(std::string name, Type type, int offset, int overloaded);
-    void insert_defined_type(std::string name, DefinedTypes type);
-    void insert_typedef(std::string name, Type type, int offset);
-    bool lookup(std::string name);
-    bool lookup_function(std::string name, vector<Type> arg_types);
-    bool lookup_defined_type(string name);
-    bool lookup_typedef(string name);
-    bool check_member_variable(string name, string member);
-    Type get_type_of_member_variable(string name, string member);
-    Symbol *getSymbol(std::string name);
-    Symbol *getFunction(std::string name, vector<Type> arg_types);
-    Type getTypedef(std::string name);
-    DefinedTypes get_defined_type(std::string name);
-    void update(std::string name, Type newType);
-    void remove(std::string name);
-    void print();
-    void set_error();
-    bool has_error();
-};
-
-extern SymbolTable symbolTable;
 
 #endif

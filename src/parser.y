@@ -14,6 +14,7 @@ extern int yylineno;
 extern YYSTYPE yylval;
 extern FILE *yyin;
 int has_error=0;
+int function_flag = 0;
 
 void yyerror(const char *msg);
 %} 
@@ -373,7 +374,7 @@ type_specifier:
 
 // DONE
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,$2,$5); symbolTable.exitScope();}  
+    struct_or_union IDENTIFIER LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,$2,$5); symbolTable.exitScope();}  
 	// | struct_or_union LEFT_CURLY {symbolTable.enterScope();} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,nullptr,$4); symbolTable.exitScope();}  
 	| struct_or_union IDENTIFIER {create_struct_union_specifier($1->name,$2,nullptr);}                  
 	;
@@ -404,8 +405,8 @@ struct_declaration_list:
 
 // DONE
 class_specifier:
-    CLASS IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,nullptr,$5); symbolTable.exitScope();} 
-    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,$4,$7); symbolTable.exitScope();} 
+    CLASS IDENTIFIER LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,nullptr,$5); symbolTable.exitScope();} 
+    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,$4,$7); symbolTable.exitScope();} 
     | CLASS IDENTIFIER {$$ = create_class_specifier($2,nullptr,nullptr);}
     ;
 
@@ -602,8 +603,8 @@ labeled_statement:
 	;
 
 compound_statement:
-    LEFT_CURLY {symbolTable.enterScope();} RIGHT_CURLY {symbolTable.exitScope();}
-    | LEFT_CURLY {symbolTable.enterScope();} declaration_statement_list RIGHT_CURLY {symbolTable.exitScope();}
+    LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} RIGHT_CURLY {symbolTable.exitScope();}
+    | LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} declaration_statement_list RIGHT_CURLY {symbolTable.exitScope();}
     ;
 
 declaration_statement_list:
@@ -666,7 +667,7 @@ external_declaration:
 
 // DONE
 function_definition:
-    declaration_specifiers declarator compound_statement {$$ = create_function_definition($1,$2,$3);}
+    declaration_specifiers {function_flag = 1;} declarator compound_statement {$$ = create_function_definition($1,$3,$4);}
     ;
 
 skip_until_semicolon:

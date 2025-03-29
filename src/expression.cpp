@@ -318,7 +318,12 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 symbolTable.set_error();
                 return P;
             }
-            else P->type = x->type;
+            else {
+                P->type = x->type;
+                P->type.is_function = false;
+                P->type.num_args = 0;
+                P->type.arg_types.empty();
+            }
         }
     }
     return P;
