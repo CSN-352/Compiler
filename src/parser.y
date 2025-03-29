@@ -27,49 +27,55 @@ void yyerror(const char *msg);
 /* Token definitions */
 %union {
     Node* node;
+
 	Terminal* terminal;
     Identifier* identifier;
-    Declaration * declaration;
-    DeclarationList* declaration_list;
-    Declarator* declarator;
-    DirectDeclarator* direct_declarator;
-    DeclaratorList * init_declarator_list;
     Constant* constant;
 	StringLiteral* string_literal;
+
     Expression* expression;
-    IdentfierList* identifier_list;
     ArgumentExpressionList* argument_expression_list;
-    DirectAbstractDeclarator* direct_abstract_declarator;
-    AbstractDeclarator* abstract_declarator;
-    ParameterList* parameter_list;
-    ParameterTypeList* parameter_type_list;
-    TypeName* type_name;
-    SpecifierQualifierList* specifier_qualifier_list;
+
+    Declaration* declaration;
+    DeclarationSpecifiers* declaration_specifiers;
+    InitDeclaratorList* init_declarator_list;
+    InitDeclarator* init_declarator;
     TypeSpecifier* type_specifier;
+    StructUnionSpecifier* struct_or_union_specifier;
+    StructDeclarationSet* struct_declaration_set;
+    StructDeclarationListAccess* struct_declaration_list_access;
+    StructDeclarationList* struct_declaration_list;
+    ClassSpecifier* class_specifier;
+    ClassDeclaratorList* class_declarator_list;
+    ClassDeclarator* class_declarator;
+    ClassDeclarationList* class_declaration_list;
+    ClassDeclaration* class_declaration;
+    StructDeclaration* struct_declaration;
+    SpecifierQualifierList* specifier_qualifier_list;
+    StructDeclaratorList* struct_declarator_list;
+    StructDeclarator* struct_declarator;
+    EnumSpecifier* enum_specifier;
+    EnumeratorList* enumerator_list;
+    Enumerator* enumerator;
+    Declarator* declarator;
+    DirectDeclarator* direct_declarator;
     Pointer* pointer;
     TypeQualifierList* type_qualifier_list;
-    DeclarationSpecifiers* declaration_specifiers;
+    ParameterTypeList* parameter_type_list;
+    ParameterList* parameter_list;
     ParameterDeclaration* parameter_declaration;
-    Enumerator* enumerator;
-    EnumeratorList* enumerator_list;
-    EnumSpecifier* enum_specifier;
-    StructUnionSpecifier* struct_or_union_specifier;
-    ClassDeclaration* class_declaration;
-    ClassDeclarationList* class_declaration_list;
-    ClassDeclarator* class_declarator;
-    ClassDeclaratorList* class_declarator_list;
-    ClassSpecifier* class_specifier;
-    StructDeclarator* struct_declarator;
-    StructDeclaratorList* struct_declarator_list;
-    StructDeclaration* struct_declaration;
-    StructDeclarationList* struct_declaration_list;
-    StructDeclarationListAccess* struct_declaration_list_access;
-    StructDeclarationSet* struct_declaration_set;
-    FunctionDefinition* function_definition;
-    ExternalDeclaration* external_declaration;
+    IdentifierList* identifier_list;
+    TypeName* type_name;
+    AbstractDeclarator* abstract_declarator;
+    DirectAbstractDeclarator* direct_abstract_declarator;
+    Initializer* initializer;
+    DeclarationList* declaration_list;
     TranslationUnit* translation_unit;
-    Initializer* initializer
+    ExternalDeclaration* external_declaration;
+    FunctionDefinition* function_definition;
+
     Statement* statement;
+
     int intval;
     char* strval;
 }
@@ -81,49 +87,52 @@ void yyerror(const char *msg);
 %token <terminal> INC_OP DEC_OP PTR_OP DOT
 %token <terminal> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME 
 %token <terminal> STRUCT UNION PUBLIC PRIVATE PROTECTED
-%type <terminal> unary_operator access_specifier
+%type <terminal> unary_operator 
 
 %type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression
 %type <argument_expression_list> argument_expression_list
 
-%type <type_name> type_name
-%type <direct_abstract_declarator> direct_abstract_declarator
-%type <abstract_declarator> abstract_declarator
-%type <declarator> init_declarator declarator
-%type <init_declarator_list> init_declarator_list
 %type <declaration> declaration
-%type <declaration_list> declaration_list
-%type <parameter_type_list> parameter_type_list
-%type <direct_declarator> direct_declarator
-%type <parameter_list> parameter_list
-%type <type_specifier> type_specifier 
-%type <struct_or_union_specifier> struct_or_union_specifier
-%type <class_specifier> class_specifier
-%type <enum_specifier> enum_specifier
-%type <intval> type_qualifier storage_class_specifier
-%type <specifier_qualifier_list> specifier_qualifier_list
-%type <pointer> pointer
-%type <type_qualifier_list> type_qualifier_list;
 %type <declaration_specifiers> declaration_specifiers
-%type <parameter_declaration> parameter_declaration;
-%type <enumerator> enumerator
-%type <enumerator_list> enumerator_list
-%type <class_declaration> class_declaration
-%type <class_declaration_list> class_declaration_list
-%type <class_declarator> class_declarator
-%type <class_declarator_list> class_declarator_list
-%type <struct_declarator> struct_declarator
-%type <struct_declarator_list> struct_declarator_list
-%type <struct_declaration> struct_declaration
-%type <struct_declaration_list> struct_declaration_list
+%type <init_declarator_list> init_declarator_list
+%type <init_declarator> init_declarator
+%type <intval> storage_class_specifier
+%type <type_specifier> type_specifier
+%type <struct_or_union_specifier> struct_or_union_specifier
 %type <terminal> struct_or_union
+%type <struct_declaration_set> struct_declaration_set
+%type <struct_declaration_list_access> struct_declaration_list_access
+%type <struct_declaration_list> struct_declaration_list
+%type <class_specifier> class_specifier
+%type <class_declarator_list> class_declarator_list
+%type <class_declarator> class_declarator
+%type <class_declaration_list> class_declaration_list
+%type <class_declaration> class_declaration
+%type <terminal> access_specifier
+%type <struct_declaration> struct_declaration
+%type <specifier_qualifier_list> specifier_qualifier_list
+%type <struct_declarator_list> struct_declarator_list
+%type <struct_declarator> struct_declarator
+%type <enum_specifier> enum_specifier
+%type <enumerator_list> enumerator_list
+%type <enumerator> enumerator
+%type <intval> type_qualifier
+%type <declarator> declarator
+%type <direct_declarator> direct_declarator
+%type <pointer> pointer
+%type <type_qualifier_list> type_qualifier_list
+%type <parameter_type_list> parameter_type_list
+%type <parameter_list> parameter_list
+%type <parameter_declaration> parameter_declaration
+%type <identifier_list> identifier_list
+%type <type_name> type_name
+%type <abstract_declarator> abstract_declarator
+%type <direct_abstract_declarator> direct_abstract_declarator
+%type <initializer> initializer
+%type <declaration_list> declaration_list
 %type <translation_unit> translation_unit
 %type <external_declaration> external_declaration
 %type <function_definition> function_definition
-%type <initializer> initializer
-%type <identifier_list> identifier_list
-%type <struct_declaration_list_access> struct_declaration_list_access
-%type <struct_declaration_set> struct_declaration_set
 
 %type <statement> compound_statement
 
@@ -137,6 +146,7 @@ void yyerror(const char *msg);
 %token <strval> BITWISE_XOR BITWISE_OR DIVIDE MOD LESS GREATER
 %token <strval> NEWLINE ERROR SINGLE_QUOTE DOUBLE_QUOTE 
 %type <strval> error_case
+
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE 
 %nonassoc LOW_PREC
@@ -174,8 +184,8 @@ postfix_expression:
     primary_expression {$$ = create_postfix_expression($1);}
     | postfix_expression LEFT_SQUARE expression RIGHT_SQUARE { $$ = create_postfix_expression($1, $3);}
     | postfix_expression LEFT_PAREN argument_expression_list RIGHT_PAREN {$$ = create_postfix_expression($1, $3);}
-    | postfix_expression LEFT_PAREN RIGHT_PAREN  { $$ = create_postfix_expression($1, $2, $3);}
-    | postfix_expression DOT IDENTIFIER {$$ = create_postfix_expression($1, nullptr);}
+    | postfix_expression LEFT_PAREN RIGHT_PAREN  { $$ = create_postfix_expression_func($1, nullptr);}
+    | postfix_expression DOT IDENTIFIER {$$ = create_postfix_expression($1, $2, $3);}
     | postfix_expression PTR_OP IDENTIFIER {$$ = create_postfix_expression($1, $2, $3);}
     | postfix_expression INC_OP {$$ = create_postfix_expression($1,$2);}
     | postfix_expression DEC_OP {$$ = create_postfix_expression($1,$2);}
@@ -188,7 +198,7 @@ unary_expression:
     | DEC_OP unary_expression {$$ = create_unary_expression($2, $1);}
     | SIZEOF unary_expression {$$ = create_unary_expression($2, $1);}
     | unary_operator cast_expression {$$ = create_unary_expression_cast($2, $1);}
-    | SIZEOF LEFT_PAREN type_name RIGHT_PAREN {$$ = create_unary_expression($3, $1);}
+    | SIZEOF LEFT_PAREN type_name RIGHT_PAREN {$$ = create_unary_expression($1, $3);}
     ;
 
 //DONE
@@ -203,8 +213,8 @@ unary_operator:
 
 //DONE
 cast_expression: 
-    unary_expression {$$ = $1} 
-    | LEFT_PAREN type_name RIGHT_PAREN cast_expression
+    unary_expression {$$ = $1;} 
+    | LEFT_PAREN type_name RIGHT_PAREN cast_expression 
     ;
 
 //DO NOW
@@ -312,25 +322,25 @@ declaration_specifiers:
 // DONE
 init_declarator_list:
     init_declarator { $$ = create_init_declarator_list( $1 ); }
-    | init_declarator_list COMMA init_declarator {$$ = add_to_init_declarator_list($1, $3);}
+    | init_declarator_list COMMA init_declarator {$$ = create_init_declarator_list($1, $3);}
     ;
 
 // DONE
 init_declarator:
-    declarator {$$ = create_init_declarator($1);}
+    declarator {$$ = create_init_declarator($1, nullptr);}
     | declarator ASSIGN initializer {$$ = create_init_declarator($1,$3);}
     ;
 
 // DONE
 storage_class_specifier:
-    TYPEDEF {$$ = 0;}
-    | EXTERN {$$ = 1;}
-    | STATIC {$$ = 2;}
-    | AUTO {$$ = 3;}
-    | REGISTER {$$ = 4;}
+    TYPEDEF {$$ = $1;}
+    | EXTERN {$$ = $1;}
+    | STATIC {$$ = $1;}
+    | AUTO {$$ = $1;}
+    | REGISTER {$$ = $1;}
     ;
 
-// DO NOW (class and type_name)
+// DONE
 type_specifier:
     VOID        {$$ = create_type_specifier($1);}
     | CHAR      {$$ = create_type_specifier($1);}
@@ -360,11 +370,13 @@ struct_or_union:
     | UNION {$$ = $1;}
     ;
 
+// DONE
 struct_declaration_set:
     struct_declaration_list_access {$$ = create_struct_declaration_set($1);}
     | struct_declaration_set struct_declaration_list_access {$$ = create_struct_declaration_set($1,$2);}
     ;
 
+// DONE
 struct_declaration_list_access:
     struct_declaration_list {$$ = create_struct_declaration_list_access(nullptr,$1);}
     | access_specifier COLON struct_declaration_list {$$ = create_struct_declaration_list_access($1,$3);}
@@ -378,9 +390,8 @@ struct_declaration_list:
 
 // DONE
 class_specifier:
-    CLASS IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,nullptr,$4); symbolTable.exitScope();} 
-    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,$4,$6); symbolTable.exitScope();} 
-    // | CLASS LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {symbolTable.exitScope();} 
+    CLASS IDENTIFIER LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,nullptr,$5); symbolTable.exitScope();} 
+    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {symbolTable.enterScope();} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,$4,$7); symbolTable.exitScope();} 
     | CLASS IDENTIFIER {$$ = create_class_specifier($2,nullptr,nullptr);}
     ;
 
@@ -397,7 +408,7 @@ class_declarator:
     ;
 
 // DONE
-class_declaration_list:
+class_declaration_list :
     class_declaration {$$ = create_class_declaration_list($1);}
     | class_declaration_list class_declaration {$$ = create_class_declaration_list($1,$2);}
     ;
@@ -413,7 +424,7 @@ access_specifier:
     PUBLIC  {$$ = $1;}
     | PRIVATE {$$ = $1;}
     | PROTECTED {$$ = $1;}
-    ;
+    ; 
 
 // DONE
 struct_declaration:
@@ -462,8 +473,8 @@ enumerator:
 
 // DONE
 type_qualifier:
-    CONST  {$$ = TypeQualifiers::TYPE_QUALIFIERS_CONST;}
-    | VOLATILE  {$$ = TypeQualifiers::TYPE_QUALIFIERS_VOLATILE;}
+    CONST  {$$ = $1;}
+    | VOLATILE  {$$ = $1;}
     ;
 
 // DONE

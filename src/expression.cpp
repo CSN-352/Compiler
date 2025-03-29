@@ -272,7 +272,7 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     return P;
 }
 
-Expression* create_postfix_expression(Expression* x, ArgumentExpressionList* argument_expression_list) {
+Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList* argument_expression_list) {
     // check if exist in symbol table and arguements no. and types
     PostfixExpression* P = new PostfixExpression();
     P->name = "POSTFIX EXPRESSION FUNCTION CALL";
@@ -310,7 +310,7 @@ Expression* create_postfix_expression(Expression* x, ArgumentExpressionList* arg
             return P;
         }
         else{
-            FunctionDefinition* fd = symbolTable.getFunction(P->primary_expression->identifier->value)->function_definition;
+            FunctionDefinition* fd = symbolTable.getFunction(P->primary_expression->identifier->value, arguments)->function_definition;
             if(fd == nullptr){
                 P->type = ERROR_TYPE;
                 string error_msg = "Function " + P->primary_expression->identifier->value+ " is declared but not defined at line " + to_string(x->line_no) + ", column " + to_string(x->column_no);
@@ -473,12 +473,12 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
             yyerror(error_msg.c_str());
             symbolTable.set_error();
         }
-        else
+        else 
         {
             U->type = Type(PrimitiveTypes::INT_T, 0, true);
         }
     }
-    else if (op->name = "BITWISE_NOT"){
+    else if (op->name == "BITWISE_NOT"){
         if (!x->type.isInt())
         {
             U->type = ERROR_TYPE;
@@ -498,8 +498,8 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn){
     UnaryExpression* U = new UnaryExpression();
     U->op = op;
     U->type_name = tn;
-    U->line_no = x->line_no;
-    U->column_no = x->column_no;
+    U->line_no = op->line_no;
+    U->column_no = op->column_no;
     U->name = "UNARY EXPRESSION SIZEOF TYPE";
     U->type = Type(PrimitiveTypes::INT_T, 0, true);
     return U;
@@ -561,7 +561,7 @@ MultiplicativeExpression::MultiplicativeExpression(){
     left = nullptr;
     right = nullptr;
     op = nullptr;
-    name = "MULTIPLICATIVE EXPRESSION"
+    name = "MULTIPLICATIVE EXPRESSION";
 }
 
 Expression* create_multiplicative_expression(Expression* left, Terminal* op, Expression* right){
@@ -572,7 +572,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
     M->line_no = left->line_no;
     M->column_no = left->column_no;
 
-    
+    return M;
 }
 
 // ##############################################################################

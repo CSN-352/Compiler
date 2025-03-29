@@ -212,7 +212,7 @@ bool Type::is_convertible_to(Type t){ //CHECK
     return false;
 }
 
-Type promote_to_int(Type t) {
+Type Type :: promote_to_int(Type t) {
     if (t.typeIndex >= PrimitiveTypes::U_CHAR_T && t.typeIndex <= PrimitiveTypes::SHORT_T) {
         Type promoted(INT_T, 0, false); // or UNSIGNED_INT_T based on signedness
         if (t.isUnsigned()) {
@@ -552,7 +552,14 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
             int ptr_level = 0;
             int overloaded = 0;
             if (variable->pointer != nullptr) ptr_level = variable->pointer->pointer_level;
-            Type t = Type(P->declaration_specifiers->type_index, ptr_level, P->declaration_specifiers->is_const_variable);
+            Type t;
+            if(declaration_specifiers->is_type_name){
+                t = symbolTable.getTypedef(declaration_specifiers->type_specifiers[0]->type_name);
+                t.ptr_level += ptr_level;
+                if(t.ptr_level > 0) t.is_pointer = true;
+                if(P->declaration_specifiers->is_const_variable) t.is_const_variable = true;
+            }
+            else t = Type(P->declaration_specifiers->type_index, ptr_level, P->declaration_specifiers->is_const_variable);
             if (variable->direct_declarator->is_array){
                 t.is_array = true;
                 t.is_pointer = true;
@@ -569,7 +576,7 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
                 string error_msg = "Variable of field '" + variable->direct_declarator->identifier->value + "' declared void at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
                 yyerror(error_msg.c_str());
                 symbolTable.set_error();
-                return;
+                return P;
             }
             if(init_declarator_list->init_declarator_list[index]->initializer != nullptr){
                 bool compatible = init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.is_convertible_to(t);
@@ -577,10 +584,10 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
                     string error_msg = "Incompatible types while initializing variable '" + variable->direct_declarator->identifier->value + "' at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
                     yyerror(error_msg.c_str());
                     symbolTable.set_error();
-                    return;
+                    return P;
                 }
             }
-            if(declaration_specifiers->is_typedef)symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
+            if(declaration_specifiers->is_typedef)symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size()); 
             else symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
         }
     }
@@ -650,15 +657,16 @@ void DeclarationSpecifiers ::set_type()
     int isDouble = 0;
     int isFloat = 0;
     int isVoid = 0;
-    int isStruct = 0;
+    int isClass = 0;
     int isEnum = 0;
-    int isUnion = 0;
+    int isUnionOrStruct = 0;
+    int isTypeName = 0;
 
     for (int i = 0; i < type_qualifiers.size(); i++)
     {
-        if (type_qualifiers[i] == TypeQualifiers::TYPE_QUALIFIERS_CONST)
+        if (type_qualifiers[i] == CONST)
             is_const_variable = true;
-        else if (type_qualifiers[i] == TypeQualifiers ::TYPE_QUALIFIERS_VOLATILE)
+        else if (type_qualifiers[i] == VOLATILE)
             ; // add something later}
     }
 
@@ -698,17 +706,21 @@ void DeclarationSpecifiers ::set_type()
         {
             isVoid++;
         }
-        else if (type_specifiers[i]->primitive_type_specifier->name == "ENUM")
+        else if (type_specifiers[i]->enum_specifier != nullptr)
         {
             isEnum++;
         }
-        else if (type_specifiers[i]->primitive_type_specifier->name == "UNION")
+        else if (type_specifiers[i]->struct_union_specifier != nullptr)
         {
-            isUnion++;
+            isUnionOrStruct++;
         }
-        else if (type_specifiers[i]->primitive_type_specifier->name == "STRUCT")
+        else if (type_specifiers[i]->class_specifier != nullptr)
         {
-            isStruct++;
+            isClass++;
+        }
+        else if (type_specifiers[i]->type_name != "")
+        {
+            isTypeName++;
         }
     }
     if (type_specifiers.size() == 3)
@@ -780,6 +792,22 @@ void DeclarationSpecifiers ::set_type()
         {
             type_index = PrimitiveTypes::DOUBLE_T;
         }
+        else if(isEnum){
+            type_index = PrimitiveTypes::INT_T;
+        }
+        else if(isUnionOrStruct){
+            string name = type_specifiers[0]->struct_union_specifier->identifier->value;
+            DefinedTypes dt = symbolTable.get_defined_type(name);
+            type_index = dt.typeIndex;
+        }
+        else if(isClass){
+            string name = type_specifiers[0]->class_specifier->identifier->value;
+            DefinedTypes dt = symbolTable.get_defined_type(name);
+            type_index = dt.typeIndex;
+        }
+        else if(isTypeName){
+            is_type_name = true;
+        }
     }
 }
 
@@ -800,7 +828,7 @@ DeclarationSpecifiers *create_declaration_specifiers(SpecifierQualifierList *sql
 DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *ds, int storage_class)
 {
     ds->storage_class_specifiers.push_back(storage_class);
-    if (storage_class == STORAGE_CLASS_TYPEDEF) ds->is_typedef = true;
+    if (storage_class == TYPEDEF) ds->is_typedef = true;
     return ds;
 }
 
@@ -1479,7 +1507,8 @@ TypeSpecifier ::TypeSpecifier() : NonTerminal("TYPE SPECIFIER"){
     primitive_type_specifier = nullptr;
     enum_specifier = nullptr;
     struct_union_specifier = nullptr;
-    // class_specifier = nullptr;
+    class_specifier = nullptr;
+    type_name = "";
 }
 
 TypeSpecifier *create_type_specifier(Terminal* t)
@@ -1531,6 +1560,10 @@ TypeSpecifier* create_type_specifier(ClassSpecifier* cs)
 
 SpecifierQualifierList ::SpecifierQualifierList() : NonTerminal("SPECIFIER QUALIFIER LIST")
 {
+    is_type_name = false;
+    is_const_variable = false;
+    type_index = -1;
+    is_type_name = false;
 }
 
 void SpecifierQualifierList :: set_type()
@@ -1546,15 +1579,16 @@ void SpecifierQualifierList :: set_type()
     int isDouble = 0;
     int isFloat = 0;
     int isVoid = 0;
-    int isStruct = 0;
+    int isClass = 0;
     int isEnum = 0;
-    int isUnion = 0;
+    int isUnionOrStruct = 0;
+    int isTypeName = 0;
 
     for (int i = 0; i < type_qualifiers.size(); i++)
     {
-        if (type_qualifiers[i] == TypeQualifiers::TYPE_QUALIFIERS_CONST)
+        if (type_qualifiers[i] == CONST)
             is_const_variable = true;
-        else if (type_qualifiers[i] == TypeQualifiers ::TYPE_QUALIFIERS_VOLATILE)
+        else if (type_qualifiers[i] == VOLATILE)
             ; // add something later}
     }
 
@@ -1594,17 +1628,21 @@ void SpecifierQualifierList :: set_type()
         {
             isVoid++;
         }
-        else if (type_specifiers[i]->primitive_type_specifier->name == "ENUM")
+        else if (type_specifiers[i]->enum_specifier != nullptr)
         {
             isEnum++;
         }
-        else if (type_specifiers[i]->primitive_type_specifier->name == "UNION")
+        else if (type_specifiers[i]->struct_union_specifier != nullptr)
         {
-            isUnion++;
+            isUnionOrStruct++;
         }
-        else if (type_specifiers[i]->primitive_type_specifier->name == "STRUCT")
+        else if (type_specifiers[i]->class_specifier != nullptr)
         {
-            isStruct++;
+            isClass++;
+        }
+        else if (type_specifiers[i]->type_name != "")
+        {
+            isTypeName++;
         }
     }
     if (type_specifiers.size() == 3)
@@ -1675,6 +1713,22 @@ void SpecifierQualifierList :: set_type()
         else if (isDouble && !isUnsigned)
         {
             type_index = PrimitiveTypes::DOUBLE_T;
+        }
+        else if(isEnum){
+            type_index = PrimitiveTypes::INT_T;
+        }
+        else if(isUnionOrStruct){
+            string name = type_specifiers[0]->struct_union_specifier->identifier->value;
+            DefinedTypes dt = symbolTable.get_defined_type(name);
+            type_index = dt.typeIndex;
+        }
+        else if(isClass){
+            string name = type_specifiers[0]->class_specifier->identifier->value;
+            DefinedTypes dt = symbolTable.get_defined_type(name);
+            type_index = dt.typeIndex;
+        }
+        else if(isTypeName){
+            is_type_name = true;
         }
     }
 }

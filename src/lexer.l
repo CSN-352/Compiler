@@ -276,10 +276,10 @@ NEWLINE        \n
                         if(!checkIdentifierLength(yytext)) {
                             yyerror("Identifier exceeds maximum length (32 characters):");
                             return(ERROR);
-                        }
-                        updateColumn(yyleng); 
+                        } 
                         else 
-                            addToSymbolTable(yytext, "identifier"); 
+                            addToSymbolTable(yytext, "identifier");
+                        updateColumn(yyleng); 
                         if(symbolTable.lookup_typedef(yytext))
                             return(TYPE_NAME);
                         RETURN_IF_NOT_MAIN(IDENTIFIER);

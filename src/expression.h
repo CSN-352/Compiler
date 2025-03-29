@@ -81,8 +81,7 @@ Expression* create_postfix_expression(Expression* x);
 Expression* create_postfix_expression(Expression* x, Terminal* op);
 Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* id);
 Expression* create_postfix_expression(Expression* x, Expression* index_expression);
-Expression* create_postfix_expression(Expression* x, ArgumentExpressionList* argument_expression_list);
-Expression* create_postfix_expression(Expression* x, Terminal* lp, Terminal* rp);
+Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList* argument_expression_list);
 
 // ##############################################################################
 // ################################## UNARY EXPRESSION ######################################
@@ -121,14 +120,14 @@ Expression* create_cast_expression(TypeName* tn, Expression* x);
 // ##############################################################################
 // ################################## MULTIPLICATIVE EXPRESSION ######################################
 // ##############################################################################
-
+ 
 class MultiplicativeExpression: public Expression {
     public:
         Expression* left;
         Expression* right;
         Terminal* op;
         MultiplicativeExpression();
-}
+};
 
 Expression* create_multiplicative_expression(Expression* left, Terminal* op, Expression* right);
 

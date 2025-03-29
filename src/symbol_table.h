@@ -42,6 +42,7 @@ class ClassDeclaration;
 class ClassDeclaratorList;
 class StructDeclarationSet;
 class StructDeclarationListAccess;
+class StructDeclarationList;
 class StructDeclaratorList;
 class Enumerator;
 class EnumeratorList;
@@ -92,20 +93,20 @@ enum TypeCategory {
     N_TYPE_CATEGORIES,
 };
 
-enum TypeQualifiers
-{
-    TYPE_QUALIFIERS_CONST = 0,
-    TYPE_QUALIFIERS_VOLATILE = 1
-};
+// enum TypeQualifiers
+// {
+//     TYPE_QUALIFIERS_CONST = 0,
+//     TYPE_QUALIFIERS_VOLATILE = 1
+// };
 
-enum StorageClassSpecifiers
-{
-    STORAGE_CLASS_TYPEDEF = 0,
-    STORAGE_CLASS_EXTERN,
-    STORAGE_CLASS_STATIC,
-    STORAGE_CLASS_AUTO,
-    STORAGE_CLASS_REGISTER,
-};
+// enum StorageClassSpecifiers
+// {
+//     STORAGE_CLASS_TYPEDEF = 0,
+//     STORAGE_CLASS_EXTERN,
+//     STORAGE_CLASS_STATIC,
+//     STORAGE_CLASS_AUTO,
+//     STORAGE_CLASS_REGISTER,
+// };
 
 enum AccessSpecifiers{
     ACCESS_SPECIFIER_PUBLIC = 0,
@@ -114,6 +115,10 @@ enum AccessSpecifiers{
 };
 
 static unordered_map<int,int> primitive_type_size = {{0,2},{1,2},{2,2},{3,2},{4,4},{5,4},{6,4},{7,4},{8,8},{9,8},{10,4},{11,8},{12,4}};
+
+// ##############################################################################
+// ################################## TYPE ######################################
+// ##############################################################################
 
 class Type
 {
@@ -246,20 +251,6 @@ DeclarationList* create_declaration_list(Declaration* d);
 // ################################## INITIALIZER LIST ######################################
 // ##############################################################################
 
-class InitializerList : public NonTerminal
-{
-    // Implement after initializer
-};
-
-// ##############################################################################
-// ################################## INITIALIZER ######################################
-// ##############################################################################
-
-class Initializer : public NonTerminal
-{
-    // Implement after assignment expression
-};
-
 // ##############################################################################
 // ################################## IDENTIFIER LIST ######################################
 // ##############################################################################
@@ -287,6 +278,7 @@ public:
     vector<int> type_qualifiers;
     bool is_const_variable;
     bool is_typedef;
+    bool is_type_name;
     int type_index;
     DeclarationSpecifiers();
     void set_type();
@@ -425,8 +417,12 @@ public:
     InitDeclaratorList();
 };
 
-InitDeclaratorList *create_init_declarator_list(Declarator *init_declarator);
-InitDeclaratorList *add_to_init_declarator_list(InitDeclaratorList *init_declarator_list, Declarator *init_declarator);
+InitDeclaratorList *create_init_declarator_list(InitDeclarator *init_declarator);
+InitDeclaratorList *create_init_declarator_list(InitDeclaratorList *init_declarator_list, InitDeclarator *init_declarator);
+
+// ##############################################################################
+// ################################## ABSTRACY DECLARATOR######################################
+// ##############################################################################
 
 class AbstractDeclarator : public NonTerminal
 {
@@ -461,6 +457,10 @@ DirectAbstractDeclarator *create_direct_abstract_declarator_function(ParameterTy
 DirectAbstractDeclarator *create_direct_abstract_declarator_array(DirectAbstractDeclarator *x, Expression *c);
 DirectAbstractDeclarator *create_direct_abstract_declarator_function(DirectAbstractDeclarator *x, ParameterTypeList *p);
 
+// ##############################################################################
+// ################################## STRUCT UNION SPECIFIER ######################################
+// ##############################################################################
+
 class StructUnionSpecifier : public NonTerminal
 {
     public:
@@ -472,6 +472,10 @@ class StructUnionSpecifier : public NonTerminal
 };
 
 StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationSet *sds);
+
+// ##############################################################################
+// ################################## CLASS SPECIFIER ######################################
+// ##############################################################################
 
 class ClassSpecifier : public NonTerminal
 {
@@ -485,6 +489,10 @@ class ClassSpecifier : public NonTerminal
 
 ClassSpecifier *create_class_specifier(Identifier *id, ClassDeclaratorList* idl, ClassDeclarationList *cdl);
 
+// ##############################################################################
+// ################################## CLASS DECLARATOR LIST ######################################
+// ##############################################################################
+
 class ClassDeclaratorList : public NonTerminal{
     public:
         vector<ClassDeclarator*> class_declarator_list;
@@ -493,6 +501,10 @@ class ClassDeclaratorList : public NonTerminal{
 
 ClassDeclaratorList* create_class_declarator_list(ClassDeclarator* cd);
 ClassDeclaratorList* create_class_declarator_list(ClassDeclaratorList* cdl, ClassDeclarator* cd);
+
+// ##############################################################################
+// ################################## CLASS DECLARATOR ######################################
+// ##############################################################################
 
 class ClassDeclarator : public NonTerminal
 {
@@ -505,6 +517,10 @@ class ClassDeclarator : public NonTerminal
 
 ClassDeclarator *create_class_declarator(Terminal* access_specifier, Declarator* d);
 
+// ##############################################################################
+// ################################## CLASS DECLARATION LIST ######################################
+// ##############################################################################
+
 class ClassDeclarationList : public NonTerminal
 {
     // Fully Implemented
@@ -515,6 +531,10 @@ class ClassDeclarationList : public NonTerminal
 
 ClassDeclarationList* create_class_declaration_list(ClassDeclaration* cd);
 ClassDeclarationList* create_class_declaration_list(ClassDeclarationList* cdl, ClassDeclaration* cd);
+
+// ##############################################################################
+// ################################## CLASS DECLARATION ######################################
+// ##############################################################################
 
 class ClassDeclaration : public NonTerminal
 {
@@ -527,14 +547,22 @@ class ClassDeclaration : public NonTerminal
 
 ClassDeclaration* create_class_declaration(Terminal* access_specifier, TranslationUnit* tu);
 
+// ##############################################################################
+// ################################## STRUCT DECLARATION SET ######################################
+// ##############################################################################
+
 class StructDeclarationSet : public NonTerminal{
     public:
         vector<StructDeclarationListAccess*> struct_declaration_lists;
         StructDeclarationSet();
 };
 
-StructDeclarationSet* create_struct_declaration_set(StructDeclarationList* sdl);
+StructDeclarationSet* create_struct_declaration_set(StructDeclarationListAccess* sdla);
 StructDeclarationSet* create_struct_declaration_set(StructDeclarationSet* sds, StructDeclarationListAccess* sdla);
+
+// ##############################################################################
+// ################################## STRUCT DECLARATION LIST ACCESS ######################################
+// ##############################################################################
 
 class StructDeclarationListAccess : public NonTerminal{
     public:
@@ -544,6 +572,10 @@ class StructDeclarationListAccess : public NonTerminal{
 }; 
 
 StructDeclarationListAccess* create_struct_declaration_list_access(Terminal* access_specifier, StructDeclarationList* sdl);
+
+// ##############################################################################
+// ################################## STRUCT DECLARATION LIST ######################################
+// ##############################################################################
 
 class StructDeclarationList : public NonTerminal
 {
@@ -555,6 +587,10 @@ public:
 
 StructDeclarationList *create_struct_declaration_list(StructDeclaration *sd);
 StructDeclarationList *create_struct_declaration_list(StructDeclarationList *sdl, StructDeclaration *sd);
+
+// ##############################################################################
+// ################################## STRUCT DECLARATION ######################################
+// ##############################################################################
 
 class StructDeclaration : public NonTerminal
 {
@@ -568,6 +604,10 @@ public:
 
 StructDeclaration* create_struct_declaration(SpecifierQualifierList *sql, StructDeclaratorList *dl);
 
+// ##############################################################################
+// ################################## STRUCT DECLARATOR LIST ######################################
+// ##############################################################################
+
 class StructDeclaratorList : public NonTerminal
 {
     // Fully Implemented
@@ -578,6 +618,10 @@ class StructDeclaratorList : public NonTerminal
 
 StructDeclaratorList *create_struct_declarator_list(StructDeclarator* sd);
 StructDeclaratorList *create_struct_declarator_list(StructDeclaratorList* sdl, StructDeclarator* sd);
+
+// ##############################################################################
+// ################################## STRUCT DECLARATOR ######################################
+// ##############################################################################
 
 class StructDeclarator : public NonTerminal
 {
@@ -590,6 +634,10 @@ class StructDeclarator : public NonTerminal
 
 StructDeclarator *create_struct_declarator(Declarator *sd, Expression *e);
 
+// ##############################################################################
+// ################################## ENUMERATOR ######################################
+// ##############################################################################
+
 class Enumerator : public NonTerminal
 {
     // Fully Implemented
@@ -601,6 +649,10 @@ public:
 
 Enumerator *create_enumerator(Identifier *id, Expression *e);
 
+// ##############################################################################
+// ################################## ENUMERATOR LIST ######################################
+// ##############################################################################
+
 class EnumeratorList : public NonTerminal
 {
     // Fully Implemented
@@ -610,6 +662,10 @@ public:
 };
 EnumeratorList *create_enumerator_list(Enumerator *e);
 EnumeratorList *create_enumerator_list(EnumeratorList *el, Enumerator *e);
+
+// ##############################################################################
+// ################################## ENUM SPECIFIER ######################################
+// ##############################################################################
 
 class EnumSpecifier : public NonTerminal
 {
@@ -621,7 +677,9 @@ class EnumSpecifier : public NonTerminal
 EnumSpecifier *create_enumerator_specifier(EnumeratorList *enum_list);
 EnumSpecifier *create_enumerator_specifier(Identifier *id, EnumeratorList *enum_list);
 
-
+// ##############################################################################
+// ################################## TYPE SPECIFIER ######################################
+// ##############################################################################
 
 class TypeSpecifier : public NonTerminal
 {
@@ -643,6 +701,10 @@ TypeSpecifier *create_type_specifier(EnumSpecifier* es);
 TypeSpecifier *create_type_specifier(StructUnionSpecifier* sus);
 TypeSpecifier* create_type_specifier(ClassSpecifier* cs);
 
+// ##############################################################################
+// ################################## SPECIFIER QUALIFIER LIST ######################################
+// ##############################################################################
+
 class SpecifierQualifierList : public NonTerminal
 {
     // Fully Implemented
@@ -660,6 +722,10 @@ SpecifierQualifierList *create_specifier_qualifier_list(TypeSpecifier *t);
 SpecifierQualifierList *create_specifier_qualifier_list(SpecifierQualifierList *s, TypeSpecifier *t);
 SpecifierQualifierList *create_specifier_qualifier_list(SpecifierQualifierList *s, int tq);
 
+// ##############################################################################
+// ################################## TYPE NAME ######################################
+// ##############################################################################
+
 class TypeName : public NonTerminal
 {
     // Fully Implemented
@@ -672,6 +738,10 @@ public:
 
 TypeName *create_type_name(SpecifierQualifierList *sql, AbstractDeclarator *ad);
 
+// ##############################################################################
+// ################################## INITIALIZER ######################################
+// ##############################################################################
+
 class Initializer : public NonTerminal
 {
     // 
@@ -681,6 +751,10 @@ class Initializer : public NonTerminal
 };
 
 Initializer *create_initializer(Expression *e);
+
+// ##############################################################################
+// ################################## TRANSLATION UNIT ######################################
+// ##############################################################################
 
 class TranslationUnit : public NonTerminal
 {
@@ -693,6 +767,10 @@ class TranslationUnit : public NonTerminal
 TranslationUnit *create_translation_unit(ExternalDeclaration* ed);
 TranslationUnit *create_translation_unit(TranslationUnit* tu, ExternalDeclaration* ed);
 
+// ##############################################################################
+// ################################## EXTERNAL DECLARATION ######################################
+// ##############################################################################
+
 class ExternalDeclaration : public NonTerminal{
     // Fully Implemented
     public:
@@ -703,6 +781,10 @@ class ExternalDeclaration : public NonTerminal{
 
 ExternalDeclaration* create_external_declaration(FunctionDefinition* fd);
 ExternalDeclaration* create_external_declaration(Declaration* d);
+
+// ##############################################################################
+// ################################## FUNCTION DEFINITION ######################################
+// ##############################################################################
 
 class FunctionDefinition : public NonTerminal{
     // Fully Implemented
@@ -725,6 +807,10 @@ public:
     Identifier(string value, unsigned int line_no, unsigned int column_no);
 };
 
+// ##############################################################################
+// ################################## CONSTANT ######################################
+// ##############################################################################
+
 class Constant : public Terminal
 {
 public:
@@ -735,11 +821,19 @@ public:
     Constant(string name, string value, unsigned int line_no, unsigned int column_no);
 };
 
+// ##############################################################################
+// ################################## STRING LITERAL ######################################
+// ##############################################################################
+
 class StringLiteral : public Terminal
 {
 public:
     StringLiteral(string value, unsigned int line_no, unsigned int column_no);
 };
+
+// ##############################################################################
+// ################################## SYMBOL ######################################
+// ##############################################################################
 
 class Symbol
 {
@@ -754,6 +848,10 @@ public:
         function_definition = nullptr;
     }
 };
+
+// ##############################################################################
+// ################################## SYMBOL TABLE ######################################
+// ##############################################################################
 
 class SymbolTable
 {
