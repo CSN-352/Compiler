@@ -372,6 +372,11 @@ bool operator!=(const Type &obj1, const Type &obj2)
 
 // Not fully implemented
 
+TypeDefinition::TypeDefinition(TypeCategory tc)
+{
+    type_category = tc;
+}
+
 bool TypeDefinition::get_member(string member)
 {
     if (members.find(member) != members.end())
@@ -404,10 +409,8 @@ AccessSpecifiers TypeDefinition ::get_member_access_specifier(string member)
     return members[member];
 }
 
-TypeDefinition *create_type_definition(TypeCategory type_category, StructDeclarationSet *sds)
+TypeDefinition *create_type_definition(TypeDefinition* P, StructDeclarationSet* sds)
 {
-    TypeDefinition *P = new TypeDefinition();
-    P->type_category = type_category;
     if (sds != nullptr)
     {
         for (StructDeclarationListAccess *sdla : sds->struct_declaration_lists)
@@ -461,7 +464,7 @@ TypeDefinition *create_type_definition(TypeCategory type_category, StructDeclara
 
 TypeDefinition *create_type_definition(Identifier *id, TypeCategory type_category, ClassDeclaratorList *idl, ClassDeclarationList *cdl)
 {
-    TypeDefinition *P = new TypeDefinition();
+    TypeDefinition *P = new TypeDefinition(type_category);
     P->type_category = type_category;
     if (cdl != nullptr)
     {
@@ -1386,24 +1389,38 @@ StructUnionSpecifier ::StructUnionSpecifier() : NonTerminal("STRUCT UNION SPECIF
     type_category = TYPE_CATEGORY_ERROR;
 }
 
-StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationSet *sds)
+StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id)
 {
     StructUnionSpecifier *P = new StructUnionSpecifier();
     if (struct_or_union == "STRUCT")
         P->type_category = TYPE_CATEGORY_STRUCT;
     else
         P->type_category = TYPE_CATEGORY_UNION;
+
     P->identifier = id;
-    P->struct_declaration_set = sds;
-    TypeDefinition *td;
-    if (sds != nullptr)
-        td = create_type_definition(P->type_category, sds);
-    else
-        td = nullptr;
+    TypeDefinition* td = new TypeDefinition(P->type_category);
     DefinedTypes dt = DefinedTypes(P->type_category, td);
     dt.defined_type_name = id->value;
     symbolTable.insert_defined_type(id->value, dt);
     return P;
+}
+
+StructUnionSpecifier *create_struct_union_specifier(StructUnionSpecifier* sus, StructDeclarationSet *sds)
+{
+    DefinedTypes dt = symbolTable.get_defined_type(sus->identifier->value);
+    TypeDefinition* td = dt.type_definition;
+    sus->struct_declaration_set = sds;
+    if (sds != nullptr){
+        td = create_type_definition(td, sds);
+        dt.type_definition = td;
+        // TypeDefinition *td;
+        // DefinedTypes dt = DefinedTypes(sus->type_category, td);
+        // dt.defined_type_name = id->value;
+        // symbolTable.insert_defined_type(id->value, dt);
+        // create_type_definition(P->type_category, sds);
+    }
+      
+    return sus;
 }
 
 // ##############################################################################

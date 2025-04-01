@@ -250,8 +250,10 @@ public:
     AccessSpecifiers get_member_access_specifier(string member);
     SymbolTable type_symbol_table;
     int get_size();
+    TypeDefinition(TypeCategory tc);
 };
 
+TypeDefinition *create_type_definition(TypeDefinition* td, StructUnionSpecifier *sus);
 TypeDefinition *create_type_definition(TypeCategory type_category, StructDeclarationSet *sds);
 TypeDefinition *create_type_definition(Identifier* id, TypeCategory type_category, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
 
@@ -531,7 +533,9 @@ class StructUnionSpecifier : public NonTerminal
         StructUnionSpecifier();
 };
 
-StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationSet *sds);
+StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id);
+StructUnionSpecifier *create_struct_union_specifier(StructUnionSpecifier* sus, StructDeclarationSet *sds);
+
 
 // ##############################################################################
 // ################################## CLASS SPECIFIER ######################################

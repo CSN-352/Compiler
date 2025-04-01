@@ -16,6 +16,7 @@ extern FILE *yyin;
 int has_error=0;
 int function_flag = 0;
 FunctionDefinition* fd;
+StructUnionSpecifier* sus;
 
 void yyerror(const char *msg);
 %} 
@@ -377,9 +378,9 @@ type_specifier:
 
 // DONE
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,$2,$5); symbolTable.exitScope();}  
+    struct_or_union IDENTIFIER LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value); sus = create_struct_union_specifier($1->name,$2);} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier(sus,$5); symbolTable.exitScope();}  
 	// | struct_or_union LEFT_CURLY {symbolTable.enterScope();} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,nullptr,$4); symbolTable.exitScope();}  
-	| struct_or_union IDENTIFIER {create_struct_union_specifier($1->name,$2,nullptr);}                  
+	//| struct_or_union IDENTIFIER {create_struct_union_specifier($1->name,$2,nullptr);}                  
 	;
 
 // DONE
