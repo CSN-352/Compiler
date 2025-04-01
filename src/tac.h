@@ -17,7 +17,8 @@ enum TACOperandType {
     TAC_OPERAND_STRING_LITERAL,   // String literals (e.g., "Hello, World!")
     TAC_OPERAND_POINTER,          // Pointer dereferencing (e.g., *ptr)
     TAC_OPERAND_FUNCTION_CALL,    // Function calls (e.g., call func)
-    TAC_OPERAND_ADDRESS           // Address-of operator (&var)
+    TAC_OPERAND_ADDRESS,           // Address-of operator (&var)
+    TAC_OPERAND_EMPTY           // Empty operand (used for NOP or no operation)
 };
 
 //##############################################################################
@@ -29,9 +30,9 @@ class TACOperand{
     TACOperandType type; // Type of the operand (e.g., TEMP_VAR, IDENTIFIER, CONSTANT)
     string value;        // Value of the operand (e.g., variable name, constant value)
     
+    TACOperand() : type(TACOperandType::TAC_OPERAND_EMPTY), value("") {}
+
     TACOperand(TACOperandType type, string value);
-    
-    
 };
 
 TACOperand new_temp_var(){}
@@ -72,7 +73,7 @@ enum TACOperatorType {
     TAC_OPERATOR_RIGHT_SHIFT,// >>
     TAC_OPERATOR_BIT_NOT,    // ~
 
-    // Assignment Operators
+    // // Assignment Operators
     TAC_OPERATOR_ASSIGN,     // =
 
     // Pointer and Memory Operators
@@ -88,8 +89,8 @@ enum TACOperatorType {
     TAC_OPERATOR_CALL,       // Function call
     TAC_OPERATOR_RETURN,     // return value
     TAC_OPERATOR_PARAM,      // Function parameter passing
-    TAC_OPERATOR_FUNC_BEGIN, // Function prologue
-    TAC_OPERATOR_FUNC_END,   // Function epilogue
+    // TAC_OPERATOR_FUNC_BEGIN, // Function prologue
+    // TAC_OPERATOR_FUNC_END,   // Function epilogue
 
     // Array and Indexing Operators
     TAC_OPERATOR_INDEX,        // Array access: T = a[i]
@@ -109,7 +110,7 @@ static std::unordered_map<TACOperator, std::string> opMap = {
     {TAC_OPERATOR_DEREF, "*"},
     {TAC_OPERATOR_GOTO, "goto"}, {TAC_OPERATOR_IF_GOTO, "if_goto"},
     {TAC_OPERATOR_LABEL, "label"}, {TAC_OPERATOR_CALL, "call"}, {TAC_OPERATOR_RETURN, "return"},
-    {TAC_OPERATOR_PARAM, "param"}, {TAC_OPERATOR_FUNC_BEGIN, "func_begin"}, {TAC_OPERATOR_FUNC_END, "func_end"},
+    // {TAC_OPERATOR_PARAM, "param"}, {TAC_OPERATOR_FUNC_BEGIN, "func_begin"}, {TAC_OPERATOR_FUNC_END, "func_end"},
     {TAC_OPERATOR_INDEX, "[]"}, {TAC_OPERATOR_INDEX_ASSIGN, "[]= "}, {TAC_OPERATOR_NOP, "nop"}
 };
 
@@ -124,6 +125,10 @@ class TACOperator{
     TACOperator(TACOperatorType type);
 };
 
+//##############################################################################
+//################################## TACInstruction ######################################
+//##############################################################################
+
 class TACInstruction{
     public:
     TACOperator op; // Operator (e.g., ADD, SUB)
@@ -133,18 +138,24 @@ class TACInstruction{
 
 
     // Constructor for binary operations (e.g., result = arg1 op arg2)
+    // for array assignment use result as array pointer and arg1 as index
     TACInstruction(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2);
 
+    // Constructor for unary operations (e.g., result = arg1 op arg2)
+    TACInstruction(TACOperator op, TACOperand result, TACOperand arg1);
+
+    // Constructor for assignment operations (e.g., result = arg1 op arg2)
+    TACInstruction(TACOperand result, TACOperand arg1);
+
     // Constructor for unconditional jumps (e.g., goto L2)
-    TACInstruction(TACOperator op, string label)
-        : op(op), result(TACOperand()), arg1(TACOperand()), arg2(TACOperand()), label(label) {}
+    TACInstruction(TACOperator op, TACOperand arg1);
 
     // Constructor for conditional jumps (e.g., if L1 goto L2)
-    TACInstruction(TACOperator op, TACOperand condition, string label)
-        : op(op), result(TACOperand()), arg1(condition), arg2(TACOperand()), label(label) {}
-}   
+    // function call
+    TACInstruction(TACOperator op, TACOperand arg1, TACOperand arg2);
 
+}; 
 
-
+bool is_assignment(TACInstruction* instruction);
 
 #endif
