@@ -410,7 +410,7 @@ AccessSpecifiers TypeDefinition ::get_member_access_specifier(string member)
     return members[member];
 }
 
-TypeDefinition *create_type_definition(TypeDefinition* P, StructDeclarationSet* sds)
+TypeDefinition *create_type_definition(TypeDefinition *P, StructDeclarationSet *sds)
 {
     if (sds != nullptr)
     {
@@ -730,7 +730,7 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
 
     P->declaration_specifiers = declaration_specifiers;
     P->init_declarator_list = init_declarator_list;
-    
+
     if (init_declarator_list != nullptr)
     {
         for (int index = 0; index < init_declarator_list->init_declarator_list.size(); index++)
@@ -786,7 +786,7 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
                 }
             }
             if (declaration_specifiers->is_typedef)
-                        symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
+                symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
             else
                 symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
         }
@@ -996,7 +996,8 @@ void DeclarationSpecifiers ::set_type()
         {
             type_index = PrimitiveTypes::DOUBLE_T;
         }
-        else if (isVoid) {
+        else if (isVoid)
+        {
             type_index = PrimitiveTypes::VOID_T;
         }
         else if (isEnum)
@@ -1404,19 +1405,21 @@ StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Iden
         P->type_category = TYPE_CATEGORY_UNION;
 
     P->identifier = id;
-    TypeDefinition* td = new TypeDefinition(P->type_category);
+    TypeDefinition *td = new TypeDefinition(P->type_category);
     DefinedTypes dt = DefinedTypes(P->type_category, td);
     dt.defined_type_name = id->value;
     symbolTable.insert_defined_type(id->value, dt);
     return P;
 }
 
-StructUnionSpecifier *create_struct_union_specifier(StructUnionSpecifier* sus, StructDeclarationSet *sds)
+StructUnionSpecifier *create_struct_union_specifier(StructUnionSpecifier *sus, StructDeclarationSet *sds)
 {
     DefinedTypes dt = symbolTable.get_defined_type(sus->identifier->value);
-    TypeDefinition* td = dt.type_definition;
+    cerr << "==@@==" << dt.typeIndex;
+    TypeDefinition *td = dt.type_definition;
     sus->struct_declaration_set = sds;
-    if (sds != nullptr){
+    if (sds != nullptr)
+    {
         td = create_type_definition(td, sds);
         dt.type_definition = td;
         // TypeDefinition *td;
@@ -1425,7 +1428,6 @@ StructUnionSpecifier *create_struct_union_specifier(StructUnionSpecifier* sus, S
         // symbolTable.insert_defined_type(id->value, dt);
         // create_type_definition(P->type_category, sds);
     }
-      
     return sus;
 }
 
@@ -1807,6 +1809,10 @@ TypeSpecifier *create_type_specifier(EnumSpecifier *es)
 TypeSpecifier *create_type_specifier(StructUnionSpecifier *sus)
 {
     TypeSpecifier *P = new TypeSpecifier();
+    cerr << "hehe";
+    DefinedTypes dt = symbolTable.get_defined_type("as");
+    cerr << dt.typeIndex;
+    cerr << "hasdha";
     P->struct_union_specifier = sus;
     P->name += ": STRUCT/UNION";
     // if(sus.is_struct)
@@ -1986,7 +1992,8 @@ void SpecifierQualifierList ::set_type()
         {
             type_index = PrimitiveTypes::DOUBLE_T;
         }
-        else if (isVoid) {
+        else if (isVoid)
+        {
             type_index = PrimitiveTypes::VOID_T;
         }
         else if (isEnum)
@@ -1995,9 +2002,14 @@ void SpecifierQualifierList ::set_type()
         }
         else if (isUnionOrStruct)
         {
+            cerr << "ASdfas";
             string name = type_specifiers[0]->struct_union_specifier->identifier->value;
+            cerr << "hehe";
             DefinedTypes dt = symbolTable.get_defined_type(name);
+            cerr << dt.typeIndex;
+            cerr << "hasdha";
             type_index = dt.typeIndex;
+            cerr << "======";
         }
         else if (isClass)
         {
@@ -2179,18 +2191,21 @@ FunctionDefinition ::FunctionDefinition() : NonTerminal("FUNCTION DEFINITION")
     compound_statement = nullptr;
 }
 
-FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declarator *d){
-    FunctionDefinition* P = new FunctionDefinition();
+FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declarator *d)
+{
+    FunctionDefinition *P = new FunctionDefinition();
     P->declaration_specifiers = ds;
     P->declarator = d;
     if (d->direct_declarator->is_function)
     {
         string function_name = d->direct_declarator->identifier->value;
         int pointer_level = 0;
-        if(d->pointer != nullptr)pointer_level = d->pointer->pointer_level;
+        if (d->pointer != nullptr)
+            pointer_level = d->pointer->pointer_level;
         Type type = Type(ds->type_index, pointer_level, ds->is_const_variable);
         vector<Type> arg_types;
-        if(d->direct_declarator->parameters != nullptr){
+        if (d->direct_declarator->parameters != nullptr)
+        {
             vector<ParameterDeclaration *> parameters = d->direct_declarator->parameters->paramater_list->parameter_declarations;
             for (int i = 0; i < parameters.size(); i++)
             {
@@ -2207,14 +2222,17 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declar
             {
                 symbolTable.enterScope(type, function_name);
                 sym->function_definition = P;
-                if(d->direct_declarator->parameters != nullptr){
-                    for(int i=0; i<d->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++){
-                        ParameterDeclaration* pd = d->direct_declarator->parameters->paramater_list->parameter_declarations[i];
+                if (d->direct_declarator->parameters != nullptr)
+                {
+                    for (int i = 0; i < d->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++)
+                    {
+                        ParameterDeclaration *pd = d->direct_declarator->parameters->paramater_list->parameter_declarations[i];
                         symbolTable.insert(pd->declarator->direct_declarator->identifier->value, pd->type, pd->type.get_size(), 0);
                     }
                 }
             }
-            else if(sym->type.arg_types == arg_types){
+            else if (sym->type.arg_types == arg_types)
+            {
                 string error_msg = "Function " + function_name + " redefined at line " + to_string(d->direct_declarator->identifier->line_no) + ", column " + to_string(d->direct_declarator->identifier->column_no);
                 yyerror(error_msg.c_str());
                 symbolTable.set_error();
@@ -2226,16 +2244,19 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declar
             symbolTable.insert(function_name, type, type.get_size(), 1);
             Symbol *sym = symbolTable.getSymbol(function_name);
             sym->function_definition = P;
-            symbolTable.enterScope(type,function_name);
-            if(d->direct_declarator->parameters != nullptr){
-                for(int i=0; i<d->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++){
-                    ParameterDeclaration* pd = d->direct_declarator->parameters->paramater_list->parameter_declarations[i];
+            symbolTable.enterScope(type, function_name);
+            if (d->direct_declarator->parameters != nullptr)
+            {
+                for (int i = 0; i < d->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++)
+                {
+                    ParameterDeclaration *pd = d->direct_declarator->parameters->paramater_list->parameter_declarations[i];
                     symbolTable.insert(pd->declarator->direct_declarator->identifier->value, pd->type, pd->type.get_size(), 0);
                 }
             }
         }
     }
-    else{
+    else
+    {
         string error_msg = "Function definition must have a function declarator at line " + to_string(d->direct_declarator->identifier->line_no) + ", column " + to_string(d->direct_declarator->identifier->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
@@ -2244,10 +2265,11 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declar
     return P;
 }
 
-FunctionDefinition* create_function_definition(FunctionDefinition* fd, Statement* cs){
-    cerr<<"hello"<<endl;
-    CompoundStatement* cs_cast = dynamic_cast<CompoundStatement*>(cs);
-    cerr<<"hello"<<endl;
+FunctionDefinition *create_function_definition(FunctionDefinition *fd, Statement *cs)
+{
+    cerr << "hello" << endl;
+    CompoundStatement *cs_cast = dynamic_cast<CompoundStatement *>(cs);
+    cerr << "hello" << endl;
     fd->compound_statement = cs_cast;
     return fd;
 }
@@ -2545,7 +2567,7 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
 
 void SymbolTable::insert_defined_type(std::string name, DefinedTypes type)
 {
-
+    cerr << "Name = " << name;
     pair<int, pair<Type, string>> top = {0, {Type(), name}};
     if (!scope_stack.empty())
     {
