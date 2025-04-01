@@ -667,7 +667,7 @@ external_declaration:
 
 // DONE
 function_definition:
-    declaration_specifiers {function_flag = 1;} declarator compound_statement {$$ = create_function_definition($1,$3,$4);}
+    declaration_specifiers {function_flag = 1;} init_declarator compound_statement {$$ = create_function_definition($1,$3,$4);}
     ;
 
 skip_until_semicolon:
@@ -679,7 +679,7 @@ skip_until_semicolon:
 %%
 
 void yyerror(const char *msg) {
-    fprintf(stderr, "Syntax error at line %d: %F\n", yylineno, msg);
+    fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
 }
 
 

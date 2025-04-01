@@ -2027,6 +2027,11 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declar
             symbolTable.insert(function_name, type, type.get_size(), 1);
             Symbol* sym = symbolTable.getSymbol(function_name);
             sym->function_definition = P;
+            symbolTable.enterScope(type,function_name);
+            for(int i=0; i<d->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++){
+                ParameterDeclaration* pd = d->direct_declarator->parameters->paramater_list->parameter_declarations[i];
+                symbolTable.insert(pd->declarator->direct_declarator->identifier->value, pd->type, pd->type.get_size(), 0);
+            }
         } 
         
     }
@@ -2189,7 +2194,6 @@ void SymbolTable::enterScope(Type type, string name)
     currentScope++;
     if(type.is_function){
         scope_stack.push({currentScope,{type,name}});
-        currentScope--;
     }
     else if(type.is_defined_type){
         scope_stack.push({currentScope,{type,name}});
@@ -2287,8 +2291,11 @@ void SymbolTable::exitScope()
 }
 
 void SymbolTable::insert(string name, Type type, int size, int overloaded)
-{
-    auto top = scope_stack.top();
+{   
+    pair<int, pair<Type, string>> top = {0,{Type(), name}};
+    if (!scope_stack.empty()) {
+        top = scope_stack.top();
+    }
     for (const Symbol *sym : table[name])
     {
         if (sym->scope == currentScope)
