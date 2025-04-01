@@ -850,12 +850,12 @@ class FunctionDefinition : public NonTerminal{
     // Fully Implemented
     public:
         DeclarationSpecifiers *declaration_specifiers;
-        Declarator *declarator;
+        InitDeclarator *init_declarator;
         CompoundStatement* compound_statement;
         SymbolTable function_symbol_table;
         FunctionDefinition();
 };
-FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declarator *d, Statement *cs);
+FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, InitDeclarator *d, Statement *cs);
 
 // ##############################################################################
 // ################################ IDENTIFIER ##################################

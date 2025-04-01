@@ -1,6 +1,3 @@
-#include <iostream>
-using namespace std;
-
 class A{
     public:
         int x;    
@@ -13,5 +10,4 @@ class B : public A{
 
 int main(){
     B a;
-    cout<<a.x<<endl;
 }

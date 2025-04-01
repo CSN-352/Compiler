@@ -1980,24 +1980,26 @@ ExternalDeclaration *create_external_declaration(Declaration *d)
 FunctionDefinition ::FunctionDefinition() : NonTerminal("FUNCTION DEFINITION")
 {
     declaration_specifiers = nullptr;
-    declarator = nullptr;
+    init_declarator = nullptr;
     compound_statement = nullptr;
 }
 
-FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declarator *d, Statement *cs){
+FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, InitDeclarator *d, Statement *cs){
     FunctionDefinition* P = new FunctionDefinition();
     P->declaration_specifiers = ds;
-    P->declarator = d;
+    P->init_declarator = d;
+    Declarator* dss = d->declarator;
     CompoundStatement* cs_cast = dynamic_cast<CompoundStatement*>(cs);
     P->compound_statement = cs_cast;
-    if(d->direct_declarator->is_function){
-        string function_name = d->direct_declarator->identifier->value;
+    if (dss->direct_declarator->is_function)
+    {
+        string function_name = dss->direct_declarator->identifier->value;
         int pointer_level = 0;
-        if(d->pointer != nullptr)pointer_level = d->pointer->pointer_level;
+        if(dss->pointer != nullptr)pointer_level = dss->pointer->pointer_level;
         Type type = Type(ds->type_index, pointer_level, ds->is_const_variable);
         vector<Type> arg_types;
-        if(d->direct_declarator->parameters != nullptr){
-            vector<ParameterDeclaration *> parameters = d->direct_declarator->parameters->paramater_list->parameter_declarations;
+        if(dss->direct_declarator->parameters != nullptr){
+            vector<ParameterDeclaration *> parameters = dss->direct_declarator->parameters->paramater_list->parameter_declarations;
             for (int i = 0; i < parameters.size(); i++)
             {
                 arg_types.push_back(parameters[i]->type);
@@ -2011,13 +2013,13 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declar
             if(sym->function_definition == nullptr){
                 symbolTable.enterScope(type,function_name);
                 sym->function_definition = P;
-                for(int i=0; i<d->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++){
-                    ParameterDeclaration* pd = d->direct_declarator->parameters->paramater_list->parameter_declarations[i];
+                for(int i=0; i<dss->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++){
+                    ParameterDeclaration* pd = dss->direct_declarator->parameters->paramater_list->parameter_declarations[i];
                     symbolTable.insert(pd->declarator->direct_declarator->identifier->value, pd->type, pd->type.get_size(), 0);
                 }
             }
             else if(sym->type.arg_types == arg_types){
-                string error_msg = "Function " + function_name + " redefined at line " + to_string(d->direct_declarator->identifier->line_no) + ", column " + to_string(d->direct_declarator->identifier->column_no);
+                string error_msg = "Function " + function_name + " redefined at line " + to_string(dss->direct_declarator->identifier->line_no) + ", column " + to_string(dss->direct_declarator->identifier->column_no);
                 yyerror(error_msg.c_str());
                 symbolTable.set_error();
                 return P;
@@ -2028,15 +2030,14 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers *ds, Declar
             Symbol* sym = symbolTable.getSymbol(function_name);
             sym->function_definition = P;
             symbolTable.enterScope(type,function_name);
-            for(int i=0; i<d->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++){
-                ParameterDeclaration* pd = d->direct_declarator->parameters->paramater_list->parameter_declarations[i];
+            for(int i=0; i<dss->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++){
+                ParameterDeclaration* pd = dss->direct_declarator->parameters->paramater_list->parameter_declarations[i];
                 symbolTable.insert(pd->declarator->direct_declarator->identifier->value, pd->type, pd->type.get_size(), 0);
             }
-        } 
-        
+        }
     }
     else{
-        string error_msg = "Function definition must have a function declarator at line " + to_string(d->direct_declarator->identifier->line_no) + ", column " + to_string(d->direct_declarator->identifier->column_no);
+        string error_msg = "Function definition must have a function declarator at line " + to_string(dss->direct_declarator->identifier->line_no) + ", column " + to_string(dss->direct_declarator->identifier->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
         return P;
