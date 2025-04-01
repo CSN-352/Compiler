@@ -36,6 +36,33 @@ TACOperator::TACOperator(TACOperatorType type) : type(type) {}
 //################################## TACInstruction ######################################
 //##############################################################################
 
-TACInstruction::TACInstruction(TACOperator op, TACOperand arg1, TACOperand arg2, TACOperand result)
-    : op(op), arg1(arg1), arg2(arg2), result(result) {}
+TACInstruction::TACInstruction(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2) : op(op), result(result), arg1(arg1), arg2(arg2) {}
+
+TACInstruction::TACInstruction(TACOperator op, TACOperand result, TACOperand arg1) : op(op), result(result), arg1(arg1) {
+    arg2 = TACOperand(TACOperandType::TAC_OPERAND_EMPTY, ""); // Initialize arg2 to empty
+}
+
+TACInstruction::TACInstruction(TACOperand result, TACOperand arg1) : result(result), arg1(arg1) {
+    op = TACOperator(TACOperatorType::TAC_OPERATOR_NOP); // Default operator for assignment
+    arg2 = TACOperand(TACOperandType::TAC_OPERAND_EMPTY, ""); // Initialize arg2 to empty
+}
+
+TACInstruction::TACInstruction(TACOperator op, TACOperand arg1) : op(op), arg1(arg1) {
+    arg2 = TACOperand(TACOperandType::TAC_OPERAND_EMPTY, ""); // Initialize arg2 to empty
+    result = TACOperand(TACOperandType::TAC_OPERAND_EMPTY, ""); // Initialize result to empty
+}
+
+TACInstruction::TACInstruction(TACOperator op, TACOperand arg1, TACOperand arg2) : op(op), arg1(arg1), arg2(arg2) {
+    result = TACOperand(TACOperandType::TAC_OPERAND_EMPTY, ""); // Initialize result to empty
+}
+
+bool is_assignment(TACInstruction* instruction) {
+    if(instruction->op.type == (TACOperatorType::TAC_OPERATOR_CALL || TACOperatorType::TAC_OPERATOR_PARAM || TACOperatorType::TAC_OPERATOR_RETURN)) {
+        return false;
+    } else return true;
+}
+
+
+
+
 
