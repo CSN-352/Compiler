@@ -78,9 +78,8 @@ void yyerror(const char *msg);
     TranslationUnit* translation_unit;
     ExternalDeclaration* external_declaration;
     FunctionDefinition* function_definition;
-
     Statement* statement;
-
+    DeclarationStatementList* declaration_statement_list;
     int intval;
     char* strval;
 }
@@ -141,8 +140,8 @@ void yyerror(const char *msg);
 %type <translation_unit> translation_unit
 %type <external_declaration> external_declaration
 %type <function_definition> function_definition
-
-%type <statement> compound_statement
+%type <statement> compound_statement labeled_statement statement_list expression_statement selection_statement iteration_statement jump_statement
+%type <declaration_statement_list> declaration_statement_list
 
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
 %token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
@@ -592,7 +591,7 @@ initializer:
 //     ;
 
 statement:
-    labeled_statement
+    labeled_statement 
 	| compound_statement
     | expression_statement
 	| selection_statement
@@ -601,22 +600,25 @@ statement:
     | error_case skip_until_semicolon
 	;
 
+// DONE
 labeled_statement:
-    IDENTIFIER COLON statement
-	| CASE conditional_expression COLON statement
-	| DEFAULT COLON statement
+    IDENTIFIER COLON statement {$$ = create_labeled_statement_identifier($1,$3);}
+	| CASE conditional_expression COLON statement {$$ = create_labeled_statement_case($2,$4);}
+	| DEFAULT COLON statement {$$ = create_labeled_statement_default($3);}
 	;
 
 compound_statement:
-    LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} RIGHT_CURLY {symbolTable.exitScope();}
-    | LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} declaration_statement_list RIGHT_CURLY {symbolTable.exitScope();}
+    LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} RIGHT_CURLY {symbolTable.exitScope(); $$ = create_compound_statement();}
+    // left to implement will be done after remaining classes
+    | LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} declaration_statement_list RIGHT_CURLY {symbolTable.exitScope();} 
     ;
 
+// DONE
 declaration_statement_list:
-    declaration_list
-    | statement_list
-    | declaration_statement_list declaration_list 
-    | declaration_statement_list statement_list
+    declaration_list {$$ = create_declaration_statement_list($1);}
+    | statement_list {$$ = create_declaration_statement_list($1);}
+    | declaration_statement_list declaration_list {$$ = create_declaration_statement_list($2);}
+    | declaration_statement_list statement_list {$$ = create_declaration_statement_list($2);}
     ;
 
 // DONE
@@ -625,37 +627,42 @@ declaration_list:
     | declaration_list declaration { $$ = create_declaration_list($1, $2);}
     ;
 
+// DONE
 statement_list:
-    statement
-    | statement_list statement
+    statement { $$ = create_statement_list($1);}
+    | statement_list statement { $$ = create_statement_list($1, $2);}
     ;
 
+// DONE
 expression_statement:
-    SEMICOLON
-    | expression SEMICOLON
+    SEMICOLON {$$ = create_expression_statement();}
+    | expression SEMICOLON {$$ = create_expression_statement($1);}
     ;
 
+// DONE
 selection_statement:
-    IF LEFT_PAREN expression RIGHT_PAREN statement ELSE statement
-    | IF LEFT_PAREN expression RIGHT_PAREN statement
-    | SWITCH LEFT_PAREN expression RIGHT_PAREN statement
+    IF LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_selection_statement_if($3,$5);}
+    | IF LEFT_PAREN expression RIGHT_PAREN statement ELSE statement {$$ = create_selection_statement_if_else($3,$5,$7);}
+    | SWITCH LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_selection_statement_switch($3,$5);}
 
+// DONE
 iteration_statement:
-    WHILE LEFT_PAREN expression RIGHT_PAREN statement
-    | DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON
-    | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement
-    | FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement
-    | FOR LEFT_PAREN declaration expression_statement RIGHT_PAREN statement
-    | FOR LEFT_PAREN declaration expression_statement expression RIGHT_PAREN statement
-    | UNTIL LEFT_PAREN expression RIGHT_PAREN statement
+    WHILE LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_iteration_statement_while($3,$5);}
+    | DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON {$$ = create_iteration_statement_do_while($4,$2);}
+    | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,nullptr,$6);}
+    | FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,$5,$7);}
+    | FOR LEFT_PAREN declaration expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$4,nullptr,$6);}
+    | FOR LEFT_PAREN declaration expression_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$4,$5,$7);}
+    | UNTIL LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_iteration_statement_until($3,$5);}
     ;
 
+// DONE
 jump_statement:
-    GOTO IDENTIFIER SEMICOLON
-	| CONTINUE SEMICOLON
-	| BREAK SEMICOLON
-	| RETURN SEMICOLON
-	| RETURN expression SEMICOLON
+    GOTO IDENTIFIER SEMICOLON {$$ = create_jump_statement($1);}
+	| CONTINUE SEMICOLON {$$ = create_jump_statement($1);}
+	| BREAK SEMICOLON {$$ = create_jump_statement($1);}
+	| RETURN SEMICOLON {$$ = create_jump_statement($1);}
+	| RETURN expression SEMICOLON {$$ = create_jump_statement($2);}
 	;
 
 // DONE

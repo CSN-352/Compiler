@@ -81,6 +81,7 @@ enum PrimitiveTypes
     LONG_DOUBLE_T = 12,
     VOID_T = 13,
     N_PRIMITIVE_TYPES = 14,
+    VOID_STATEMENT_T = 15,
 };
 
 static unordered_map<int, string> primitive_type_name = {
