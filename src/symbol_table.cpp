@@ -15,6 +15,7 @@
 #include "symbol_table.h"
 #include "expression.h"
 #include "ast.h"
+#include "utils.h"
 
 using namespace std;
 
@@ -1025,6 +1026,7 @@ DeclarationSpecifiers *create_declaration_specifiers(SpecifierQualifierList *sql
 {
     DeclarationSpecifiers *P = new DeclarationSpecifiers();
     P->type_specifiers.insert(P->type_specifiers.end(), sql->type_specifiers.begin(), sql->type_specifiers.end());
+    if(sql) sql->set_type();
     P->set_type();
     if (P->type_index == -1)
     {
@@ -1046,6 +1048,7 @@ DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *ds, 
 DeclarationSpecifiers *create_declaration_specifiers(DeclarationSpecifiers *ds, SpecifierQualifierList *sql)
 {
     ds->type_specifiers.insert(ds->type_specifiers.end(), sql->type_specifiers.begin(), sql->type_specifiers.end());
+    if(sql) sql->set_type();
     ds->set_type();
     if (ds->type_index == -1)
     {
@@ -1121,7 +1124,10 @@ DirectDeclarator *create_direct_declarator_array(DirectDeclarator *dd, Expressio
     if ((e->type.isInt() && e->type.is_const_literal))
     {
         ConditionalExpression *c_cast = dynamic_cast<ConditionalExpression *>(e);
-        dd->array_dimensions.push_back(stoi(c_cast->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value));
+        int arr_dim = stoi(c_cast->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value);
+        debug(arr_dim);
+        dd->array_dimensions.push_back(arr_dim);
+        dd->is_array = true;
     }
     else
     {
@@ -1598,6 +1604,7 @@ StructDeclaration *create_struct_declaration(SpecifierQualifierList *sql, Struct
     StructDeclaration *P = new StructDeclaration();
     P->specifier_qualifier_list = sql;
     P->struct_declarator_list = sdl;
+    if(sql) sql->set_type();
     return P;
 }
 
@@ -1998,26 +2005,26 @@ SpecifierQualifierList *create_specifier_qualifier_list(TypeSpecifier *t)
 {
     SpecifierQualifierList *P = new SpecifierQualifierList();
     P->type_specifiers.push_back(t);
-    P->set_type();
-    if (P->type_index == -1)
-    {
-        string error_msg = "Invalid Type " + t->name + " at line " + to_string(t->line_no) + ", column " + to_string(t->column_no);
-        yyerror(error_msg.c_str());
-        symbolTable.set_error();
-    }
+    // P->set_type();
+    // if (P->type_index == -1)
+    // {
+    //     string error_msg = "Invalid Type " + t->name + " at line " + to_string(t->line_no) + ", column " + to_string(t->column_no);
+    //     yyerror(error_msg.c_str());
+    //     symbolTable.set_error();
+    // }
     return P;
 }
 
 SpecifierQualifierList *create_specifier_qualifier_list(SpecifierQualifierList *s, TypeSpecifier *t)
 {
     s->type_specifiers.push_back(t);
-    s->set_type();
-    if (s->type_index == -1)
-    {
-        string error_msg = "Invalid Type at line " + to_string(s->type_specifiers[0]->line_no) + ", column " + to_string(s->type_specifiers[0]->column_no);
-        yyerror(error_msg.c_str());
-        symbolTable.set_error();
-    }
+    // s->set_type();
+    // if (s->type_index == -1)
+    // {
+    //     string error_msg = "Invalid Type at line " + to_string(s->type_specifiers[0]->line_no) + ", column " + to_string(s->type_specifiers[0]->column_no);
+    //     yyerror(error_msg.c_str());
+    //     symbolTable.set_error();
+    // }
     return s;
 }
 
@@ -2043,6 +2050,7 @@ TypeName *create_type_name(SpecifierQualifierList *sql, AbstractDeclarator *ad)
     TypeName *P = new TypeName();
     P->specifier_qualifier_list = sql;
     P->abstract_declarator = ad;
+    if(sql) sql->set_type();
     if (sql->type_index == -1)
     {
         P->type = ERROR_TYPE;
@@ -2811,7 +2819,7 @@ void SymbolTable::print()
         for (const auto symbol : entry.second)
         {
             cout << "| " << setw(20) << left << symbol->name
-                 << "| " << setw(26) << left << symbol->type.typeIndex
+                 << "| " << setw(26) << left << primitive_type_name[symbol->type.typeIndex]
                  // Aren ~ maine add kiya hai .typeIndex (isko change krna hai according to Type class)
                  << "| " << setw(8) << left << symbol->scope
                  << "| " << setw(12) << left << symbol->offset << " |\n";

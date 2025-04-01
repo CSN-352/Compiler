@@ -8,6 +8,7 @@
 #include <list>
 #include "ast.h"
 #include "statement.h"
+#include "utils.h"
 
 class Expression;
 class PrimaryExpression;
@@ -82,6 +83,40 @@ enum PrimitiveTypes
     N_PRIMITIVE_TYPES = 14,
 };
 
+static unordered_map<int, string> primitive_type_name = {
+    {TYPE_ERROR_T, "error"},
+    {U_CHAR_T, "unsigned char"},
+    {CHAR_T, "char"},
+    {U_SHORT_T, "unsigned short"},
+    {SHORT_T, "short"},
+    {U_INT_T, "unsigned int"},
+    {INT_T, "int"},
+    {U_LONG_T, "unsigned long"},
+    {LONG_T, "long"},
+    {U_LONG_LONG_T, "unsigned long long"},
+    {LONG_LONG_T, "long long"},
+    {FLOAT_T, "float"},
+    {DOUBLE_T, "double"},
+    {LONG_DOUBLE_T, "long double"},
+    {VOID_T, "void"}
+};
+
+static unordered_map<int,int> primitive_type_size = {
+    {U_CHAR_T, 1},
+    {CHAR_T, 1},
+    {U_SHORT_T, 2},
+    {SHORT_T, 2},
+    {U_INT_T, 4},
+    {INT_T, 4},
+    {U_LONG_T, 4},
+    {LONG_T, 4},
+    {U_LONG_LONG_T, 8},
+    {LONG_LONG_T, 8},
+    {FLOAT_T, 4},
+    {DOUBLE_T, 8},
+    {LONG_DOUBLE_T, 16},
+};
+
 enum TypeCategory {
     TYPE_CATEGORY_ERROR = -1,
     TYPE_CATEGORY_PRIMITIVE,
@@ -114,8 +149,6 @@ enum AccessSpecifiers{
     ACCESS_SPECIFIER_PRIVATE,
     ACCESS_SPECIFIER_PROTECTED,
 };
-
-static unordered_map<int,int> primitive_type_size = {{0,2},{1,2},{2,2},{3,2},{4,4},{5,4},{6,4},{7,4},{8,8},{9,8},{10,4},{11,8},{12,4}};
 
 // ##############################################################################
 // ################################## TYPE ######################################

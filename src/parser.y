@@ -6,6 +6,7 @@
 #include "symbol_table.h" 
 #include "ast.h"
 #include "expression.h"
+#include "utils.h"
 
 // External declarations 
 extern "C" int yylex();
@@ -506,7 +507,7 @@ declarator:
 direct_declarator:
     IDENTIFIER  { $$ = create_dir_declarator_id( $1 ); }
     | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_declarator_array($1, $3);}
-	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_declarator_array($1, nullptr);} 
+	/* | direct_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_declarator_array($1, nullptr);}  */
     | LEFT_PAREN declarator RIGHT_PAREN { $$ = create_direct_declarator($2); } 
     | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_declarator_function($1, $3);}
     | direct_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_declarator_function($1, nullptr);} 
@@ -683,7 +684,10 @@ skip_until_semicolon:
 %%
 
 void yyerror(const char *msg) {
-    fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
+    /* fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg); */
+    string error_msg = "Syntax error at line " + to_string(yylineno) + ": " + msg;
+    has_error = 1;
+    debug(error_msg, RED);
 }
 
 
@@ -707,8 +711,11 @@ int main(int argc, char **argv) {
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     has_error |= symbolTable.has_error();
+    if(has_error) {
+        debug("Parsing failed due to errors.", RED);
+        return 1;
+    }
     symbolTable.print();
-    // if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;
 }
