@@ -1,4 +1,1 @@
-int x = 1;
-int main(){
-    x = 1;
-}
+int arr[10][5];

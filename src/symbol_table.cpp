@@ -49,6 +49,7 @@ Type::Type(int idx, int p_lvl, bool is_con)
 {
     typeIndex = idx;
     is_const_variable = is_con;
+    is_const_literal = false;
 
     ptr_level = p_lvl;
     is_pointer = ptr_level > 0 ? true : false;
@@ -1089,9 +1090,7 @@ DirectDeclarator ::DirectDeclarator()
 
 DirectDeclarator *create_dir_declarator_id(Identifier *i)
 {
-    // assert( type == ID );
     DirectDeclarator *dd = new DirectDeclarator();
-    // dd->type = type;
     dd->identifier = i;
     // dd->add_children(i);
     return dd;
@@ -1113,10 +1112,10 @@ DirectDeclarator *create_direct_declarator_array(DirectDeclarator *dd, Expressio
         symbolTable.set_error();
         return dd;
     }
-    if (e == nullptr || (e->type.isInt() && e->type.is_const_literal))
+    if ((e->type.isInt() && e->type.is_const_literal))
     {
-        PrimaryExpression *c_cast = dynamic_cast<PrimaryExpression *>(e);
-        dd->array_dimensions.push_back(stoi(c_cast->constant->value));
+        ConditionalExpression *c_cast = dynamic_cast<ConditionalExpression *>(e);
+        dd->array_dimensions.push_back(stoi(c_cast->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value));
     }
     else
     {
@@ -1161,10 +1160,6 @@ Declarator ::Declarator()
 
 Declarator *create_declarator(Pointer *p, DirectDeclarator *dd)
 {
-    if (dd == NULL)
-    {
-        return NULL;
-    }
     Declarator *d = new Declarator();
     d->pointer = p;
     d->direct_declarator = dd;
@@ -1314,8 +1309,8 @@ DirectAbstractDeclarator *create_direct_abstract_declarator_array(Expression *c)
     P->is_array = true;
     if (c == nullptr || (c->type.isInt() && c->type.is_const_literal))
     {
-        PrimaryExpression *c_cast = dynamic_cast<PrimaryExpression *>(c);
-        P->array_dimensions.push_back(stoi(c_cast->constant->value));
+        ConditionalExpression *c_cast = dynamic_cast<ConditionalExpression *>(c);
+        P->array_dimensions.push_back(stoi(c_cast->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value));
     }
     else
     {

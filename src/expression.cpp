@@ -363,7 +363,6 @@ Expression* create_unary_expression(Expression* x){
     U->line_no = x->line_no;
     U->column_no = x->column_no;
     U->type = x->type;
-    cout<<"Unary Expression: "<<U->type.typeIndex<<endl;
     if(x->type.is_error()){
         U->type = ERROR_TYPE;
         return U;
@@ -423,10 +422,9 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
     UnaryExpression *U = new UnaryExpression();
     U->op = op;
     U->cast_expression = dynamic_cast<CastExpression*> (x);
-    U->postfix_expression = U->base_expression->postfix_expression;
+    //U->postfix_expression = U->base_expression->postfix_expression;
     U->line_no = x->line_no;
     U->column_no = x->column_no;
-
     if(x->type.is_error()){
         U->type = ERROR_TYPE;
         return U;
@@ -542,7 +540,6 @@ Expression* create_cast_expression(Expression* x){
     C->line_no = x->line_no;
     C->column_no = x->column_no;
     C->type = x->type;
-    cout<<"Cast Expression: "<<C->type.typeIndex<<endl;
     return C;
 }
 
@@ -589,7 +586,6 @@ Expression* create_multiplicative_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
-    cout<<"Multiplicative Expression: "<<M->type.typeIndex<<endl;
     return M;
 }
 
@@ -698,7 +694,6 @@ Expression* create_additive_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
-    cout<<"Additive Expression: "<<M->type.typeIndex<<endl;
     return M;
 }
 
@@ -790,7 +785,6 @@ Expression* create_shift_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
-    cout<<"Shift Expression: "<<M->type.typeIndex<<endl;
     return M;
 }
 
@@ -857,7 +851,6 @@ Expression* create_relational_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
-    cout<<"Relational Expression: "<<M->type.typeIndex<<endl;
     return M;
 }
 
@@ -915,7 +908,6 @@ Expression* create_equality_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
-    cout<<"Equality Expression: "<<M->type.typeIndex<<endl;
     return M;
 }
 
@@ -972,7 +964,6 @@ Expression* create_and_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
-    cout<<"And Expression: "<<M->type.typeIndex<<endl;
     return M;
 }
 
@@ -1218,7 +1209,6 @@ Expression* create_logical_or_expression(Expression* x){
     C->line_no = x->line_no;
     C->column_no = x->column_no;
     C->type = x->type;
-    cout<<"Logical Or Expression: "<<C->type.typeIndex<<endl;
     return C;
 }
 
@@ -1271,7 +1261,6 @@ Expression* create_conditional_expression(Expression* x){
     C->line_no = x->line_no;
     C->column_no = x->column_no;
     C->type = x->type;
-    cout<<"Conditional Expression: "<<C->type.typeIndex<<endl;
     return C;
 }
 
