@@ -15,6 +15,7 @@ extern YYSTYPE yylval;
 extern FILE *yyin;
 int has_error=0;
 int function_flag = 0;
+FunctionDefinition* fd;
 
 void yyerror(const char *msg);
 %} 
@@ -36,6 +37,7 @@ void yyerror(const char *msg);
 
     Expression* expression;
     ArgumentExpressionList* argument_expression_list;
+    ExpressionList* expression_list;
 
     Declaration* declaration;
     DeclarationSpecifiers* declaration_specifiers;
@@ -92,8 +94,9 @@ void yyerror(const char *msg);
 %token <terminal> STRUCT UNION PUBLIC PRIVATE PROTECTED
 %type <terminal> unary_operator assignment_operator
 
-%type <expression> expression assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression multiplicative_expression additive_expression shift_expression relational_expression equality_expression and_expression xor_expression or_expression logical_and_expression logical_or_expression
+%type <expression> assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression multiplicative_expression additive_expression shift_expression relational_expression equality_expression and_expression xor_expression or_expression logical_and_expression logical_or_expression
 %type <argument_expression_list> argument_expression_list
+%type <expression_list> expression
 
 %type <declaration> declaration
 %type <declaration_specifiers> declaration_specifiers
@@ -215,13 +218,13 @@ unary_operator:
 
 //DONE
 cast_expression: 
-    unary_expression {$$ = $1;} 
-    | LEFT_PAREN type_name RIGHT_PAREN cast_expression 
+    unary_expression {$$ = create_cast_expression($1);} 
+    | LEFT_PAREN type_name RIGHT_PAREN cast_expression  {$$ = create_cast_expression($2,$4);}
     ;
 
 //DONE
 multiplicative_expression:
-    cast_expression {$$ = $1;}
+    cast_expression {$$ = create_multiplicative_expression($1);}
     | multiplicative_expression MULTIPLY cast_expression {$$ = create_multiplicative_expression($1, $2, $3);}
     | multiplicative_expression DIVIDE cast_expression {$$ = create_multiplicative_expression($1, $2, $3);}
     | multiplicative_expression MOD cast_expression {$$ = create_multiplicative_expression($1, $2, $3);}
@@ -229,21 +232,21 @@ multiplicative_expression:
 
 //DONE
 additive_expression:
-    multiplicative_expression {$$ = $1;}
+    multiplicative_expression {$$ = create_additive_expression($1);}
     | additive_expression PLUS multiplicative_expression {$$ = create_additive_expression($1, $2, $3);}
     | additive_expression MINUS multiplicative_expression {$$ = create_additive_expression($1, $2, $3);}
     ;
 
 //DONE
 shift_expression:
-    additive_expression {$$ = $1;}
+    additive_expression {$$ = create_shift_expression($1);}
     | shift_expression LEFT_OP additive_expression {$$ = create_shift_expression($1, $2, $3);}
     | shift_expression RIGHT_OP additive_expression {$$ = create_shift_expression($1, $2, $3);}
     ;
 
 // DONE
 relational_expression:
-    shift_expression {$$ = $1;}
+    shift_expression {$$ = create_relational_expression($1);}
     | relational_expression LESS shift_expression {$$ = create_relational_expression($1, $2, $3);}
     | relational_expression GREATER shift_expression {$$ = create_relational_expression($1, $2, $3);}
     | relational_expression LE_OP shift_expression {$$ = create_relational_expression($1, $2, $3);}
@@ -252,50 +255,50 @@ relational_expression:
 
 // DONE
 equality_expression: 
-    relational_expression {$$ = $1;}
+    relational_expression {$$ = create_equality_expression($1);}
     | equality_expression EQ_OP relational_expression {$$ = create_equality_expression($1, $2, $3);}
     | equality_expression NE_OP relational_expression  {$$ = create_equality_expression($1, $2, $3);}
     ;
 
 // DONE
 and_expression:
-    equality_expression {$$ = $1;}
+    equality_expression {$$ = create_and_expression($1);}
     | and_expression BITWISE_AND equality_expression {$$ = create_and_expression($1, $2, $3);}
     ;
 
 // DONE
 xor_expression:
-    and_expression {$$ = $1;}
+    and_expression {$$ = create_xor_expression($1);}
     | xor_expression BITWISE_XOR and_expression {$$ = create_xor_expression($1, $2, $3);}
     ;
 
 // DONE
 or_expression:
-    xor_expression {$$ = $1;}
+    xor_expression {$$ = create_or_expression($1);}
     | or_expression BITWISE_OR xor_expression  {$$ = create_or_expression($1, $2, $3);}
     ;
 
 // DONE
 logical_and_expression:
-    or_expression {$$ = $1;}
+    or_expression {$$ = create_logical_and_expression($1);}
     | logical_and_expression LOGICAL_AND or_expression {$$ = create_logical_and_expression($1, $2, $3);}
     ;
 
 // DONE
 logical_or_expression:
-    logical_and_expression {$$ = $1;}
+    logical_and_expression {$$ = create_logical_or_expression($1);}
     | logical_or_expression LOGICAL_OR logical_and_expression {$$ = create_logical_or_expression($1, $2, $3);}
     ;
 
 // DONE
 conditional_expression:
-    logical_or_expression {$$ = $1;}
+    logical_or_expression {$$ = create_conditional_expression($1);}
     | logical_or_expression QUESTION expression COLON conditional_expression {$$ = create_conditional_expression($1, $3, $5);}
     ;
 
 // DONE
 assignment_expression:
-    conditional_expression {$$ = $1;}
+    conditional_expression {$$ = create_assignment_expression($1);}
     | unary_expression assignment_operator assignment_expression  {$$ = create_assignment_expression($1, $2, $3);}
     ;
 
@@ -316,7 +319,7 @@ assignment_operator:
 
 // DONE
 expression:
-    assignment_expression {$$ = $1;}
+    assignment_expression {$$ = create_expression_list($1);}
     | expression COMMA assignment_expression {$$ = create_expression_list($1, $3);}
     ;
 
@@ -667,7 +670,7 @@ external_declaration:
 
 // DONE
 function_definition:
-    declaration_specifiers {function_flag = 1;} init_declarator compound_statement {$$ = create_function_definition($1,$3,$4);}
+    declaration_specifiers declarator {fd = create_function_definition($1,$2); function_flag=1;} compound_statement {$$ = create_function_definition(fd,$4);}
     ;
 
 skip_until_semicolon:

@@ -27,7 +27,6 @@ class Expression : public NonTerminal{
     public:
         Type type;
         int operand_cnt;
-        // vector<AssignmentExpression*> assignment_expression_list;
         Expression();
         virtual ~Expression() {}; // Virtual destructor for proper cleanup
 };
@@ -123,12 +122,14 @@ Expression* create_cast_expression(TypeName* tn, Expression* x);
  
 class MultiplicativeExpression: public Expression {
     public:
+        CastExpression* cast_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         MultiplicativeExpression();
 };
 
+Expression* create_multiplicative_expression(Expression* x);
 Expression* create_multiplicative_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -137,11 +138,14 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
 class AdditiveExpression: public Expression {
     public:
+        MultiplicativeExpression* multiplicative_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         AdditiveExpression();
 };
+
+Expression* create_additive_expression(Expression* x);
 Expression* create_additive_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -150,11 +154,14 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
 class ShiftExpression: public Expression {
     public:
+        AdditiveExpression* additive_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         ShiftExpression();
 };
+
+Expression* create_shift_expression(Expression* x);
 Expression* create_shift_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -163,11 +170,14 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
 
 class RelationalExpression: public Expression {
     public:
+        ShiftExpression* shift_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         RelationalExpression();
 };
+
+Expression* create_relational_expression(Expression* x);
 Expression* create_relational_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -176,11 +186,14 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
 
 class EqualityExpression: public Expression {
     public:
+        RelationalExpression* relational_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         EqualityExpression();
 };
+
+Expression* create_equality_expression(Expression* x);
 Expression* create_equality_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -189,11 +202,14 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
 
 class AndExpression: public Expression {
     public:
+        EqualityExpression* equality_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         AndExpression();
 };
+
+Expression* create_and_expression(Expression* x);
 Expression* create_and_expression(Expression* left, Terminal* op, Expression* right);
 
 
@@ -203,11 +219,14 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
 
 class XorExpression: public Expression {
     public:
+        AndExpression* and_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         XorExpression();
 };
+
+Expression* create_xor_expression(Expression* x);
 Expression* create_xor_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -216,11 +235,14 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
 
 class OrExpression: public Expression {
     public:
+        XorExpression* xor_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         OrExpression();
 };
+
+Expression* create_or_expression(Expression* x);
 Expression* create_or_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -229,11 +251,14 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
 
 class LogicalAndExpression: public Expression {
     public:
+        OrExpression* or_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         LogicalAndExpression();
 };
+
+Expression* create_logical_and_expression(Expression* x);
 Expression* create_logical_and_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -242,11 +267,14 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
 
 class LogicalOrExpression: public Expression {
     public:
+        LogicalAndExpression* logical_and_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         LogicalOrExpression();
 };
+
+Expression* create_logical_or_expression(Expression* x);
 Expression* create_logical_or_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -254,11 +282,14 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
 // ##############################################################################
 class ConditionalExpression : public Expression {
     public:
+        LogicalOrExpression* logical_or_expression;
         Expression* condition;   
         Expression* true_expr;   
         Expression* false_expr; 
         ConditionalExpression();
 };
+
+Expression* create_conditional_expression(Expression* x);
 Expression* create_conditional_expression(Expression* condition, Expression* true_expr, Expression* false_expr);
 
 // ##############################################################################
@@ -267,12 +298,14 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
 
 class AssignmentExpression : public Expression {
     public:
+        ConditionalExpression* conditional_expression;
         Expression* left;
         Expression* right;
         Terminal* op;
         AssignmentExpression();
 };
 
+Expression* create_assignment_expression(Expression* x);
 Expression* create_assignment_expression(Expression* left, Terminal* op, Expression* right);
 
 // ##############################################################################
@@ -281,9 +314,11 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
 class ExpressionList : public Expression{
     public:
-        Expression* base_expression;
-        Expression* new_expression;
+        vector <Expression*> expression_list;
         ExpressionList();
 };
-ExpressionList* create_expression_list(Expression* base_expression, Expression* new_expression);
+
+ExpressionList* create_expression_list(Expression* x);
+ExpressionList* create_expression_list(ExpressionList* expression_list, Expression* new_expression);
+
 #endif

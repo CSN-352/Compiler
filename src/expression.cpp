@@ -79,6 +79,10 @@ Expression* create_primary_expression(StringLiteral* x){
 }
 
 Expression* create_primary_expression(Expression* x){
+    PrimaryExpression* P = new PrimaryExpression();
+    P->type = x->type;
+    P->line_no = x->line_no;
+    P->column_no = x->column_no;
     return x;
 }
 
@@ -88,16 +92,23 @@ Expression* create_primary_expression(Expression* x){
 
 ArgumentExpressionList :: ArgumentExpressionList() : Expression() {
     name = "ARGUMENT EXPRESSION LIST";
+    type = ERROR_TYPE;
 };
 
 ArgumentExpressionList* create_argument_expression_list(Expression* x){
     ArgumentExpressionList* P = new ArgumentExpressionList();
     P->arguments.push_back(x);
+    P->line_no = x->line_no;   
+    P->column_no = x->column_no;
+    P->type = x->type; // if argument expression list does not have an erronous expression, set type to the type of the first expression. Else set it as ERROR_TYPE.
     return P;
 }
 
 ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* args_expr_list, Expression* x){
     args_expr_list->arguments.push_back(x);
+    if(x->type.is_error()){
+        args_expr_list->type = ERROR_TYPE;
+    }
     return args_expr_list;
 }
 
@@ -110,6 +121,7 @@ PostfixExpression :: PostfixExpression() : Expression() {
     primary_expression = nullptr;
     base_expression = nullptr;
     index_expression = nullptr;
+    argument_expression_list = nullptr;
     op = nullptr;
     member_name = nullptr;
 }
@@ -117,6 +129,9 @@ PostfixExpression :: PostfixExpression() : Expression() {
 Expression* create_postfix_expression(Expression* x){
     PostfixExpression* P = new PostfixExpression();
     P->primary_expression = dynamic_cast<PrimaryExpression*>(x);
+    P->type = x->type;
+    P->line_no = x->line_no;
+    P->column_no = x->column_no;
     return P;
 }
 
@@ -322,7 +337,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type = x->type;
                 P->type.is_function = false;
                 P->type.num_args = 0;
-                P->type.arg_types.empty();
+                P->type.arg_types.clear();
             }
         }
     }
@@ -344,12 +359,11 @@ UnaryExpression :: UnaryExpression() : Expression() {
 
 Expression* create_unary_expression(Expression* x){
     UnaryExpression* U = new UnaryExpression();
-    // U->base_expression = dynamic_cast<UnaryExpression*> (x);
-    // U->postfix_expression = U->base_expression->postfix_expression;
     U->postfix_expression = dynamic_cast<PostfixExpression *>(x);
     U->line_no = x->line_no;
     U->column_no = x->column_no;
-
+    U->type = x->type;
+    cout<<"Unary Expression: "<<U->type.typeIndex<<endl;
     if(x->type.is_error()){
         U->type = ERROR_TYPE;
         return U;
@@ -516,6 +530,7 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn){
 // ################################## CAST EXPRESSION ######################################
 // ##############################################################################
 CastExpression :: CastExpression(): Expression(){
+    name = "CAST EXPRESSION";
     unary_expression = nullptr;
     base_expression = nullptr;
     type_name = nullptr;
@@ -526,11 +541,8 @@ Expression* create_cast_expression(Expression* x){
     C->unary_expression = dynamic_cast<UnaryExpression*> (x);
     C->line_no = x->line_no;
     C->column_no = x->column_no;
-    C->name = "CAST EXPRESSION";
-    if (x->type.is_error()) {
-        C->type = ERROR_TYPE;
-        return C;
-    }
+    C->type = x->type;
+    cout<<"Cast Expression: "<<C->type.typeIndex<<endl;
     return C;
 }
 
@@ -564,10 +576,21 @@ Expression* create_cast_expression(TypeName* tn, Expression* x){
 // ##############################################################################
 
 MultiplicativeExpression::MultiplicativeExpression(){
+    name = "MULTIPLICATIVE EXPRESSION";
+    cast_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
-    name = "MULTIPLICATIVE EXPRESSION";
+}
+
+Expression* create_multiplicative_expression(Expression* x){
+    MultiplicativeExpression* M = new MultiplicativeExpression();
+    M->cast_expression = dynamic_cast<CastExpression*> (x);
+    M->line_no = x->line_no;
+    M->column_no = x->column_no;
+    M->type = x->type;
+    cout<<"Multiplicative Expression: "<<M->type.typeIndex<<endl;
+    return M;
 }
 
 Expression* create_multiplicative_expression(Expression* left, Terminal* op, Expression* right){
@@ -662,10 +685,21 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 // ##############################################################################
 
 AdditiveExpression::AdditiveExpression(){
+    multiplicative_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "ADDITIVE EXPRESSION";
+}
+
+Expression* create_additive_expression(Expression* x){
+    AdditiveExpression* M = new AdditiveExpression();
+    M->multiplicative_expression = dynamic_cast<MultiplicativeExpression*> (x);
+    M->line_no = x->line_no;
+    M->column_no = x->column_no;
+    M->type = x->type;
+    cout<<"Additive Expression: "<<M->type.typeIndex<<endl;
+    return M;
 }
 
 Expression* create_additive_expression(Expression* left, Terminal* op, Expression* right){
@@ -736,16 +770,28 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
+    return A;
 }
 
 // ##############################################################################
 // ################################## SHIFT EXPRESSION ######################################
 // ##############################################################################
 ShiftExpression::ShiftExpression(){
+    additive_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "SHIFT EXPRESSION";
+}
+
+Expression* create_shift_expression(Expression* x){
+    ShiftExpression* M = new ShiftExpression();
+    M->additive_expression = dynamic_cast<AdditiveExpression*> (x);
+    M->line_no = x->line_no;
+    M->column_no = x->column_no;
+    M->type = x->type;
+    cout<<"Shift Expression: "<<M->type.typeIndex<<endl;
+    return M;
 }
 
 // Assumptions Based on C Semantics:
@@ -798,10 +844,21 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
 // ##############################################################################
 
 RelationalExpression::RelationalExpression() {
+    shift_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "RELATIONAL EXPRESSION";
+}
+
+Expression* create_relational_expression(Expression* x){
+    RelationalExpression* M = new RelationalExpression();
+    M->shift_expression = dynamic_cast<ShiftExpression*> (x);
+    M->line_no = x->line_no;
+    M->column_no = x->column_no;
+    M->type = x->type;
+    cout<<"Relational Expression: "<<M->type.typeIndex<<endl;
+    return M;
 }
 
 Expression* create_relational_expression(Expression* left, Terminal* op, Expression* right) {
@@ -845,10 +902,21 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
 // ##############################################################################
 
 EqualityExpression::EqualityExpression() {
+    relational_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "EQUALITY EXPRESSION";
+}
+
+Expression* create_equality_expression(Expression* x){
+    EqualityExpression* M = new EqualityExpression();
+    M->relational_expression = dynamic_cast<RelationalExpression*> (x);
+    M->line_no = x->line_no;
+    M->column_no = x->column_no;
+    M->type = x->type;
+    cout<<"Equality Expression: "<<M->type.typeIndex<<endl;
+    return M;
 }
 
 Expression* create_equality_expression(Expression* left, Terminal* op, Expression* right) {
@@ -891,10 +959,21 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
 // ##############################################################################
 
 AndExpression::AndExpression() {
+    equality_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "AND EXPRESSION";
+}
+
+Expression* create_and_expression(Expression* x){
+    AndExpression* M = new AndExpression();
+    M->equality_expression = dynamic_cast<EqualityExpression*> (x);
+    M->line_no = x->line_no;
+    M->column_no = x->column_no;
+    M->type = x->type;
+    cout<<"And Expression: "<<M->type.typeIndex<<endl;
+    return M;
 }
 
 Expression* create_and_expression(Expression* left, Terminal* op, Expression* right) {
@@ -946,10 +1025,20 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
 // ##############################################################################
 
 XorExpression::XorExpression() {
+    and_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "XOR EXPRESSION";
+}
+
+Expression* create_xor_expression(Expression* x){
+    XorExpression* M = new XorExpression();
+    M->and_expression = dynamic_cast<AndExpression*> (x);
+    M->line_no = x->line_no;
+    M->column_no = x->column_no;
+    M->type = x->type;
+    return M;
 }
 
 Expression* create_xor_expression(Expression* left, Terminal* op, Expression* right) {
@@ -1000,10 +1089,20 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
 // ##############################################################################
 
 OrExpression::OrExpression() {
+    xor_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "OR EXPRESSION";
+}
+
+Expression* create_or_expression(Expression* x){
+    OrExpression* C = new OrExpression();
+    C->xor_expression = dynamic_cast<XorExpression*> (x);
+    C->line_no = x->line_no;
+    C->column_no = x->column_no;
+    C->type = x->type;
+    return C;
 }
 
 Expression* create_or_expression(Expression* left, Terminal* op, Expression* right) {
@@ -1054,10 +1153,20 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
 // ##############################################################################
 
 LogicalAndExpression::LogicalAndExpression() {
+    or_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "LOGICAL AND EXPRESSION";
+}
+
+Expression* create_logical_and_expression(Expression* x){
+    LogicalAndExpression* C = new LogicalAndExpression();
+    C->or_expression = dynamic_cast<OrExpression*> (x);
+    C->line_no = x->line_no;
+    C->column_no = x->column_no;
+    C->type = x->type;
+    return C;
 }
 
 Expression* create_logical_and_expression(Expression* left, Terminal* op, Expression* right) {
@@ -1096,10 +1205,21 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
 // ##############################################################################
 
 LogicalOrExpression::LogicalOrExpression() {
+    logical_and_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "LOGICAL OR EXPRESSION";
+}
+
+Expression* create_logical_or_expression(Expression* x){
+    LogicalOrExpression* C = new LogicalOrExpression();
+    C->logical_and_expression = dynamic_cast<LogicalAndExpression*> (x);
+    C->line_no = x->line_no;
+    C->column_no = x->column_no;
+    C->type = x->type;
+    cout<<"Logical Or Expression: "<<C->type.typeIndex<<endl;
+    return C;
 }
 
 Expression* create_logical_or_expression(Expression* left, Terminal* op, Expression* right) {
@@ -1138,10 +1258,21 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
 // ##############################################################################
 
 ConditionalExpression::ConditionalExpression() {
+    logical_or_expression = nullptr;
     condition = nullptr;
     true_expr = nullptr;
     false_expr = nullptr;
     name = "CONDITIONAL EXPRESSION";
+}
+
+Expression* create_conditional_expression(Expression* x){
+    ConditionalExpression* C = new ConditionalExpression();
+    C->logical_or_expression = dynamic_cast<LogicalOrExpression*> (x);
+    C->line_no = x->line_no;
+    C->column_no = x->column_no;
+    C->type = x->type;
+    cout<<"Conditional Expression: "<<C->type.typeIndex<<endl;
+    return C;
 }
 
 Expression* create_conditional_expression(Expression* condition, Expression* true_expr, Expression* false_expr) {
@@ -1201,10 +1332,20 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
 // ##############################################################################
 
 AssignmentExpression::AssignmentExpression() {
+    conditional_expression = nullptr;
     left = nullptr;
     right = nullptr;
     op = nullptr;
     name = "ASSIGNMENT EXPRESSION";
+}
+
+Expression* create_assignment_expression(Expression* x){
+    AssignmentExpression* C = new AssignmentExpression();
+    C->conditional_expression = dynamic_cast<ConditionalExpression*> (x);
+    C->line_no = x->line_no;
+    C->column_no = x->column_no;
+    C->type = x->type;  
+    return C;
 }
 
 Expression* create_assignment_expression(Expression* left, Terminal* op, Expression* right) {
@@ -1303,22 +1444,24 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 // ##############################################################################
 
 ExpressionList::ExpressionList() {
-    base_expression = nullptr;
-    new_expression = nullptr;
     name = "EXPRESSION LIST";
+    type = ERROR_TYPE;
 }
 
-ExpressionList* create_expression_list(Expression* base_expression, Expression* new_expression) {
+ExpressionList* create_expression_list(Expression* x){
     ExpressionList* E = new ExpressionList();
-    E->base_expression = base_expression;
-    E->new_expression = new_expression;
-    E->line_no = base_expression->line_no;
-    E->column_no = base_expression->column_no;
-    E->name = "EXPRESSION LIST";
-
-    if(base_expression->type.is_error() || new_expression->type.is_error()) {
-        E->type = ERROR_TYPE;
-        return E;
-    }
+    E->expression_list.push_back(x);
+    E->line_no = x->line_no;
+    E->column_no = x->column_no;
+    E->type = x->type;  // if expression list does not have an erronous expression, set type to the type of the first expression. Else set it as ERROR_TYPE.
     return E;
+}
+
+ExpressionList* create_expression_list(ExpressionList* expression_list, Expression* new_expression) {
+    expression_list->expression_list.push_back(new_expression);
+    if(new_expression->type.is_error()) {
+        expression_list->type = ERROR_TYPE;
+        return expression_list;
+    }
+    return expression_list;
 }

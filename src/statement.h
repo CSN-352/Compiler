@@ -7,12 +7,12 @@
 using namespace std;
 
 class Statement : public NonTerminal{
-    public:
+    //public:
         // Statement();
 };
 
 class CompoundStatement : public Statement{
-    public: 
+    //public: 
         
         // CompoundStatement();
 };

@@ -13,7 +13,7 @@ class Expression;
 class PrimaryExpression;
 class ConditionalExpression;
 class AssignmentExpression;
-class Type;
+class Type; 
 class TypeDefinition;
 class DefinedTypes;
 class TypeQualifierList;
@@ -850,12 +850,14 @@ class FunctionDefinition : public NonTerminal{
     // Fully Implemented
     public:
         DeclarationSpecifiers *declaration_specifiers;
-        InitDeclarator *init_declarator;
+        Declarator *declarator;
         CompoundStatement* compound_statement;
         SymbolTable function_symbol_table;
         FunctionDefinition();
 };
-FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, InitDeclarator *d, Statement *cs);
+
+FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declarator *d);
+FunctionDefinition* create_function_definition(FunctionDefinition* fd, Statement* cs);
 
 // ##############################################################################
 // ################################ IDENTIFIER ##################################
