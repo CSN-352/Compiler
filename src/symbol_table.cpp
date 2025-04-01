@@ -2509,7 +2509,12 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
 
 void SymbolTable::insert_defined_type(std::string name, DefinedTypes type)
 {
-    auto top = scope_stack.top();
+
+    pair<int, pair<Type, string>> top = {0, {Type(), name}};
+    if (!scope_stack.empty())
+    {
+        top = scope_stack.top();
+    }
     for (auto defined_type : defined_types[name])
     {
         if (defined_type.first == currentScope)
