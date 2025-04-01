@@ -344,8 +344,9 @@ UnaryExpression :: UnaryExpression() : Expression() {
 
 Expression* create_unary_expression(Expression* x){
     UnaryExpression* U = new UnaryExpression();
-    U->base_expression = dynamic_cast<UnaryExpression*> (x);
-    U->postfix_expression = U->base_expression->postfix_expression;
+    // U->base_expression = dynamic_cast<UnaryExpression*> (x);
+    // U->postfix_expression = U->base_expression->postfix_expression;
+    U->postfix_expression = dynamic_cast<PostfixExpression *>(x);
     U->line_no = x->line_no;
     U->column_no = x->column_no;
 

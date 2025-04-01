@@ -1503,9 +1503,10 @@ Enumerator *create_enumerator(Identifier *id, Expression *e)
 {
     Enumerator *P = new Enumerator();
     P->identifier = id;
-    ConditionalExpression *e_cast = dynamic_cast<ConditionalExpression *>(e);
-    if (e == nullptr || (e->type.isInt() && e->type.is_const_literal))
-        P->initializer_expression = e_cast;
+    ConditionalExpression *e_cast2 = dynamic_cast<ConditionalExpression *>(e);
+    UnaryExpression *e_cast = dynamic_cast<UnaryExpression *>(e);
+    if (e_cast == nullptr || (e_cast->postfix_expression->primary_expression->type.isInt() && e_cast->postfix_expression->primary_expression->type.is_const_literal))
+        P->initializer_expression = e_cast2;
     else
     {
         string error_msg = "Enumerator value must be a constant integer at line  " + to_string(e->line_no) + ", column " + to_string(e->column_no);

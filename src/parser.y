@@ -476,7 +476,7 @@ enum_specifier:
 
 // DONE
 enumerator_list:
-    enumerator { $$ = create_enumerator_list(nullptr,$1);}
+    enumerator { $$ = create_enumerator_list($1);}
     | enumerator_list COMMA enumerator { $$ = create_enumerator_list($1, $3);}
     ;
 
