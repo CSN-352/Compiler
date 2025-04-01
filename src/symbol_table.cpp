@@ -1429,6 +1429,17 @@ StructUnionSpecifier *create_struct_union_specifier(StructUnionSpecifier* sus, S
     return sus;
 }
 
+StructUnionSpecifier* create_struct_union_specifier(string struct_or_union, Identifier* id, StructDeclarationSet* sds)
+{
+    StructUnionSpecifier* P = new StructUnionSpecifier();
+    if (struct_or_union == "STRUCT")
+        P->type_category = TYPE_CATEGORY_STRUCT;
+    else
+        P->type_category = TYPE_CATEGORY_UNION;
+    P->identifier = id;
+    return P;
+}
+
 // ##############################################################################
 // ############################ CLASS SPECIFIER #########################
 // ##############################################################################

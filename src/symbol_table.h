@@ -568,7 +568,7 @@ class StructUnionSpecifier : public NonTerminal
 
 StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id);
 StructUnionSpecifier *create_struct_union_specifier(StructUnionSpecifier* sus, StructDeclarationSet *sds);
-
+StructUnionSpecifier* create_struct_union_specifier(string struct_or_union, Identifier* id, StructDeclarationSet* sds);
 
 // ##############################################################################
 // ################################## CLASS SPECIFIER ######################################
