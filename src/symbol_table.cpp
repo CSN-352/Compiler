@@ -992,6 +992,9 @@ void DeclarationSpecifiers ::set_type()
         {
             type_index = PrimitiveTypes::DOUBLE_T;
         }
+        else if (isVoid) {
+            type_index = PrimitiveTypes::VOID_T;
+        }
         else if (isEnum)
         {
             type_index = PrimitiveTypes::INT_T;
@@ -1947,6 +1950,9 @@ void SpecifierQualifierList ::set_type()
         else if (isDouble && !isUnsigned)
         {
             type_index = PrimitiveTypes::DOUBLE_T;
+        }
+        else if (isVoid) {
+            type_index = PrimitiveTypes::VOID_T;
         }
         else if (isEnum)
         {
