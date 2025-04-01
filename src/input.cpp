@@ -9,12 +9,13 @@
 // };
 
 // int main(){
-//     B a;
+    // B a;
+    long long int a;
 // }
 
-enum
-{
-    value1 = 1,
-    value2 = 2
+// enum
+// {
+//     value1 = 1,
+//     value2 = 2
 
-};
+// };
