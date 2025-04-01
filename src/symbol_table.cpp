@@ -763,13 +763,13 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
                     t.arg_types.push_back(variable->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
                 overloaded = 1;
             }
-            if (ptr_level == 0 && declaration_specifiers->type_index == 13)
-            {
-                string error_msg = "Variable of field '" + variable->direct_declarator->identifier->value + "' declared void at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
-                yyerror(error_msg.c_str());
-                symbolTable.set_error();
-                return P;
-            }
+            // if (ptr_level == 0 && declaration_specifiers->type_index == 13)
+            // {
+            //     string error_msg = "Variable of field '" + variable->direct_declarator->identifier->value + "' declared void at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
+            //     yyerror(error_msg.c_str());
+            //     symbolTable.set_error();
+            //     return P;
+            // }
             if (init_declarator_list->init_declarator_list[index]->initializer != nullptr)
             {
                 bool compatible = init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.is_convertible_to(t);
