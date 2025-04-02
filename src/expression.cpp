@@ -1060,16 +1060,14 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             emit(TACOperator(op->name == "LT" ? TAC_OPERATOR_LT :
                 op->name == "LE" ? TAC_OPERATOR_LE :
                 op->name == "GT" ? TAC_OPERATOR_GT :
-                op->name == "GE" ? TAC_OPERATOR_GE :
-                TAC_OPERATOR_NE), R->result, left->result, t1); // TAC
+                TAC_OPERATOR_GE), R->result, left->result, t1); // TAC
         } 
         else if(lt.typeIndex == rt.typeIndex){
             R->result = new_temp_var(); // TAC
             emit(TACOperator(op->name == "LT" ? TAC_OPERATOR_LT :
                 op->name == "LE" ? TAC_OPERATOR_LE :
                 op->name == "GT" ? TAC_OPERATOR_GT :
-                op->name == "GE" ? TAC_OPERATOR_GE :
-                TAC_OPERATOR_NE), R->result, left->result, right->result); // TAC
+                TAC_OPERATOR_GE), R->result, left->result, right->result); // TAC
         }
         else {
             TACOperand t1 = new_temp_var(); // TAC
@@ -1078,8 +1076,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             emit(TACOperator(op->name == "LT" ? TAC_OPERATOR_LT :
                 op->name == "LE" ? TAC_OPERATOR_LE :
                 op->name == "GT" ? TAC_OPERATOR_GT :
-                op->name == "GE" ? TAC_OPERATOR_GE :
-                TAC_OPERATOR_NE), R->result, t1, right->result); // TAC
+                TAC_OPERATOR_GE), R->result, t1, right->result); // TAC
         }
     } 
     else if(lt.is_pointer && rt.is_pointer) {
@@ -1089,8 +1086,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             emit(TACOperator(op->name == "LT" ? TAC_OPERATOR_LT :
                 op->name == "LE" ? TAC_OPERATOR_LE :
                 op->name == "GT" ? TAC_OPERATOR_GT :
-                op->name == "GE" ? TAC_OPERATOR_GE :
-                TAC_OPERATOR_NE), R->result, left->result, right->result); // TAC
+                TAC_OPERATOR_GE), R->result, left->result, right->result); // TAC
         } 
         else {
             R->type = ERROR_TYPE;
@@ -1130,6 +1126,7 @@ Expression* create_equality_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
+    M->result = x->result; // TAC
     return M;
 }
 
@@ -1152,19 +1149,56 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
 
     if (lt.isIntorFloat() && rt.isIntorFloat()) {
         E->type = Type(PrimitiveTypes::INT_T, 0, false);  // Result is always int (0 or 1)
+        if (lt.isUnsigned() != rt.isUnsigned()){
+            // causes undefined behaviour
+            E->type = ERROR_TYPE;
+            string error_msg = "Operands of '" + op->name + "' must have same signedness " +
+                            to_string(E->line_no) + ", column " + to_string(E->column_no);
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
+            return E;
+        }
+        if (lt.typeIndex > rt.typeIndex) {
+            TACOperand t1 = new_temp_var(); // TAC
+            E->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result); // TAC
+            emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, left->result, t1); // TAC
+        } 
+        else if(lt.typeIndex == rt.typeIndex){
+            E->result = new_temp_var(); // TAC
+            emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, left->result, right->result); // TAC
+        }
+        else {
+            TACOperand t1 = new_temp_var(); // TAC
+            E->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result); // TAC   
+            emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, t1, right->result); // TAC
+        }
         
     } 
     else if (lt.isPointer() && rt.isPointer()) {
         E->type = Type(PrimitiveTypes::INT_T, 0, false);
+        if(lt == rt){
+            E->result = new_temp_var(); // TAC
+            emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, left->result, right->result); // TAC
+        } 
+        else {
+            E->type = ERROR_TYPE;
+            string error_msg = "Pointer comparison requires both pointers to be of the same type at line " +
+                               to_string(E->line_no) + ", column " + to_string(E->column_no);
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
+            return E;
+        }
         
     } 
     else {
         E->type = ERROR_TYPE;
-        std::string error_msg = "Invalid operand types for operator '" + op->name +
-                                "' at line " + std::to_string(E->line_no) +
-                                ", column " + std::to_string(E->column_no);
+        std::string error_msg = "Operands of '" + op->name + "' must be integers or float or pointer at line " +
+                           to_string(E->line_no) + ", column " + to_string(E->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
+        return E;
     }
 
     return E;
