@@ -166,15 +166,15 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     }
     else if(x->type.isInt()){
         P->type = x->type;
-        P->result = x->result; // TAC
-        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), P->result, x->result, new_constant("1")); // TAC
-        emit(TACOperator(TAC_OPERATOR_ASSIGN), x->result, P->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        P->result = new_temp_var(); // TAC
+        emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1")); // TAC
     }
     else if(x->type.isFloat()){
         P->type = x->type;
         P->result = x->result; // TAC
-        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), P->result, x->result, new_constant("1")); // TAC
-        emit(TACOperator(TAC_OPERATOR_ASSIGN), x->result, P->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1")); // TAC
     }
     else if(x->type.is_pointer){
         P->type = x->type;
@@ -411,7 +411,6 @@ Expression* create_unary_expression(Expression* x){
         return U;
     }
     U->result = x->result; // TAC
-    
     return U;
 }
 
