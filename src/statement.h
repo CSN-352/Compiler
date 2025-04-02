@@ -116,11 +116,11 @@ class IterationStatement : public Statement{
     public:
         IterationStatement();
 };
-IterationStatement* create_iteration_statement_while(Expression* expression, Statement* statement);
-IterationStatement* create_iteration_statement_do_while(Expression* expression, Statement* statement);
-IterationStatement* create_iteration_statement_for(Statement* statement1, Statement* statement2, Expression* expression, Statement* statement3);
-IterationStatement* create_iteration_statement_for_dec(Declaration* declaration, Statement* statement1, Expression* expression, Statement* statement2);
-IterationStatement* create_iteration_statement_until(Expression* expression, Statement* statement);
+Statement* create_iteration_statement_while(Expression* expression, Statement* statement);
+Statement* create_iteration_statement_do_while(Expression* expression, Statement* statement);
+Statement* create_iteration_statement_for(Statement* statement1, Statement* statement2, Expression* expression, Statement* statement3);
+Statement* create_iteration_statement_for_dec(Declaration* declaration, Statement* statement1, Expression* expression, Statement* statement2);
+Statement* create_iteration_statement_until(Expression* expression, Statement* statement);
 
 // ##############################################################################
 // ################################## JUMP STATEMENT ######################################
@@ -133,6 +133,6 @@ class JumpStatement : public Statement{
         JumpStatement();
 };
 
-JumpStatement* create_jump_statement(Terminal* op);
-JumpStatement* create_jump_statement(Expression* expression);
+Statement* create_jump_statement(Terminal* op);
+Statement* create_jump_statement(Expression* expression);
 #endif

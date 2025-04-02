@@ -197,7 +197,7 @@ SelectionStatement::SelectionStatement() : Statement() {
     name = "SELECTION STATEMENT";
 }
 
-SelectionStatement* create_selection_statement_if(Expression* expression, Statement* statement) {
+Statement* create_selection_statement_if(Expression* expression, Statement* statement) {
     SelectionStatement* S = new SelectionStatement();
     S->expression = expression;
     S->statement = statement;
@@ -220,7 +220,7 @@ SelectionStatement* create_selection_statement_if(Expression* expression, Statem
     return S;
 }
 
-SelectionStatement* create_selection_statement_if_else(Expression* expression, Statement* statement, Statement* else_statement) {
+Statement* create_selection_statement_if_else(Expression* expression, Statement* statement, Statement* else_statement) {
     SelectionStatement* S = new SelectionStatement();
     S->expression = expression;
     S->statement = statement;
@@ -244,7 +244,7 @@ SelectionStatement* create_selection_statement_if_else(Expression* expression, S
     return S;
 }
 
-SelectionStatement* create_selection_statement_switch(Expression* expression, Statement* statement) {
+Statement* create_selection_statement_switch(Expression* expression, Statement* statement) {
     SelectionStatement* S = new SelectionStatement();
     S->expression = expression;
     S->statement = statement;
@@ -275,7 +275,7 @@ IterationStatement::IterationStatement() : Statement() {
     name = "ITERATION STATEMENT";
 }
 
-IterationStatement* create_iteration_statement_while(Expression* expression, Statement* statement) {
+Statement* create_iteration_statement_while(Expression* expression, Statement* statement) {
     IterationStatement* S = new IterationStatement();
     // S->expression = expression;
     // S->statement = statement;
@@ -297,7 +297,7 @@ IterationStatement* create_iteration_statement_while(Expression* expression, Sta
     return S;
 }
 
-IterationStatement* create_iteration_statement_do_while(Expression* expression, Statement* statement) {
+Statement* create_iteration_statement_do_while(Expression* expression, Statement* statement) {
     IterationStatement* S = new IterationStatement();
     // S->expression = expression;
     // S->statement = statement;
@@ -320,7 +320,7 @@ IterationStatement* create_iteration_statement_do_while(Expression* expression, 
 }
 
 
-IterationStatement* create_iteration_statement_for(Statement* statement1, Statement* statement2, Expression* expression, Statement* statement3){
+Statement* create_iteration_statement_for(Statement* statement1, Statement* statement2, Expression* expression, Statement* statement3){
     IterationStatement* S = new IterationStatement();
     S->line_no = expression->line_no;
     S->column_no = expression->column_no;
@@ -344,7 +344,7 @@ IterationStatement* create_iteration_statement_for(Statement* statement1, Statem
     return S;
 }
 
-IterationStatement* create_iteration_statement_for_dec(Declaration* declaration, Statement* statement1, Expression* expression, Statement* statement2){
+Statement* create_iteration_statement_for_dec(Declaration* declaration, Statement* statement1, Expression* expression, Statement* statement2){
     IterationStatement* S = new IterationStatement();
     S->line_no = expression->line_no;
     S->column_no = expression->column_no;
@@ -367,7 +367,7 @@ IterationStatement* create_iteration_statement_for_dec(Declaration* declaration,
     return S;    
 }
 
-IterationStatement* create_iteration_statement_until(Expression* expression, Statement* statement){
+Statement* create_iteration_statement_until(Expression* expression, Statement* statement){
     IterationStatement* S = new IterationStatement();
     S->line_no = expression->line_no;
     S->column_no = expression->column_no;
@@ -394,7 +394,7 @@ JumpStatement::JumpStatement() : Statement() {
     name = "JUMP STATEMENT";
 }
 
-JumpStatement* create_jump_statement(Terminal* op) {
+Statement* create_jump_statement(Terminal* op) {
     JumpStatement* S = new JumpStatement();
     if(op->name == "GOTO"){
         S->name = "JUMP STATEMENT GOTO";
@@ -409,7 +409,7 @@ JumpStatement* create_jump_statement(Terminal* op) {
     return S;
 }
 
-JumpStatement* create_jump_statement(Expression* expression) {
+Statement* create_jump_statement(Expression* expression) {
     JumpStatement* S = new JumpStatement();
     S->line_no = expression->line_no;
     S->return_type = expression->type;
