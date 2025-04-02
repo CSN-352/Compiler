@@ -26,6 +26,7 @@ void yyerror(const char *msg);
     #include "ast.h"
     #include "expression.h"
     #include "symbol_table.h"
+    #include "statement.h"
 }
 
 /* Token definitions */
@@ -80,6 +81,7 @@ void yyerror(const char *msg);
     FunctionDefinition* function_definition;
     Statement* statement;
     DeclarationStatementList* declaration_statement_list;
+    StatementList* statement_list;
     int intval;
     char* strval;
 }
@@ -93,6 +95,7 @@ void yyerror(const char *msg);
 %token <terminal> ASSIGN
 %token <terminal> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME 
 %token <terminal> STRUCT UNION PUBLIC PRIVATE PROTECTED
+%token <terminal> GOTO CONTINUE BREAK RETURN
 %type <terminal> unary_operator assignment_operator
 
 %type <expression> assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression multiplicative_expression additive_expression shift_expression relational_expression equality_expression and_expression xor_expression or_expression logical_and_expression logical_or_expression
@@ -140,12 +143,13 @@ void yyerror(const char *msg);
 %type <translation_unit> translation_unit
 %type <external_declaration> external_declaration
 %type <function_definition> function_definition
-%type <statement> compound_statement labeled_statement statement_list expression_statement selection_statement iteration_statement jump_statement
+%type <statement> statement compound_statement labeled_statement expression_statement selection_statement iteration_statement jump_statement
+%type <statement_list> statement_list
 %type <declaration_statement_list> declaration_statement_list
 
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
-%token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
-%token <strval> IF RETURN SWITCH
+%token <strval> CASE DEFAULT DO ELSE ENUM FOR
+%token <strval> IF SWITCH
 %token <strval> WHILE UNTIL CLASS ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS 
 %token <strval> INHERITANCE_OP 
@@ -648,7 +652,7 @@ selection_statement:
 // DONE
 iteration_statement:
     WHILE LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_iteration_statement_while($3,$5);}
-    | DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON {$$ = create_iteration_statement_do_while($4,$2);}
+    | DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON {$$ = create_iteration_statement_do_while($5,$2);}
     | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,nullptr,$6);}
     | FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,$5,$7);}
     | FOR LEFT_PAREN declaration expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$4,nullptr,$6);}

@@ -297,6 +297,29 @@ IterationStatement* create_iteration_statement_while(Expression* expression, Sta
     return S;
 }
 
+IterationStatement* create_iteration_statement_do_while(Expression* expression, Statement* statement) {
+    IterationStatement* S = new IterationStatement();
+    // S->expression = expression;
+    // S->statement = statement;
+    // S->iteration_type = 0; // While statement
+    S->line_no = expression->line_no;
+    S->column_no = expression->column_no;
+    S->name = "ITERATION STATEMENT WHILE";
+
+    if(expression->type == ERROR_TYPE || statement->type == ERROR_TYPE){
+        S->type = ERROR_TYPE;
+    } else if(!expression->type.isIntorFloat()){
+        S->type = ERROR_TYPE;
+        string error_msg = "Condition of while statement must be an integer at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    } else {
+        S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+    }
+    return S;
+}
+
+
 IterationStatement* create_iteration_statement_for(Statement* statement1, Statement* statement2, Expression* expression, Statement* statement3){
     IterationStatement* S = new IterationStatement();
     S->line_no = expression->line_no;

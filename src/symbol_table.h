@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include <list>
 #include "ast.h"
-#include "statement.h"
 #include "utils.h"
 
 class Expression;
@@ -60,6 +59,15 @@ class Constant;
 class StringLiteral;
 class Symbol;
 class SymbolTable;
+class Statement;
+class LabeledStatement;
+class CompoundStatement;
+class DeclarationStatementList;
+class StatementList;
+class ExpressionStatement;
+class SelectionStatement;
+class IterationStatement;
+class JumpStatement;
 
 extern Type ERROR_TYPE;
 

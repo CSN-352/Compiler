@@ -3,8 +3,21 @@
 
 #include <vector>
 #include "ast.h"
+#include "expression.h"
+#include "symbol_table.h"
 
 using namespace std;
+
+class Statement;
+class LabeledStatement;
+class CompoundStatement;
+class DeclarationStatementList;
+class StatementList;
+class ExpressionStatement;
+class SelectionStatement;
+class IterationStatement;
+class JumpStatement;
+
 
 class Statement : public NonTerminal{
     public:
@@ -75,7 +88,8 @@ class ExpressionStatement : public Statement{
         ExpressionStatement();
 };
 
-Expression* create_expression_statement();
+// Expression* create_expression_statement();
+Statement* create_expression_statement();
 Statement* create_expression_statement(Expression* expression);
 
 // ##############################################################################
@@ -103,6 +117,7 @@ class IterationStatement : public Statement{
         IterationStatement();
 };
 IterationStatement* create_iteration_statement_while(Expression* expression, Statement* statement);
+IterationStatement* create_iteration_statement_do_while(Expression* expression, Statement* statement);
 IterationStatement* create_iteration_statement_for(Statement* statement1, Statement* statement2, Expression* expression, Statement* statement3);
 IterationStatement* create_iteration_statement_for_dec(Declaration* declaration, Statement* statement1, Expression* expression, Statement* statement2);
 IterationStatement* create_iteration_statement_until(Expression* expression, Statement* statement);
@@ -119,6 +134,5 @@ class JumpStatement : public Statement{
 };
 
 JumpStatement* create_jump_statement(Terminal* op);
-JumpStatement* create_jump_statement_goto(Expression* expression);
-
+JumpStatement* create_jump_statement(Expression* expression);
 #endif
