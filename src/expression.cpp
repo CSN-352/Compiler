@@ -382,7 +382,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type.arg_types.clear();
                 if(x->type.typeIndex == PrimitiveTypes :: VOID_T) P->result = TACOperand(TAC_OPERAND_EMPTY, ""); // TAC
                 else P->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CALL), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(TAC_OPERATOR_CALL), P->result, x->result, new_constant(to_string(arguments.size()))); // TAC
             }
         }
     }
@@ -657,6 +657,7 @@ Expression* create_multiplicative_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
+    M->result = x->result; // TAC
     return M;
 }
 
@@ -674,7 +675,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
         return M;
     }
 
-    if (!left->type.isIntorFloat() || !right->type.isIntorFloat()) {
+    if (!left->type.isIntorFloat() || !right->type.isIntorFloat() || left->type.is_array || right->type.is_array || left->type.is_function || right->type.is_function || left->type.is_pointer || right->type.is_pointer) {
         M->type = ERROR_TYPE;
         string error_msg = "Operands of '" + op->name + "' must be int or float at line " +
                            to_string(M->line_no) + ", column " + to_string(M->column_no);
@@ -687,33 +688,53 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
     Type rt = right->type;
 
     if(op->name == "MULTIPLY" || op->name == "DIVIDE"){
-        if (lt.isFloat() && rt.isFloat()) {
+        if (lt.isFloat() || rt.isFloat()) {
             // float * float => float
-            if(lt.typeIndex > rt.typeIndex) M->type = lt;
-            else M->type = rt;
-        } else if (lt.isFloat() && rt.isInt()) {
-            // float * int => float
-            if(lt.typeIndex > rt.typeIndex) M->type = lt;
-            else M->type = rt;
-        } else if (lt.isInt() && rt.isFloat()) {
-            // int * float => float
-            if(lt.typeIndex > rt.typeIndex) M->type = lt;
-            else M->type = rt;
-        } else if (lt.isInt() && rt.isInt()) {
+            if(lt.typeIndex > rt.typeIndex){
+                TACOperand t1 = new_temp_var(); // TAC
+                M->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result); // TAC
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1); // TAC
+            } 
+            else if(lt.typeIndex == rt.typeIndex){
+                M->type = lt;
+                M->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result); // TAC
+            }
+            else{
+                M->type = rt;
+                TACOperand t1 = new_temp_var(); // TAC
+                M->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result); // TAC
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result); // TAC
+            } 
+        } 
+        else if (lt.isInt() && rt.isInt()) {
             // int * int => int
-            if(lt.typeIndex > rt.typeIndex) M->type = lt;
-            else M->type = rt;
-            if(lt.isUnsigned() && rt.isUnsigned()){
-                M->type.make_unsigned();
+            if(lt.typeIndex > rt.typeIndex) {
+                M->type = lt;
+                if(lt.isUnsigned() || rt.isUnsigned()){
+                    M->type.make_unsigned();
+                }
+                TACOperand t1 = new_temp_var(); // TAC
+                M->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), right->result); // TAC
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1); // TAC
             }
-            else if(!lt.isUnsigned() && rt.isUnsigned()){
-                M->type.make_unsigned();
+            else if(lt.typeIndex == rt.typeIndex){
+                M->type = lt;
+                M->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result); // TAC
             }
-            else if(lt.isUnsigned() && !rt.isUnsigned()){
-                M->type.make_unsigned();
-            }
-            else if(!lt.isUnsigned() && !rt.isUnsigned()){
-                M->type.make_signed();
+            else{
+                M->type = rt;
+                if(lt.isUnsigned() || rt.isUnsigned()){
+                    M->type.make_unsigned();
+                }
+                TACOperand t1 = new_temp_var(); // TAC
+                M->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), left->result); // TAC
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result); // TAC
             }
         }
     }
@@ -727,22 +748,32 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             symbolTable.set_error();
             return M;
         }
-
-        if(lt.typeIndex > rt.typeIndex) M->type = lt;
-        else M->type = rt;
+        if(lt.typeIndex > rt.typeIndex) {
+            M->type = lt;
+            if(lt.isUnsigned() || rt.isUnsigned()){
+                M->type.make_unsigned();
+            }
+            TACOperand t1 = new_temp_var(); // TAC
+            M->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), right->result); // TAC
+            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1); // TAC
+        }
+        else if(lt.typeIndex == rt.typeIndex){
+            M->type = lt;
+            M->result = new_temp_var(); // TAC
+            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result); // TAC
+        }
+        else{
+            M->type = rt;
+            if(lt.isUnsigned() || rt.isUnsigned()){
+                M->type.make_unsigned();
+            }
+            TACOperand t1 = new_temp_var(); // TAC
+            M->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), left->result); // TAC
+            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result); // TAC
+        }
         
-        if(lt.isUnsigned() && rt.isUnsigned()){
-            M->type.make_unsigned();
-        }
-        else if(!lt.isUnsigned() && rt.isUnsigned()){
-            M->type.make_unsigned();
-        }
-        else if(lt.isUnsigned() && !rt.isUnsigned()){
-            M->type.make_unsigned();
-        }
-        else if(!lt.isUnsigned() && !rt.isUnsigned()){
-            M->type.make_signed();
-        }
     }
     return M;
 }
