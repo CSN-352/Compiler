@@ -796,6 +796,7 @@ Expression* create_additive_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
+    M->result = x->result; // TAC
     return M;
 }
 
@@ -816,56 +817,100 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
     Type lt = left->type;
     Type rt = right->type;
 
-    if (lt.isFloat() && rt.isFloat()) {
+    if (lt.isFloat() || rt.isFloat()) {
         // float * float => float
-        if(lt.typeIndex > rt.typeIndex) A->type = lt;
-        else A->type = rt;
-    } else if (lt.isFloat() && rt.isInt()) {
-        // float * int => float
-        if(lt.typeIndex > rt.typeIndex) A->type = lt;
-        else A->type = rt;
-    } else if (lt.isInt() && rt.isFloat()) {
-        // int * float => float
-        if(lt.typeIndex > rt.typeIndex) A->type = lt;
-        else A->type = rt;
-    } else if (lt.isInt() && rt.isInt()) {
+        if(lt.typeIndex > rt.typeIndex){
+            TACOperand t1 = new_temp_var(); // TAC
+            A->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result); // TAC
+            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, left->result, t1); // TAC
+        } 
+        else if(lt.typeIndex == rt.typeIndex){
+            A->type = lt;
+            A->result = new_temp_var(); // TAC
+            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, left->result, right->result); // TAC
+        }
+        else{
+            A->type = rt;
+            TACOperand t1 = new_temp_var(); // TAC
+            A->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result); // TAC
+            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, t1, right->result); // TAC
+        } 
+    } 
+    else if (lt.isInt() && rt.isInt()) {
         // int * int => int
-        if(lt.typeIndex > rt.typeIndex) A->type = lt;
-        else A->type = rt;
-        if(lt.isUnsigned() && rt.isUnsigned()){
-            A->type.make_unsigned();
+        if(lt.typeIndex > rt.typeIndex) {
+            A->type = lt;
+            if(lt.isUnsigned() || rt.isUnsigned()){
+                A->type.make_unsigned();
+            }
+            TACOperand t1 = new_temp_var(); // TAC
+            A->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), right->result); // TAC
+            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, left->result, t1); // TAC
         }
-        else if(!lt.isUnsigned() && rt.isUnsigned()){
-            A->type.make_unsigned();
+        else if(lt.typeIndex == rt.typeIndex){
+            A->type = lt;
+            A->result = new_temp_var(); // TAC
+            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, left->result, right->result); // TAC
         }
-        else if(lt.isUnsigned() && !rt.isUnsigned()){
-            A->type.make_unsigned();
+        else{
+            A->type = rt;
+            if(lt.isUnsigned() || rt.isUnsigned()){
+                A->type.make_unsigned();
+            }
+            TACOperand t1 = new_temp_var(); // TAC
+            A->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), left->result); // TAC
+            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, t1, right->result); // TAC
         }
-        else if(!lt.isUnsigned() && !rt.isUnsigned()){
-            A->type.make_signed();
-        }
-    } else if (op->name == "ADD" && lt.isPointer() && rt.isInt()) {
+    }
+    else if (op->name == "ADD" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
-    } else if (op->name == "ADD" && lt.isInt() && rt.isPointer()) {
+        TACOperand t1 = new_temp_var(); // TAC
+        A->result = new_temp_var(); // TAC
+        emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(rt.get_size())), right->result); // TAC
+        emit(TACOperator(TAC_OPERATOR_ADD), A->result, left->result, t1); // TAC
+    } 
+    else if (op->name == "ADD" && lt.isInt() && rt.isPointer()) {
         A->type = rt;
-    } else if (op->name == "MINUS" && lt.isPointer() && rt.isInt()) {
+        TACOperand t1 = new_temp_var(); // TAC
+        A->result = new_temp_var(); // TAC
+        emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(lt.get_size())), left->result); // TAC
+        emit(TACOperator(TAC_OPERATOR_ADD), A->result, right->result, t1); // TAC
+    } 
+    else if (op->name == "MINUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
-    } else if (op->name == "MINUS" && lt.isPointer() && rt.isPointer()) {
+        TACOperand t1 = new_temp_var(); // TAC
+        A->result = new_temp_var(); // TAC
+        emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(rt.get_size())), right->result); // TAC
+        emit(TACOperator(TAC_OPERATOR_SUB), A->result, left->result, t1); // TAC
+    } 
+    else if (op->name == "MINUS" && lt.isPointer() && rt.isPointer()) {
         if (lt == rt) {
             A->type = Type(PrimitiveTypes::INT_T, 0, false); 
-        } else {
+            TACOperand t1 = new_temp_var(); // TAC
+            A->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_SUB), t1, left->result, right->result); // TAC
+            emit(TACOperator(TAC_OPERATOR_DIV), A->result, t1, new_constant(to_string(lt.get_size()))); // TAC
+        } 
+        else {
             A->type = ERROR_TYPE;
             string error_msg = "Pointer subtraction requires both pointers to be of the same type at line " +
                                to_string(A->line_no) + ", column " + to_string(A->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return A;
         }
-    } else {
+    } 
+    else {
         A->type = ERROR_TYPE;
         string error_msg = "Operands of '" + op->name + "' are invalid at line " +
                            to_string(A->line_no) + ", column " + to_string(A->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
+        return A;
     }
     return A;
 }
