@@ -1,5 +1,5 @@
-struct Point{
+class Point{
     int x;
 };
 
-struct Point p1;
+class Point p1;

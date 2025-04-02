@@ -18,6 +18,7 @@ int has_error=0;
 int function_flag = 0;
 FunctionDefinition* fd;
 StructUnionSpecifier* sus;
+ClassSpecifier* cs;
 
 void yyerror(const char *msg);
 %} 
@@ -79,7 +80,10 @@ void yyerror(const char *msg);
     TranslationUnit* translation_unit;
     ExternalDeclaration* external_declaration;
     FunctionDefinition* function_definition;
+
     Statement* statement;
+    LabeledStatement* labeled_statement;
+    CompoundStatement* compound_statement;
     DeclarationStatementList* declaration_statement_list;
     StatementList* statement_list;
     int intval;
@@ -413,8 +417,8 @@ struct_declaration_list:
 
 // DONE
 class_specifier:
-    CLASS IDENTIFIER LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,nullptr,$5); symbolTable.exitScope();} 
-    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,$4,$7); symbolTable.exitScope();} 
+    CLASS IDENTIFIER LEFT_CURLY {cs = create_class_specifier($2); Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier(cs,nullptr,$5); symbolTable.exitScope();} 
+    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {cs = create_class_specifier($2); Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier(cs,$4,$7); symbolTable.exitScope();} 
     | CLASS IDENTIFIER {$$ = create_class_specifier($2,nullptr,nullptr);}
     ;
 

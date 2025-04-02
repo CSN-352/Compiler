@@ -16,3 +16,17 @@ int arr[10];
 
 // Test Case 6
 int arr[10][5];
+
+// Test Case 7
+struct Point{
+    int x;
+};
+
+struct Point p1;
+
+// Test Case 8
+class Point{
+    int x;
+};
+
+class Point p1;

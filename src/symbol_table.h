@@ -295,9 +295,8 @@ public:
     TypeDefinition(TypeCategory tc);
 };
 
-TypeDefinition *create_type_definition(TypeDefinition* td, StructUnionSpecifier *sus);
-TypeDefinition *create_type_definition(TypeCategory type_category, StructDeclarationSet *sds);
-TypeDefinition *create_type_definition(Identifier* id, TypeCategory type_category, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
+TypeDefinition *create_type_definition(TypeDefinition* td, StructDeclarationSet *sd);
+TypeDefinition *create_type_definition(TypeDefinition* td, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
 
 // typedef enum direct_declarator_enum {
 //     IDENTIFIER,
@@ -594,6 +593,8 @@ class ClassSpecifier : public NonTerminal
 };
 
 ClassSpecifier *create_class_specifier(Identifier *id, ClassDeclaratorList* idl, ClassDeclarationList *cdl);
+ClassSpecifier* create_class_specifier(Identifier* id);
+ClassSpecifier* create_class_specifier(ClassSpecifier* cs, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
 
 // ##############################################################################
 // ################################## CLASS DECLARATOR LIST ######################################

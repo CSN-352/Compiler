@@ -24,7 +24,7 @@ class Statement : public NonTerminal{
     Type type;
     Statement();  
 };
-
+ 
 // ##############################################################################
 // ################################## LABELED STATEMENT ######################################
 // ##############################################################################
@@ -104,9 +104,9 @@ class SelectionStatement : public Statement{
         int selection_type; // 0 for if, 1 for if-else, 2 for switch 
         SelectionStatement();
 };
-SelectionStatement* create_selection_statement_if(Expression* expression, Statement* statement);
-SelectionStatement* create_selection_statement_if_else(Expression* expression, Statement* statement, Statement* else_statement);
-SelectionStatement* create_selection_statement_switch(Expression* expression, Statement* statement);
+Statement* create_selection_statement_if(Expression* expression, Statement* statement);
+Statement* create_selection_statement_if_else(Expression* expression, Statement* statement, Statement* else_statement);
+Statement* create_selection_statement_switch(Expression* expression, Statement* statement);
 
 // ##############################################################################
 // ################################## ITERATION STATEMENT ######################################

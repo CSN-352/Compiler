@@ -263,8 +263,10 @@ int Type::get_size()
         return WORD_SIZE;
     else if (!isPrimitive())
     {
-        if (is_defined_type && symbolTable.get_defined_type(defined_type_name).type_definition != nullptr)
+        if (is_defined_type && symbolTable.get_defined_type(defined_type_name).type_definition != nullptr){
+            DefinedTypes dt = symbolTable.get_defined_type(defined_type_name);
             return symbolTable.get_defined_type(defined_type_name).type_definition->get_size();
+        }
         else
         {
             string error_msg = "Type " + defined_type_name + " declared but not defined at ";
@@ -399,7 +401,8 @@ int TypeDefinition::get_size()
     }
     for (auto member : members)
     {
-        Symbol *sym = symbolTable.getSymbol(member.first);
+
+        Symbol *sym = type_symbol_table.getSymbol(member.first);
         size += sym->type.get_size();
     }
     return size;
@@ -463,10 +466,8 @@ TypeDefinition *create_type_definition(TypeDefinition *P, StructDeclarationSet *
     return P;
 }
 
-TypeDefinition *create_type_definition(Identifier *id, TypeCategory type_category, ClassDeclaratorList *idl, ClassDeclarationList *cdl)
+TypeDefinition *create_type_definition(TypeDefinition* P, ClassDeclaratorList* idl, ClassDeclarationList* cdl)
 {
-    TypeDefinition *P = new TypeDefinition(type_category);
-    P->type_category = type_category;
     if (cdl != nullptr)
     {
         for (ClassDeclaration *cd : cdl->class_declaration_list)
@@ -507,7 +508,7 @@ TypeDefinition *create_type_definition(Identifier *id, TypeCategory type_categor
                     for (auto it : t->members)
                     {
                         string member = it.first;
-                        SymbolTable s = symbolTable.get_defined_type(id->value).type_definition->type_symbol_table;
+                        SymbolTable s = P->type_symbol_table;
                         Symbol *sym = t->type_symbol_table.getSymbol(member);
                         AccessSpecifiers access_specifier = it.second;
                         bool is_typedef = false;
@@ -767,6 +768,11 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
                     t.arg_types.push_back(variable->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
                 overloaded = 1;
             }
+            else if(!t.isPrimitive()){
+                t.is_defined_type = true;
+                if(declaration_specifiers->type_specifiers[0]->struct_union_specifier != nullptr)t.defined_type_name = declaration_specifiers->type_specifiers[0]->struct_union_specifier->identifier->value;
+                else if(declaration_specifiers->type_specifiers[0]->class_specifier != nullptr)t.defined_type_name = declaration_specifiers->type_specifiers[0]->class_specifier->identifier->value;
+            }
             // if (ptr_level == 0 && declaration_specifiers->type_index == 13)
             // {
             //     string error_msg = "Variable of field '" + variable->direct_declarator->identifier->value + "' declared void at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
@@ -786,9 +792,10 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
                 }
             }
             if (declaration_specifiers->is_typedef)
-                symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
-            else
+                        symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
+            else{
                 symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
+            }
         }
     }
     return P;
@@ -1439,6 +1446,9 @@ StructUnionSpecifier* create_struct_union_specifier(string struct_or_union, Iden
     else
         P->type_category = TYPE_CATEGORY_UNION;
     P->identifier = id;
+    
+    TypeDefinition* td = symbolTable.get_defined_type(id->value).type_definition;
+    
     return P;
 }
 
@@ -1453,22 +1463,35 @@ ClassSpecifier ::ClassSpecifier() : NonTerminal("CLASS SPECIFIER")
     class_declaration_list = nullptr;
 }
 
+ClassSpecifier* create_class_specifier(Identifier* id)
+{
+    ClassSpecifier* P = new ClassSpecifier();
+    P->identifier = id;
+    TypeDefinition *td = new TypeDefinition(TYPE_CATEGORY_CLASS);
+    DefinedTypes dt = DefinedTypes(TYPE_CATEGORY_CLASS, td);
+    dt.defined_type_name = id->value;
+    symbolTable.insert_defined_type(id->value, dt);
+    return P;
+}
+
+ClassSpecifier* create_class_specifier(ClassSpecifier* cs, ClassDeclaratorList* idl, ClassDeclarationList* cdl)
+{
+    DefinedTypes dt = symbolTable.get_defined_type(cs->identifier->value);
+    TypeDefinition* td = dt.type_definition;
+    cs->class_declarator_list = idl;
+    cs->class_declaration_list = cdl;
+    if(cdl != nullptr){
+        td = create_type_definition(td, idl, cdl);
+        dt.type_definition = td;
+    }
+    return cs;
+}
+
 ClassSpecifier *create_class_specifier(Identifier *id, ClassDeclaratorList *idl, ClassDeclarationList *cdl)
 {
     ClassSpecifier *P = new ClassSpecifier();
     P->identifier = id;
-    P->class_declarator_list = idl;
-    P->class_declaration_list = cdl;
-    TypeDefinition *td;
-    if (cdl != nullptr)
-    {
-        td = create_type_definition(id, TYPE_CATEGORY_CLASS, idl, cdl);
-    }
-    else
-        td = nullptr;
-    DefinedTypes dt = DefinedTypes(TYPE_CATEGORY_CLASS, td);
-    dt.defined_type_name = id->value;
-    symbolTable.insert_defined_type(id->value, dt);
+    TypeDefinition* td = symbolTable.get_defined_type(id->value).type_definition;
     return P;
 }
 
@@ -2561,7 +2584,8 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
     else if (top.second.first.is_defined_type)
     {
         DefinedTypes dt = get_defined_type(top.second.second);
-        dt.type_definition->type_symbol_table.table[sym->name].push_front(sym);
+        Symbol* sym_c = new Symbol(name, type, currentScope-1, currAddress);
+        dt.type_definition->type_symbol_table.table[sym->name].push_front(sym_c);
     }
 }
 
@@ -2592,7 +2616,7 @@ void SymbolTable::insert_defined_type(std::string name, DefinedTypes type)
     else if (top.second.first.is_defined_type)
     {
         DefinedTypes dt = get_defined_type(top.second.second);
-        dt.type_definition->type_symbol_table.defined_types[name].push_front({currentScope, type});
+        dt.type_definition->type_symbol_table.defined_types[name].push_front({currentScope-1, type});
     }
 }
 
@@ -2620,7 +2644,8 @@ void SymbolTable ::insert_typedef(std::string name, Type type, int offset)
     else if (top.second.first.is_defined_type)
     {
         DefinedTypes dt = get_defined_type(top.second.second);
-        dt.type_definition->type_symbol_table.typedefs[name].push_front(sym);
+        Symbol* sym_c = new Symbol(name, type, currentScope-1, currAddress);
+        dt.type_definition->type_symbol_table.typedefs[name].push_front(sym_c);
     }
 }
 
