@@ -823,19 +823,19 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             TACOperand t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
             emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result); // TAC
-            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, left->result, t1); // TAC
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1); // TAC
         } 
         else if(lt.typeIndex == rt.typeIndex){
             A->type = lt;
             A->result = new_temp_var(); // TAC
-            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, left->result, right->result); // TAC
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result); // TAC
         }
         else{
             A->type = rt;
             TACOperand t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
             emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result); // TAC
-            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, t1, right->result); // TAC
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result); // TAC
         } 
     } 
     else if (lt.isInt() && rt.isInt()) {
@@ -848,12 +848,12 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             TACOperand t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
             emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), right->result); // TAC
-            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, left->result, t1); // TAC
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1); // TAC
         }
         else if(lt.typeIndex == rt.typeIndex){
             A->type = lt;
             A->result = new_temp_var(); // TAC
-            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, left->result, right->result); // TAC
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result); // TAC
         }
         else{
             A->type = rt;
@@ -863,7 +863,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             TACOperand t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
             emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), left->result); // TAC
-            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), A->result, t1, right->result); // TAC
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result); // TAC
         }
     }
     else if (op->name == "ADD" && lt.isPointer() && rt.isInt()) {
@@ -932,6 +932,7 @@ Expression* create_shift_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
+    M->result = x->result; // TAC
     return M;
 }
 
@@ -965,17 +966,38 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         symbolTable.set_error();
         return S;
     }
-    if (lt.typeIndex >= rt.typeIndex) {
+    if (lt.typeIndex > rt.typeIndex) {
         S->type = lt;
-    } else {
-        S->type = rt;
+        // Signedness: usually taken from left operand
+        if (lt.isUnsigned()) {
+            S->type.make_unsigned();
+        } 
+        else {
+            S->type.make_signed();
+        }
+        TACOperand t1 = new_temp_var(); // TAC
+        S->result = new_temp_var(); // TAC
+        emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, S->type.to_string()), right->result); // TAC
+        emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, left->result, t1); // TAC
+    } 
+    else if(lt.typeIndex == rt.typeIndex){
+        S->type = lt;
+        S->result = new_temp_var(); // TAC
+        emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, left->result, right->result); // TAC
     }
-
-    // Signedness: usually taken from left operand
-    if (lt.isUnsigned()) {
-        S->type.make_unsigned();
-    } else {
-        S->type.make_signed();
+    else {
+        S->type = rt;
+        // Signedness: usually taken from left operand
+        if (lt.isUnsigned()) {
+            S->type.make_unsigned();
+        } 
+        else {
+            S->type.make_signed();
+        }
+        TACOperand t1 = new_temp_var(); // TAC
+        S->result = new_temp_var(); // TAC
+        emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, S->type.to_string()), left->result); // TAC   
+        emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, t1, right->result); // TAC
     }
     return S;
 }
@@ -1024,7 +1046,8 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
         if (lt.isUnsigned() != rt.isUnsigned()){
             // Print warning message
         }
-    } else if(lt.is_pointer && rt.is_pointer) {
+    } 
+    else if(lt.is_pointer && rt.is_pointer) {
         R->type = Type(PrimitiveTypes::INT_T, 0, false);
     } else {
         R->type = ERROR_TYPE;
