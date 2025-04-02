@@ -138,6 +138,17 @@ enum TypeCategory {
     N_TYPE_CATEGORIES,
 };
 
+static unordered_map<int, string> type_category_name = {
+    {TYPE_CATEGORY_ERROR, "error"},
+    {TYPE_CATEGORY_PRIMITIVE, "primitive"},
+    {TYPE_CATEGORY_POINTER, "pointer"},
+    {TYPE_CATEGORY_ARRAY, "array"},
+    {TYPE_CATEGORY_FUNCTION, "function"},
+    {TYPE_CATEGORY_CLASS, "class"},
+    {TYPE_CATEGORY_STRUCT, "struct"},
+    {TYPE_CATEGORY_UNION, "union"}
+};
+
 // enum TypeQualifiers
 // {
 //     TYPE_QUALIFIERS_CONST = 0,
@@ -203,6 +214,7 @@ public:
     bool is_convertible_to(Type t); // whether implicit conversion is possible
     Type promote_to_int(Type t); // IMPLEMENT
     int get_size();
+    void debug_type();
 
     friend bool operator==(const Type &obj1, const Type &obj2);
     friend bool operator!=(const Type &obj1, const Type &obj2);
@@ -247,7 +259,7 @@ class SymbolTable
 {
 public:
     std::unordered_map<std::string, std::list<Symbol *>> table;
-    std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes>>> defined_types;
+    std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes*>>> defined_types;
     std::unordered_map<std::string, std::list<Symbol *>> typedefs;
     int currentScope;
     bool error;
@@ -257,7 +269,7 @@ public:
     void enterScope(Type t, string name);
     void exitScope();
     void insert(std::string name, Type type, int offset, int overloaded);
-    void insert_defined_type(std::string name, DefinedTypes type);
+    void insert_defined_type(std::string name, DefinedTypes* type);
     void insert_typedef(std::string name, Type type, int offset);
     bool lookup(std::string name);
     bool lookup_function(std::string name, vector<Type> arg_types);
@@ -269,10 +281,12 @@ public:
     Symbol *getSymbol(std::string name);
     Symbol *getFunction(std::string name, vector<Type> arg_types);
     Symbol* getTypedef(std::string name);
-    DefinedTypes get_defined_type(std::string name);
+    DefinedTypes* get_defined_type(std::string name);
     void update(std::string name, Type newType);
     void remove(std::string name);
     void print();
+    void print_typedefs();
+    void print_defined_types();
     void set_error();
     bool has_error();
 };
