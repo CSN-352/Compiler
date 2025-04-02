@@ -106,7 +106,7 @@ ArgumentExpressionList* create_argument_expression_list(Expression* x){
     P->line_no = x->line_no;   
     P->column_no = x->column_no;
     P->type = x->type; // if argument expression list does not have an erronous expression, set type to the type of the first expression. Else set it as ERROR_TYPE.
-    emit(TACOperator(TAC_OPERATOR_PARAM), x->result, TACOperand(TAC_OPERAND_EMPTY, ""), TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+    emit(TACOperator(TAC_OPERATOR_PARAM), TACOperand(TAC_OPERAND_EMPTY, ""), x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     return P;
 }
 
@@ -166,12 +166,21 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     }
     else if(x->type.isInt()){
         P->type = x->type;
+        P->result = x->result; // TAC
+        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), P->result, x->result, new_constant("1")); // TAC
+        emit(TACOperator(TAC_OPERATOR_ASSIGN), x->result, P->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     }
     else if(x->type.isFloat()){
         P->type = x->type;
+        P->result = x->result; // TAC
+        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), P->result, x->result, new_constant("1")); // TAC
+        emit(TACOperator(TAC_OPERATOR_ASSIGN), x->result, P->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     }
     else if(x->type.is_pointer){
         P->type = x->type;
+        P->result = x->result; // TAC
+        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), P->result, x->result, new_constant(to_string(primitive_type_size[x->type.typeIndex]))); // TAC
+        emit(TACOperator(TAC_OPERATOR_ASSIGN), x->result, P->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     }
     else{
         P->type = ERROR_TYPE;
@@ -208,9 +217,6 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             symbolTable.set_error();
             return P;
         }
-        else{
-            
-        }
     }
     else if (op->name == "DOT") {
         if (!(x->type.ptr_level == 0) && !(x->type.is_defined_type)) {
@@ -238,12 +244,32 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
         }
         else {
             P->type = symbolTable.get_type_of_member_variable(x->type.defined_type_name, id->value);
+            TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name).type_definition;
+            Symbol* member = td->type_symbol_table.getSymbol(id->value);
+            if(op->name == "DOT"){
+                TACOperand t1 = new_temp_var(); // TAC
+                TACOperand t2 = new_temp_var(); // TAC
+                TACOperand t3 = new_temp_var(); // TAC
+                P->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_AND), t1, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(TAC_OPERATOR_ADD), t2, t1, new_constant(to_string(member->offset))); // TAC
+                emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+            }
+            else if(op->name == "PTR_OP"){
+                TACOperand t1 = new_temp_var(); // TAC
+                TACOperand t2 = new_temp_var(); // TAC
+                P->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_ADD), t1, x->result, new_constant(to_string(member->offset))); // TAC
+                emit(TACOperator(TAC_OPERATOR_DEREF), t2, t1, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+            }
         }
     }
     return P;
 }
 
-Expression* create_postfix_expression(Expression* x, Expression* index_expression) {
+Expression* create_postfix_expression(Expression* x, Expression* index_expression){
     PostfixExpression* P = new PostfixExpression();
     P->name = "POSTFIX EXPRESSION ARRAY ACCESS";
     P->base_expression = dynamic_cast<PostfixExpression*>(x);
@@ -290,7 +316,14 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
             if(P->type.ptr_level == 0) P->type.is_pointer = false;
         }
     }
-
+    TACOperand t1 = new_temp_var(); // TAC
+    TACOperand t2 = new_temp_var(); // TAC
+    TACOperand t3 = new_temp_var(); // TAC
+    P->result = new_temp_var(); // TAC
+    emit(TACOperator(TAC_OPERATOR_MUL), t1, index_expression->result, new_constant(to_string(primitive_type_size[x->type.typeIndex]))); // TAC
+    emit(TACOperator(TAC_OPERATOR_ADD), t2, x->result, t1); // TAC
+    emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+    emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     return P;
 }
 
@@ -345,6 +378,9 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type.is_function = false;
                 P->type.num_args = 0;
                 P->type.arg_types.clear();
+                if(x->type.typeIndex == PrimitiveTypes :: VOID_T) P->result = TACOperand(TAC_OPERAND_EMPTY, ""); // TAC
+                else P->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CALL), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
             }
         }
     }

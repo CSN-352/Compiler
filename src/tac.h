@@ -18,13 +18,10 @@ const int MAX_CODE_SIZE = 1e9; // Maximum number of TAC instructions
 enum TACOperandType {
     TAC_OPERAND_TEMP_VAR,         // Temporary variables (e.g., t1, t2)
     TAC_OPERAND_IDENTIFIER,       // User-defined variables
-    TAC_OPERAND_CONSTANT,         // Integer or float constants (e.g., 42, 3.14)
+    TAC_OPERAND_CONSTANT,         // Integer or float or string constants (e.g., 42, 3.14)
     TAC_OPERAND_LABEL,            // Jump targets (e.g., L1, L2)
-    TAC_OPERAND_LABEL,            // Jump targets (e.g., L1, L2)
-    TAC_OPERAND_STRING_LITERAL,   // String literals (e.g., "Hello, World!")
-    TAC_OPERAND_POINTER,          // Pointer dereferencing (e.g., *ptr)
+    TAC_OPERAND_POINTER,          // Pointer (e.g., int*)
     TAC_OPERAND_FUNCTION_CALL,    // Function calls (e.g., call func)
-    TAC_OPERAND_ADDRESS,           // Address-of operator (&var)
     TAC_OPERAND_EMPTY           // Empty operand (used for NOP or no operation)
 };
 class TACOperand{
@@ -46,6 +43,8 @@ TACOperand new_label();
 TACOperand new_constant(string value);
 
 TACOperand new_identifier(string value);
+
+TACOperand new_pointer(string value);
 
 //##############################################################################
 //################################## TACOperator ######################################
@@ -112,6 +111,7 @@ class TACOperator{
     public:
     TACOperatorType type; // Type of the operator (e.g., ADD, SUB, MUL)
     // string value;        // Value of the operator (e.g., "+", "-", "*")
+    TACOperator(); // Default constructor
     TACOperator(TACOperatorType type);
 };
 
@@ -135,7 +135,7 @@ class TACOperator{
 
 class TACInstruction{
     public:
-        const int id; // Unique instruction ID
+        int id; // Unique instruction ID
         TACOperator op; // Operator (e.g., ADD, SUB)
         TACOperand arg1; // First operand (e.g., t1, a, 5)
         TACOperand arg2; // Second operand (e.g., t2, b, 10)

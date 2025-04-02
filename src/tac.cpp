@@ -26,18 +26,24 @@ TACOperand new_constant(string value){
 TACOperand new_identifier(string value){
     if(identifiers.find(value) == identifiers.end()) {
         TACOperand new_id = TACOperand(TAC_OPERAND_IDENTIFIER, value);
-        identifiers[value] = new_id;
+        identifiers[value] = &new_id;
         return new_id;
     }
     else {
-        TACOperand existing_id = identifiers[value];
+        TACOperand existing_id = *identifiers[value];
         return existing_id;
     }
+}
+
+TACOperand new_pointer(string value){
+    string pointer_value = value + "_ptr";
+    return TACOperand(TAC_OPERAND_POINTER, pointer_value);
 }
 
 //##############################################################################
 //################################## TACOperator ######################################
 //##############################################################################
+TACOperator::TACOperator() : type(TACOperatorType::TAC_OPERATOR_NOP) {}
 
 TACOperator::TACOperator(TACOperatorType type) : type(type) {}
 
@@ -47,7 +53,7 @@ TACOperator::TACOperator(TACOperatorType type) : type(type) {}
 
 TACInstruction::TACInstruction() : op(TACOperatorType::TAC_OPERATOR_NOP), result(TACOperandType::TAC_OPERAND_EMPTY, ""), arg1(TACOperandType::TAC_OPERAND_EMPTY, ""), arg2(TACOperandType::TAC_OPERAND_EMPTY, "") {}
 
-TACInstruction::TACInstruction(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2) {
+TACInstruction::TACInstruction(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2){
     this->id = instruction_id;
     this->op = op;
     this->result = result;
