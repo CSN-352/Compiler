@@ -23,7 +23,6 @@ enum TACOperandType {
     TAC_OPERAND_CONSTANT,         // Integer or float or string constants (e.g., 42, 3.14)
     TAC_OPERAND_LABEL,            // Jump targets (e.g., L1, L2)
     TAC_OPERAND_POINTER,          // Pointer (e.g., int*)
-    TAC_OPERAND_FUNCTION_CALL,    // Function calls (e.g., call func)
     TAC_OPERAND_TYPE,            // Type (e.g., int, float)
     TAC_OPERAND_EMPTY           // Empty operand (used for NOP or no operation)
 };
@@ -47,7 +46,7 @@ TACOperand new_constant(string value);
 
 TACOperand new_identifier(string value);
 
-TACOperand new_pointer(string value);
+TACOperand new_type(string value, bool is_pointer);
 
 //TACOperand new_type(Type* t);
 
@@ -91,6 +90,9 @@ enum TACOperatorType {
     // Pointer and Memory Operators
     TAC_OPERATOR_ADDR_OF,    // & (Address-of)
     TAC_OPERATOR_DEREF,      // * (Dereference)
+
+    // Casting Operators
+    TAC_OPERATOR_CAST,       // Type casting (e.g., (int)x)
 
     // Control Flow (Branching & Jumps)
     TAC_OPERATOR_GOTO,       // goto label

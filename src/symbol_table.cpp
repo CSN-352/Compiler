@@ -276,6 +276,64 @@ int Type::get_size()
         return primitive_type_size[typeIndex];
 }
 
+string Type::to_string(){
+    stringstream ss;
+    if (is_defined_type)
+    {
+        ss << defined_type_name;
+    }
+    else
+    {
+        switch (typeIndex)
+        {
+            case U_CHAR_T:
+                ss << "unsigned_char";
+                break;  
+            case CHAR_T:
+                ss << "char";
+                break; 
+            case U_SHORT_T:
+                ss << "unsigned_short";
+                break;
+            case SHORT_T:
+                ss << "short";
+                break;  
+            case U_INT_T:
+                ss << "unsigned_int";
+                break;
+            case INT_T:
+                ss << "int";
+                break;
+            case U_LONG_T:
+                ss << "unsigned_long";
+                break;
+            case LONG_T:
+                ss << "long";
+                break;  
+            case U_LONG_LONG_T:
+                ss << "unsigned_long_long";
+                break;
+            case LONG_LONG_T:
+                ss << "long_long";
+                break;
+            case FLOAT_T:
+                ss << "float";
+                break;
+            case DOUBLE_T:
+                ss << "double";
+                break;
+            case LONG_DOUBLE_T:
+                ss << "long_double";
+                break;
+            case VOID_T:
+                ss << "void";
+                break;
+        }
+    }
+    if(is_pointer) ss<<"_ptr";
+    return ss.str();
+}
+
 bool operator==(const Type &obj1, const Type &obj2)
 {
 

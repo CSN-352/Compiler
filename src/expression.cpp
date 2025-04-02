@@ -408,10 +408,6 @@ Expression* create_unary_expression(Expression* x){
     U->line_no = x->line_no;
     U->column_no = x->column_no;
     U->type = x->type;
-    if(x->type.is_error()){
-        U->type = ERROR_TYPE;
-        return U;
-    }
     U->result = x->result; // TAC
     return U;
 }
@@ -612,6 +608,7 @@ Expression* create_cast_expression(Expression* x){
     C->line_no = x->line_no;
     C->column_no = x->column_no;
     C->type = x->type;
+    C->result = x->result; // TAC
     return C;
 }
 
@@ -635,8 +632,10 @@ Expression* create_cast_expression(TypeName* tn, Expression* x){
         symbolTable.set_error();
         return C;
     }
-
     C->type = tn->type;
+    C->result = new_temp_var(); // TAC
+    emit(TACOperator(TAC_OPERATOR_CAST), C->result, TACOperand(TAC_OPERAND_TYPE, tn->type.to_string()), x->result); // TAC
+
     return C;
 }
 

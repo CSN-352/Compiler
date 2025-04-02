@@ -161,6 +161,7 @@ public:
     bool is_convertible_to(Type t); // whether implicit conversion is possible
     Type promote_to_int(Type t); // IMPLEMENT
     int get_size();
+    string to_string();
 
     friend bool operator==(const Type &obj1, const Type &obj2);
     friend bool operator!=(const Type &obj1, const Type &obj2);

@@ -42,15 +42,9 @@ TACOperand new_identifier(string value){
     }
 }
 
-TACOperand new_pointer(string value){
-    string pointer_value = value + "_ptr";
-    return TACOperand(TAC_OPERAND_POINTER, pointer_value);
+TACOperand new_type(string value){
+    return TACOperand(TAC_OPERAND_TYPE, value);
 }
-
-// TACOperand new_type(Type t){
-    
-//     return TACOperand(TAC_OPERAND_TYPE,);
-// }
 
 //##############################################################################
 //################################## TACOperator ######################################
