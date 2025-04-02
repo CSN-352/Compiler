@@ -27,6 +27,7 @@ Type ERROR_TYPE;
 
 Expression :: Expression() : NonTerminal("EXPRESSION"){
     operand_cnt = 0;
+    result = TACOperand(TAC_OPERAND_EMPTY, "");
 }
 
 // ##############################################################################
@@ -54,6 +55,7 @@ Expression* create_primary_expression(Identifier* i){
 		yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
+    P->result = new_identifier(i->value); //TAC
     return P;
 }
 
@@ -65,6 +67,7 @@ Expression* create_primary_expression(Constant* x){
     P->constant = x;
     P->type = x->get_constant_type();
     P->type.is_const_literal = true;
+    P->result = new_constant(x->value); // TAC
     return P;
 }
 
@@ -75,6 +78,7 @@ Expression* create_primary_expression(StringLiteral* x){
     P->column_no = x->column_no;
     P->string_literal = x;
     P->type = Type(CHAR_T, 1, true);
+    P->result = new_constant(x->value); // TAC
     return P;
 }
 
@@ -83,6 +87,7 @@ Expression* create_primary_expression(Expression* x){
     P->type = x->type;
     P->line_no = x->line_no;
     P->column_no = x->column_no;
+    P->result = x->result; // TAC
     return x;
 }
 
@@ -101,6 +106,7 @@ ArgumentExpressionList* create_argument_expression_list(Expression* x){
     P->line_no = x->line_no;   
     P->column_no = x->column_no;
     P->type = x->type; // if argument expression list does not have an erronous expression, set type to the type of the first expression. Else set it as ERROR_TYPE.
+    emit(TACOperator(TAC_OPERATOR_PARAM), x->result, TACOperand(TAC_OPERAND_EMPTY, ""), TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     return P;
 }
 
@@ -132,6 +138,7 @@ Expression* create_postfix_expression(Expression* x){
     P->type = x->type;
     P->line_no = x->line_no;
     P->column_no = x->column_no;
+    P->result = x->result; // TAC
     return P;
 }
 
@@ -367,6 +374,7 @@ Expression* create_unary_expression(Expression* x){
         U->type = ERROR_TYPE;
         return U;
     }
+    U->result = x->result; // TAC
     
     return U;
 }

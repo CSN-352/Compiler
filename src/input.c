@@ -1,1 +1,5 @@
-int arr[10][5];
+struct Point{
+    int x;
+};
+
+struct Point p1;

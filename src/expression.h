@@ -4,6 +4,7 @@
 #include <vector>
 #include "symbol_table.h"
 #include "ast.h"
+#include "tac.h"
 using namespace std;
 
 class Expression;
@@ -27,6 +28,7 @@ class Expression : public NonTerminal{
     public:
         Type type;
         int operand_cnt;
+        TACOperand result; // Result of the expression
         Expression();
         virtual ~Expression() {}; // Virtual destructor for proper cleanup
 };
