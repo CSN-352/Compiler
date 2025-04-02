@@ -2060,7 +2060,7 @@ TypeName *create_type_name(SpecifierQualifierList *sql, AbstractDeclarator *ad)
                 P->type.array_dims.insert(P->type.array_dims.begin(), dad->array_dimensions.begin(), dad->array_dimensions.end());
             }
             else if (dad->is_function)
-            {
+            { 
                 P->type.is_function = true;
                 vector<Type> arg_types;
                 vector<ParameterDeclaration *> parameters = dad->parameters->paramater_list->parameter_declarations;

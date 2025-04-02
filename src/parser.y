@@ -212,7 +212,7 @@ unary_operator:
     | MULTIPLY {$$ = $1;}
     | PLUS  {$$ = $1;}
     | MINUS {$$ = $1;}
-    | NOT   {$$ = $1;}
+    | NOT {$$ = $1;}
     | BITWISE_NOT   {$$ = $1;}
     ;
 

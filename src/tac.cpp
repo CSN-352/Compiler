@@ -1,7 +1,14 @@
 #include "tac.h"
+#include "symbol_table.h"
 #include <stdio.h>
 #include <iostream>
 using namespace std;
+
+// Define the global map for identifiers
+unordered_map<string, TACOperand*> identifiers;
+
+// Define the global array for TAC instructions
+TACInstruction* code[MAX_CODE_SIZE] = {nullptr};
 
 //##############################################################################
 //################################## TACOperand ######################################
@@ -39,6 +46,11 @@ TACOperand new_pointer(string value){
     string pointer_value = value + "_ptr";
     return TACOperand(TAC_OPERAND_POINTER, pointer_value);
 }
+
+// TACOperand new_type(Type t){
+    
+//     return TACOperand(TAC_OPERAND_TYPE,);
+// }
 
 //##############################################################################
 //################################## TACOperator ######################################

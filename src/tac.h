@@ -6,10 +6,12 @@
 #include <string>
 using namespace std;
 
+class Type;
+
 static unsigned int instruction_id = 1;
 static unsigned int temp_var_id = 1;
 static unsigned int label_id = 1;
-const int MAX_CODE_SIZE = 1e9; // Maximum number of TAC instructions
+const int MAX_CODE_SIZE = 1e6; // Maximum number of TAC instructions
 
 //##############################################################################
 //################################## TACOperand ######################################
@@ -22,6 +24,7 @@ enum TACOperandType {
     TAC_OPERAND_LABEL,            // Jump targets (e.g., L1, L2)
     TAC_OPERAND_POINTER,          // Pointer (e.g., int*)
     TAC_OPERAND_FUNCTION_CALL,    // Function calls (e.g., call func)
+    TAC_OPERAND_TYPE,            // Type (e.g., int, float)
     TAC_OPERAND_EMPTY           // Empty operand (used for NOP or no operation)
 };
 class TACOperand{
@@ -34,7 +37,7 @@ class TACOperand{
     TACOperand(TACOperandType type, string value);
 };
 
-unordered_map<string, TACOperand* > identifiers; // Map to store identifiers and their corresponding TAC operands
+extern unordered_map<string, TACOperand* > identifiers; // Map to store identifiers and their corresponding TAC operands
 
 TACOperand new_temp_var();
 
@@ -45,6 +48,8 @@ TACOperand new_constant(string value);
 TACOperand new_identifier(string value);
 
 TACOperand new_pointer(string value);
+
+//TACOperand new_type(Type* t);
 
 //##############################################################################
 //################################## TACOperator ######################################
@@ -69,8 +74,8 @@ enum TACOperatorType {
 
     // Logical Operators
     TAC_OPERATOR_AND,        // &&
-    TAC_OR,         // ||
-    TAC_NOT,        // !
+    TAC_OPERATOR_OR,         // ||
+    TAC_OPERATOR_NOT,        // !
 
     // Bitwise Operators
     TAC_OPERATOR_BIT_AND,    // &
@@ -152,7 +157,7 @@ class TACInstruction{
 
 bool is_assignment(TACInstruction* instruction);
 
-TACInstruction* code[MAX_CODE_SIZE]; // Array of TAC instructions
+extern TACInstruction* code[MAX_CODE_SIZE]; // Array of TAC instructions
 
 void emit(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2);
 
@@ -160,5 +165,4 @@ void backpatch(TACInstruction* instruction, TACOperand label);
 
 unordered_set<TACInstruction*> merge_lists(unordered_set<TACInstruction*>& list1, unordered_set<TACInstruction*>& list2);
 
-#endif
-
+#endif 

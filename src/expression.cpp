@@ -1,6 +1,7 @@
 #include "symbol_table.h"
 #include "ast.h"
 #include "expression.h"
+#include "tac.h"
 #include <algorithm>
 #include <assert.h>
 #include <iostream>
@@ -54,6 +55,7 @@ Expression* create_primary_expression(Identifier* i){
         string error_msg = "Undeclared Symbol " + i->value + " at line " + to_string(i->line_no) + ", column " + to_string(i->column_no);
 		yyerror(error_msg.c_str());
         symbolTable.set_error();
+        return P;
     }
     P->result = new_identifier(i->value); //TAC
     return P;
@@ -167,20 +169,20 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     else if(x->type.isInt()){
         P->type = x->type;
         P->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
         emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1")); // TAC
     }
     else if(x->type.isFloat()){
         P->type = x->type;
         P->result = x->result; // TAC
-        emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
         emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1")); // TAC
     }
     else if(x->type.is_pointer){
         P->type = x->type;
         P->result = x->result; // TAC
         emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), P->result, x->result, new_constant(to_string(primitive_type_size[x->type.typeIndex]))); // TAC
-        emit(TACOperator(TAC_OPERATOR_ASSIGN), x->result, P->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(TAC_OPERATOR_NOP), x->result, P->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     }
     else{
         P->type = ERROR_TYPE;
@@ -251,10 +253,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
                 TACOperand t2 = new_temp_var(); // TAC
                 TACOperand t3 = new_temp_var(); // TAC
                 P->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_BIT_AND), t1, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(TAC_OPERATOR_ADDR_OF), t1, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
                 emit(TACOperator(TAC_OPERATOR_ADD), t2, t1, new_constant(to_string(member->offset))); // TAC
                 emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
-                emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
             }
             else if(op->name == "PTR_OP"){
                 TACOperand t1 = new_temp_var(); // TAC
@@ -262,7 +264,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
                 P->result = new_temp_var(); // TAC
                 emit(TACOperator(TAC_OPERATOR_ADD), t1, x->result, new_constant(to_string(member->offset))); // TAC
                 emit(TACOperator(TAC_OPERATOR_DEREF), t2, t1, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
-                emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(TAC_OPERATOR_NOP), P->result, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
             }
         }
     }
@@ -323,7 +325,7 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     emit(TACOperator(TAC_OPERATOR_MUL), t1, index_expression->result, new_constant(to_string(primitive_type_size[x->type.typeIndex]))); // TAC
     emit(TACOperator(TAC_OPERATOR_ADD), t2, x->result, t1); // TAC
     emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
-    emit(TACOperator(TAC_OPERATOR_ASSIGN), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+    emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     return P;
 }
 
@@ -439,17 +441,29 @@ Expression* create_unary_expression(Expression* x, Terminal* op){
             string error_msg = "Invalid operator with constant type " + to_string(x->line_no) + to_string(x->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return U;
         }
 
         if (x->type.is_pointer || x->type.isIntorFloat())
         {
             U->type = x->type;
-        } else
+            U->result = new_temp_var(); // TAC
+            if(x->type.is_pointer){
+                emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), U->result, x->result, new_constant(to_string(primitive_type_size[x->type.typeIndex]))); // TAC
+                emit(TACOperator(TAC_OPERATOR_NOP), x->result, U->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+            }
+            else{
+                emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), U->result, x->result, new_constant("1")); // TAC
+                emit(TACOperator(TAC_OPERATOR_NOP), x->result, U->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+            }
+        } 
+        else
         {   
             U->type = ERROR_TYPE;
             string error_msg = "Operator with invalid type " + to_string(x->line_no) + to_string(x->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return U;
         }
 
     }
@@ -488,10 +502,13 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
                          to_string(x->line_no) + ", column " + to_string(x->column_no);
             yyerror(err.c_str());
             symbolTable.set_error();
+            return U;
         }
         U->type = x->type;
         U->type.ptr_level++;
         U->type.is_pointer = true;
+        U->result = new_temp_var(); // TAC
+        emit(TAC_OPERATOR_ADDR_OF, U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     }
     else if (op->name == "MULTIPLY")
     {
@@ -501,14 +518,17 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
             string error_msg = "Cannot dereference a non-pointer at line " + to_string(x->line_no) + to_string(x->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return U;
         }
-
         U->type = x->type;
         U->type.ptr_level--;
         if (U->type.ptr_level == 0)
         {
             U->type.is_pointer = false;
         }
+        U->result = new_temp_var(); // TAC
+        emit(TACOperator(TAC_OPERATOR_DEREF), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        
     }
     else if (op->name == "MINUS" || op->name == "PLUS")
     {
@@ -520,10 +540,12 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
             string error_msg = "Invalid operand with unary operator '+/-' at line " + to_string(x->line_no) + to_string(x->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return U;
         }
-
         U->type = x->type;
         U->type.make_signed();
+        U->result = new_temp_var(); // TAC
+        emit(TACOperator(op->name == "MINUS" ? TAC_OPERATOR_UMINUS : TAC_OPERATOR_ADD), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     }
     else if (op->name == "NOT")
     {
@@ -533,11 +555,14 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
             string error_msg = "Invalid operand type for logical NOT '!' at line " + to_string(x->line_no) + ", column " + to_string(x->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return U;
         }
         else 
         {
             U->type = Type(PrimitiveTypes::INT_T, 0, true);
         }
+        U->result = new_temp_var(); // TAC
+        emit(TACOperator(TAC_OPERATOR_NOT), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     }
     else if (op->name == "BITWISE_NOT"){
         if (!x->type.isInt())
@@ -551,6 +576,8 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
         {
             U->type = x->type.promote_to_int(x->type);
         }
+        U->result = new_temp_var(); // TAC
+        emit(TACOperator(TAC_OPERATOR_BIT_NOT), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     }
     return U;
 }
@@ -563,6 +590,8 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn){
     U->column_no = op->column_no;
     U->name = "UNARY EXPRESSION SIZEOF TYPE";
     U->type = Type(PrimitiveTypes::INT_T, 0, true);
+    U->result = new_temp_var(); // TAC
+    emit(TACOperator(TAC_OPERATOR_NOP), U->result, new_constant(to_string(tn->type.get_size())), TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
     return U;
 }
 

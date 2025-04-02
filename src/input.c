@@ -1,5 +1,2 @@
-struct Point{
-    int x;
-};
-
-struct Point p1;
+int x = 5;
+x++;
