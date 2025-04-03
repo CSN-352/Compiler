@@ -16,6 +16,7 @@
 #include "expression.h"
 #include "ast.h"
 #include "utils.h"
+#include "tac.h"
 
 using namespace std;
 
@@ -1884,6 +1885,9 @@ InitDeclarator *create_init_declarator(Declarator *d, Initializer *i)
     InitDeclarator *P = new InitDeclarator();
     P->declarator = d;
     P->initializer = i;
+    if(i != nullptr){
+        emit(TACOperator(TAC_OPERATOR_NOP), new_identifier(d->direct_declarator->identifier->value), i->assignment_expression->result, TACOperand(TAC_OPERAND_EMPTY,""), 0); // TAC
+    }
     return P;
 }
 
