@@ -7,6 +7,7 @@
 #include "ast.h"
 #include "expression.h"
 #include "tac.h"
+#include "utils.h"
 
 // External declarations 
 extern "C" int yylex();
@@ -17,6 +18,8 @@ extern FILE *yyin;
 int has_error=0;
 int function_flag = 0;
 FunctionDefinition* fd;
+StructUnionSpecifier* sus;
+ClassSpecifier* cs;
 
 void yyerror(const char *msg);
 %} 
@@ -25,6 +28,7 @@ void yyerror(const char *msg);
     #include "ast.h"
     #include "expression.h"
     #include "symbol_table.h"
+    #include "statement.h"
     #include "tac.h"
 }
 
@@ -80,7 +84,10 @@ void yyerror(const char *msg);
     FunctionDefinition* function_definition;
 
     Statement* statement;
-
+    LabeledStatement* labeled_statement;
+    CompoundStatement* compound_statement;
+    DeclarationStatementList* declaration_statement_list;
+    StatementList* statement_list;
     int intval;
     char* strval;
 }
@@ -94,6 +101,7 @@ void yyerror(const char *msg);
 %token <terminal> ASSIGN
 %token <terminal> VOID CHAR SHORT INT LONG FLOAT DOUBLE SIGNED UNSIGNED TYPE_NAME 
 %token <terminal> STRUCT UNION PUBLIC PRIVATE PROTECTED
+%token <terminal> GOTO CONTINUE BREAK RETURN
 %type <terminal> unary_operator assignment_operator
 
 %type <expression> assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression multiplicative_expression additive_expression shift_expression relational_expression equality_expression and_expression xor_expression or_expression logical_and_expression logical_or_expression
@@ -141,12 +149,13 @@ void yyerror(const char *msg);
 %type <translation_unit> translation_unit
 %type <external_declaration> external_declaration
 %type <function_definition> function_definition
-
-%type <statement> compound_statement
+%type <statement> statement compound_statement labeled_statement expression_statement selection_statement iteration_statement jump_statement
+%type <statement_list> statement_list
+%type <declaration_statement_list> declaration_statement_list
 
 %token <intval> TYPEDEF EXTERN STATIC AUTO REGISTER CONST VOLATILE
-%token <strval> BREAK CASE CONTINUE DEFAULT DO ELSE ENUM FOR GOTO
-%token <strval> IF RETURN SWITCH
+%token <strval> CASE DEFAULT DO ELSE ENUM FOR
+%token <strval> IF SWITCH
 %token <strval> WHILE UNTIL CLASS ASSEMBLY_DIRECTIVE
 %token <strval> ELLIPSIS 
 %token <strval> INHERITANCE_OP 
@@ -327,7 +336,7 @@ expression:
 
 // DONE
 declaration:
-    declaration_specifiers SEMICOLON     { $$ = create_declaration($1, nullptr);}                      
+    declaration_specifiers SEMICOLON     { $$ = create_declaration($1, nullptr);}
     | declaration_specifiers init_declarator_list SEMICOLON  {$$ = create_declaration( $1, $2 );}
     | error_case skip_until_semicolon SEMICOLON
     ;
@@ -379,9 +388,9 @@ type_specifier:
 
 // DONE
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,$2,$5); symbolTable.exitScope();}  
+    struct_or_union IDENTIFIER LEFT_CURLY {sus = create_struct_union_specifier($1->name,$2); Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} struct_declaration_set RIGHT_CURLY { $$ = create_struct_union_specifier(sus,$5); symbolTable.exitScope();}  
 	// | struct_or_union LEFT_CURLY {symbolTable.enterScope();} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,nullptr,$4); symbolTable.exitScope();}  
-	| struct_or_union IDENTIFIER {create_struct_union_specifier($1->name,$2,nullptr);}                  
+	| struct_or_union IDENTIFIER {$$ = create_struct_union_specifier($1->name,$2,nullptr);}                  
 	;
 
 // DONE
@@ -410,8 +419,8 @@ struct_declaration_list:
 
 // DONE
 class_specifier:
-    CLASS IDENTIFIER LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,nullptr,$5); symbolTable.exitScope();} 
-    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier($2,$4,$7); symbolTable.exitScope();} 
+    CLASS IDENTIFIER LEFT_CURLY {cs = create_class_specifier($2); Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier(cs,nullptr,$5); symbolTable.exitScope();} 
+    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {cs = create_class_specifier($2); Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier(cs,$4,$7); symbolTable.exitScope();} 
     | CLASS IDENTIFIER {$$ = create_class_specifier($2,nullptr,nullptr);}
     ;
 
@@ -507,7 +516,7 @@ declarator:
 direct_declarator:
     IDENTIFIER  { $$ = create_dir_declarator_id( $1 ); }
     | direct_declarator LEFT_SQUARE conditional_expression RIGHT_SQUARE {$$ = create_direct_declarator_array($1, $3);}
-	| direct_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_declarator_array($1, nullptr);} 
+	/* | direct_declarator LEFT_SQUARE RIGHT_SQUARE {$$ = create_direct_declarator_array($1, nullptr);}  */
     | LEFT_PAREN declarator RIGHT_PAREN { $$ = create_direct_declarator($2); } 
     | direct_declarator LEFT_PAREN parameter_type_list RIGHT_PAREN {$$ = create_direct_declarator_function($1, $3);}
     | direct_declarator LEFT_PAREN RIGHT_PAREN {$$ = create_direct_declarator_function($1, nullptr);} 
@@ -592,7 +601,7 @@ initializer:
 //     ;
 
 statement:
-    labeled_statement
+    labeled_statement 
 	| compound_statement
     | expression_statement
 	| selection_statement
@@ -601,22 +610,25 @@ statement:
     | error_case skip_until_semicolon
 	;
 
+// DONE
 labeled_statement:
-    IDENTIFIER COLON statement
-	| CASE conditional_expression COLON statement
-	| DEFAULT COLON statement
+    IDENTIFIER COLON statement {$$ = create_labeled_statement_identifier($1,$3);}
+	| CASE conditional_expression COLON statement {$$ = create_labeled_statement_case($2,$4);}
+	| DEFAULT COLON statement {$$ = create_labeled_statement_default($3);}
 	;
 
 compound_statement:
-    LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} RIGHT_CURLY {symbolTable.exitScope();}
-    | LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} declaration_statement_list RIGHT_CURLY {symbolTable.exitScope();}
+    LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} RIGHT_CURLY {symbolTable.exitScope(); $$ = create_compound_statement();}
+    // left to implement will be done after remaining classes
+    | LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} declaration_statement_list RIGHT_CURLY {symbolTable.exitScope();} 
     ;
 
+// DONE
 declaration_statement_list:
-    declaration_list
-    | statement_list
-    | declaration_statement_list declaration_list 
-    | declaration_statement_list statement_list
+    declaration_list {$$ = create_declaration_statement_list($1);}
+    | statement_list {$$ = create_declaration_statement_list($1);}
+    | declaration_statement_list declaration_list {$$ = create_declaration_statement_list($2);}
+    | declaration_statement_list statement_list {$$ = create_declaration_statement_list($2);}
     ;
 
 // DONE
@@ -625,37 +637,42 @@ declaration_list:
     | declaration_list declaration { $$ = create_declaration_list($1, $2);}
     ;
 
+// DONE
 statement_list:
-    statement
-    | statement_list statement
+    statement { $$ = create_statement_list($1);}
+    | statement_list statement { $$ = create_statement_list($1, $2);}
     ;
 
+// DONE
 expression_statement:
-    SEMICOLON
-    | expression SEMICOLON
+    SEMICOLON {$$ = create_expression_statement();}
+    | expression SEMICOLON {$$ = create_expression_statement($1);}
     ;
 
+// DONE
 selection_statement:
-    IF LEFT_PAREN expression RIGHT_PAREN statement ELSE statement
-    | IF LEFT_PAREN expression RIGHT_PAREN statement
-    | SWITCH LEFT_PAREN expression RIGHT_PAREN statement
+    IF LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_selection_statement_if($3,$5);}
+    | IF LEFT_PAREN expression RIGHT_PAREN statement ELSE statement {$$ = create_selection_statement_if_else($3,$5,$7);}
+    | SWITCH LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_selection_statement_switch($3,$5);}
 
+// DONE
 iteration_statement:
-    WHILE LEFT_PAREN expression RIGHT_PAREN statement
-    | DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON
-    | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement
-    | FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement
-    | FOR LEFT_PAREN declaration expression_statement RIGHT_PAREN statement
-    | FOR LEFT_PAREN declaration expression_statement expression RIGHT_PAREN statement
-    | UNTIL LEFT_PAREN expression RIGHT_PAREN statement
+    WHILE LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_iteration_statement_while($3,$5);}
+    | DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON {$$ = create_iteration_statement_do_while($5,$2);}
+    | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,nullptr,$6);}
+    | FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,$5,$7);}
+    | FOR LEFT_PAREN declaration expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$4,nullptr,$6);}
+    | FOR LEFT_PAREN declaration expression_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$4,$5,$7);}
+    | UNTIL LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_iteration_statement_until($3,$5);}
     ;
 
+// DONE
 jump_statement:
-    GOTO IDENTIFIER SEMICOLON
-	| CONTINUE SEMICOLON
-	| BREAK SEMICOLON
-	| RETURN SEMICOLON
-	| RETURN expression SEMICOLON
+    GOTO IDENTIFIER SEMICOLON {$$ = create_jump_statement($1);}
+	| CONTINUE SEMICOLON {$$ = create_jump_statement($1);}
+	| BREAK SEMICOLON {$$ = create_jump_statement($1);}
+	| RETURN SEMICOLON {$$ = create_jump_statement($1);}
+	| RETURN expression SEMICOLON {$$ = create_jump_statement($2);}
 	;
 
 // DONE
@@ -684,7 +701,10 @@ skip_until_semicolon:
 %%
 
 void yyerror(const char *msg) {
-    fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
+    /* fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg); */
+    string error_msg = "Syntax error at line " + to_string(yylineno) + ": " + msg;
+    has_error = 1;
+    debug(error_msg, RED);
 }
 
 
@@ -708,6 +728,12 @@ int main(int argc, char **argv) {
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     has_error |= symbolTable.has_error();
+    if(has_error) {
+        debug("Parsing failed due to errors.", RED);
+        return 1;
+    }
+    symbolTable.print_defined_types();
+    symbolTable.print_typedefs();
     symbolTable.print();
     print_TAC();
     // if(!has_error)printParseSymbolTable();

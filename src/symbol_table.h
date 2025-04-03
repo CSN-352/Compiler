@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <list>
 #include "ast.h"
-#include "statement.h"
+#include "utils.h"
 
 class Expression;
 class PrimaryExpression;
@@ -59,6 +59,15 @@ class Constant;
 class StringLiteral;
 class Symbol;
 class SymbolTable;
+class Statement;
+class LabeledStatement;
+class CompoundStatement;
+class DeclarationStatementList;
+class StatementList;
+class ExpressionStatement;
+class SelectionStatement;
+class IterationStatement;
+class JumpStatement;
 
 extern Type ERROR_TYPE;
 
@@ -80,6 +89,41 @@ enum PrimitiveTypes
     LONG_DOUBLE_T = 12,
     VOID_T = 13,
     N_PRIMITIVE_TYPES = 14,
+    VOID_STATEMENT_T = 15,
+};
+
+static unordered_map<int, string> primitive_type_name = {
+    {TYPE_ERROR_T, "error"},
+    {U_CHAR_T, "unsigned char"},
+    {CHAR_T, "char"},
+    {U_SHORT_T, "unsigned short"},
+    {SHORT_T, "short"},
+    {U_INT_T, "unsigned int"},
+    {INT_T, "int"},
+    {U_LONG_T, "unsigned long"},
+    {LONG_T, "long"},
+    {U_LONG_LONG_T, "unsigned long long"},
+    {LONG_LONG_T, "long long"},
+    {FLOAT_T, "float"},
+    {DOUBLE_T, "double"},
+    {LONG_DOUBLE_T, "long double"},
+    {VOID_T, "void"}
+};
+
+static unordered_map<int,int> primitive_type_size = {
+    {U_CHAR_T, 1},
+    {CHAR_T, 1},
+    {U_SHORT_T, 2},
+    {SHORT_T, 2},
+    {U_INT_T, 4},
+    {INT_T, 4},
+    {U_LONG_T, 4},
+    {LONG_T, 4},
+    {U_LONG_LONG_T, 8},
+    {LONG_LONG_T, 8},
+    {FLOAT_T, 4},
+    {DOUBLE_T, 8},
+    {LONG_DOUBLE_T, 16},
 };
 
 enum TypeCategory {
@@ -92,6 +136,17 @@ enum TypeCategory {
     TYPE_CATEGORY_STRUCT,
     TYPE_CATEGORY_UNION,
     N_TYPE_CATEGORIES,
+};
+
+static unordered_map<int, string> type_category_name = {
+    {TYPE_CATEGORY_ERROR, "error"},
+    {TYPE_CATEGORY_PRIMITIVE, "primitive"},
+    {TYPE_CATEGORY_POINTER, "pointer"},
+    {TYPE_CATEGORY_ARRAY, "array"},
+    {TYPE_CATEGORY_FUNCTION, "function"},
+    {TYPE_CATEGORY_CLASS, "class"},
+    {TYPE_CATEGORY_STRUCT, "struct"},
+    {TYPE_CATEGORY_UNION, "union"}
 };
 
 // enum TypeQualifiers
@@ -114,8 +169,6 @@ enum AccessSpecifiers{
     ACCESS_SPECIFIER_PRIVATE,
     ACCESS_SPECIFIER_PROTECTED,
 };
-
-static unordered_map<int,int> primitive_type_size = {{0,2},{1,2},{2,2},{3,2},{4,4},{5,4},{6,4},{7,4},{8,8},{9,8},{10,4},{11,8},{12,4}};
 
 // ##############################################################################
 // ################################## TYPE ######################################
@@ -161,6 +214,7 @@ public:
     bool is_convertible_to(Type t); // whether implicit conversion is possible
     Type promote_to_int(Type t); // IMPLEMENT
     int get_size();
+    void debug_type();
     string to_string();
 
     friend bool operator==(const Type &obj1, const Type &obj2);
@@ -177,6 +231,8 @@ class DefinedTypes : public Type
         static int t_index_count;
         TypeCategory type_category;
         TypeDefinition *type_definition;
+        int relative_offset = 0;
+        int size = 0;
         DefinedTypes(TypeCategory tc, TypeDefinition *td);
 };
 
@@ -206,7 +262,7 @@ class SymbolTable
 {
 public:
     std::unordered_map<std::string, std::list<Symbol *>> table;
-    std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes>>> defined_types;
+    std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes*>>> defined_types;
     std::unordered_map<std::string, std::list<Symbol *>> typedefs;
     int currentScope;
     bool error;
@@ -216,7 +272,7 @@ public:
     void enterScope(Type t, string name);
     void exitScope();
     void insert(std::string name, Type type, int offset, int overloaded);
-    void insert_defined_type(std::string name, DefinedTypes type);
+    void insert_defined_type(std::string name, DefinedTypes* type);
     void insert_typedef(std::string name, Type type, int offset);
     bool lookup(std::string name);
     bool lookup_function(std::string name, vector<Type> arg_types);
@@ -228,10 +284,12 @@ public:
     Symbol *getSymbol(std::string name);
     Symbol *getFunction(std::string name, vector<Type> arg_types);
     Symbol* getTypedef(std::string name);
-    DefinedTypes get_defined_type(std::string name);
+    DefinedTypes* get_defined_type(std::string name);
     void update(std::string name, Type newType);
     void remove(std::string name);
     void print();
+    void print_typedefs();
+    void print_defined_types();
     void set_error();
     bool has_error();
 };
@@ -251,10 +309,11 @@ public:
     AccessSpecifiers get_member_access_specifier(string member);
     SymbolTable type_symbol_table;
     int get_size();
+    TypeDefinition(TypeCategory tc);
 };
 
-TypeDefinition *create_type_definition(TypeCategory type_category, StructDeclarationSet *sds);
-TypeDefinition *create_type_definition(Identifier* id, TypeCategory type_category, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
+TypeDefinition *create_type_definition(TypeDefinition* td, StructDeclarationSet *sd);
+TypeDefinition *create_type_definition(TypeDefinition* td, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
 
 // typedef enum direct_declarator_enum {
 //     IDENTIFIER,
@@ -532,7 +591,9 @@ class StructUnionSpecifier : public NonTerminal
         StructUnionSpecifier();
 };
 
-StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id, StructDeclarationSet *sds);
+StructUnionSpecifier *create_struct_union_specifier(string struct_or_union, Identifier *id);
+StructUnionSpecifier *create_struct_union_specifier(StructUnionSpecifier* sus, StructDeclarationSet *sds);
+StructUnionSpecifier* create_struct_union_specifier(string struct_or_union, Identifier* id, StructDeclarationSet* sds);
 
 // ##############################################################################
 // ################################## CLASS SPECIFIER ######################################
@@ -549,6 +610,8 @@ class ClassSpecifier : public NonTerminal
 };
 
 ClassSpecifier *create_class_specifier(Identifier *id, ClassDeclaratorList* idl, ClassDeclarationList *cdl);
+ClassSpecifier* create_class_specifier(Identifier* id);
+ClassSpecifier* create_class_specifier(ClassSpecifier* cs, ClassDeclaratorList* idl, ClassDeclarationList* cdl);
 
 // ##############################################################################
 // ################################## CLASS DECLARATOR LIST ######################################
