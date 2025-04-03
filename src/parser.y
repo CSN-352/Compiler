@@ -6,6 +6,7 @@
 #include "symbol_table.h" 
 #include "ast.h"
 #include "expression.h"
+#include "tac.h"
 
 // External declarations 
 extern "C" int yylex();
@@ -24,6 +25,7 @@ void yyerror(const char *msg);
     #include "ast.h"
     #include "expression.h"
     #include "symbol_table.h"
+    #include "tac.h"
 }
 
 /* Token definitions */
@@ -346,7 +348,7 @@ init_declarator_list:
 // DONE
 init_declarator:
     declarator {$$ = create_init_declarator($1, nullptr);}
-    | declarator ASSIGN initializer {$$ = create_init_declarator($1,$3);}
+    | declarator ASSIGN initializer {$$ = create_init_declarator($1,$3);} 
     ;
 
 // DONE
@@ -707,6 +709,7 @@ int main(int argc, char **argv) {
     fclose(file); // Close file after parsing
     has_error |= symbolTable.has_error();
     symbolTable.print();
+    print_TAC();
     // if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;

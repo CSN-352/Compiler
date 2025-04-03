@@ -104,7 +104,7 @@ enum TACOperatorType {
     TAC_OPERATOR_RETURN,     // return value
     TAC_OPERATOR_PARAM,      // Function parameter passing
     // TAC_OPERATOR_FUNC_BEGIN, // Function prologue
-    // TAC_OPERATOR_FUNC_END,   // Function epilogue
+    TAC_OPERATOR_FUNC_END,   // Function epilogue
 
     // Array and Indexing Operators
     TAC_OPERATOR_INDEX,        // Array access: T = a[i]
@@ -166,5 +166,9 @@ void emit(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2);
 void backpatch(TACInstruction* instruction, TACOperand label);
 
 unordered_set<TACInstruction*> merge_lists(unordered_set<TACInstruction*>& list1, unordered_set<TACInstruction*>& list2);
+
+void print_TAC_instruction(TACInstruction* instruction);
+
+void print_TAC();
 
 #endif 

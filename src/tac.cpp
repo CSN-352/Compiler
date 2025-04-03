@@ -68,7 +68,7 @@ TACInstruction::TACInstruction(TACOperator op, TACOperand result, TACOperand arg
 }
 
 bool is_assignment(TACInstruction* instruction) {
-    if(instruction->op.type == (TACOperatorType::TAC_OPERATOR_CALL || TACOperatorType::TAC_OPERATOR_PARAM || TACOperatorType::TAC_OPERATOR_RETURN)) {
+    if(instruction->op.type == (TACOperatorType::TAC_OPERATOR_CALL) || instruction->op.type == (TACOperatorType::TAC_OPERATOR_PARAM) || instruction->op.type == (TACOperatorType::TAC_OPERATOR_RETURN)) {
         return false;
     } else return true;
 }
@@ -78,8 +78,12 @@ void emit(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2) {
         cerr << "Error: Code size exceeded maximum limit." << endl;
         exit(1);
     }
-    TACInstruction instruction(op, result, arg1, arg2);
-    code[instruction_id++] = &instruction;
+
+    TACInstruction* instruction = new TACInstruction(op, result, arg1, arg2);  // Allocate on heap
+    cerr << "inside emit" <<endl;
+    cout << "instruction_id " << instruction_id << endl;
+    
+    code[instruction_id++] = instruction;
 }
 
 void backpatch(TACInstruction* instruction, TACOperand label) {
@@ -99,4 +103,135 @@ unordered_set<TACInstruction*> merge_lists(unordered_set<TACInstruction*> &list1
     return list1;
 }
 
+//##############################################################################
+//################################## TACInstruction ######################################
+//##############################################################################
+
+string get_operand_string(const TACOperand& operand) {
+    if (operand.type == TAC_OPERAND_TEMP_VAR || 
+        operand.type == TAC_OPERAND_IDENTIFIER || 
+        operand.type == TAC_OPERAND_CONSTANT || 
+        operand.type == TAC_OPERAND_LABEL) {
+        return operand.value;  // Directly return the operand value
+    } 
+    else if (operand.type == TAC_OPERAND_POINTER) {
+        return "*" + operand.value;  // Pointer notation (e.g., *x)
+    } 
+    else if (operand.type == TAC_OPERAND_EMPTY) {
+        return "";  // Empty operand
+    }
+    return "UNKNOWN"; // Default case
+}
+
+string get_operator_string(TACOperatorType op) {
+    switch (op) {
+        case TAC_OPERATOR_ADD: return "+";
+        case TAC_OPERATOR_SUB: return "-";
+        case TAC_OPERATOR_MUL: return "*";
+        case TAC_OPERATOR_DIV: return "/";
+        case TAC_OPERATOR_MOD: return "%";
+        case TAC_OPERATOR_UMINUS: return "-"; // Unary minus
+        case TAC_OPERATOR_EQ: return "==";
+        case TAC_OPERATOR_NE: return "!=";
+        case TAC_OPERATOR_GT: return ">";
+        case TAC_OPERATOR_LT: return "<";
+        case TAC_OPERATOR_GE: return ">=";
+        case TAC_OPERATOR_LE: return "<=";
+        case TAC_OPERATOR_AND: return "&&";
+        case TAC_OPERATOR_OR: return "||";
+        case TAC_OPERATOR_NOT: return "!";
+        case TAC_OPERATOR_BIT_AND: return "&";
+        case TAC_OPERATOR_BIT_OR: return "|";
+        case TAC_OPERATOR_BIT_XOR: return "^";
+        case TAC_OPERATOR_LEFT_SHIFT: return "<<";
+        case TAC_OPERATOR_RIGHT_SHIFT: return ">>";
+        case TAC_OPERATOR_BIT_NOT: return "~";
+        case TAC_OPERATOR_ASSIGN: return "=";
+        case TAC_OPERATOR_ADDR_OF: return "&"; // Address of operator
+        default: return "UNKNOWN"; // Default case
+    }
+}
+
+void print_TAC_instruction(TACInstruction* instruction) {
+    if (!instruction) return;
+    cerr << "inside print_TAC_instruction" << endl;
+    cerr << instruction_id << endl;
+    cerr << instruction->id << endl;
+    cout << instruction->id << ": ";
+
+    // **Jump Instructions**
+    if (instruction->op.type == TAC_OPERATOR_GOTO) {
+        cout << "goto " << get_operand_string(instruction->arg1); // may need to change depending on emit call
+    } else if (instruction->op.type == TAC_OPERATOR_IF_GOTO) {  // may need to change depending on emit call
+        cout << "if " << get_operand_string(instruction->arg1) << " "
+             << get_operator_string(instruction->op.type) << " "
+             << get_operand_string(instruction->arg2) << " goto " 
+             << get_operand_string(instruction->result);
+    } 
+    // **Function Instructions**
+    else if (instruction->op.type == TAC_OPERATOR_PARAM) {
+        cout << "param " << get_operand_string(instruction->arg1);
+    } else if (instruction->op.type == TAC_OPERATOR_CALL) {
+        cout << get_operand_string(instruction->result) << " = call " 
+             << get_operand_string(instruction->arg1) << ", " 
+             << get_operand_string(instruction->arg2);
+    } else if (instruction->op.type == TAC_OPERATOR_RETURN) { // MAY NEED TO CHANGE
+        cout << "return " << get_operand_string(instruction->arg1);
+    } 
+    // **Pointer Instructions**
+    else if (instruction->op.type == TAC_OPERATOR_DEREF) {
+        cout << get_operand_string(instruction->result) << " = *" 
+             << get_operand_string(instruction->arg1);
+    } 
+    // else if (instruction->op.type == TAC_OPERATOR_ASSIGN && instruction->arg1.type == TAC_OPERAND_POINTER) {
+    //     cout << "*" << get_operand_string(instruction->result) << " = " 
+    //          << get_operand_string(instruction->arg1);
+    // } 
+    // **Array Access (Indexed Assignment)**
+    else if (instruction->op.type == TAC_OPERATOR_INDEX) {
+        // Read from array: `x = y[i]`
+        cout << get_operand_string(instruction->result) << " = " 
+             << get_operand_string(instruction->arg1) << "[" 
+             << get_operand_string(instruction->arg2) << "]";
+    } else if (instruction->op.type == TAC_OPERATOR_INDEX_ASSIGN) {
+        // Write to array: `x[i] = y`
+        cout << get_operand_string(instruction->arg1) << "[" 
+             << get_operand_string(instruction->arg2) << "] = " 
+             << get_operand_string(instruction->result);
+    } 
+    // **Assignment Cases**
+    else if (is_assignment(instruction)) {
+        if (instruction->arg2.type != TAC_OPERAND_EMPTY) {
+            // Binary operation: `x = y op z`
+            cout<<"inside printing binary operation";
+            if(instruction->op.type == TAC_OPERATOR_MUL)
+                cerr << "inside printing binary operation mul";
+            cout << get_operand_string(instruction->result) << " = "
+                 << get_operand_string(instruction->arg1) << " "
+                 << get_operator_string(instruction->op.type) << " "
+                 << get_operand_string(instruction->arg2);
+        } else if (instruction->op.type == TAC_OPERATOR_UMINUS) {
+            // Unary operation: `x = op y`
+            cout << get_operand_string(instruction->result) << " = "
+                 << get_operator_string(instruction->op.type) << " "
+                 << get_operand_string(instruction->arg1);
+        } else {
+            // Simple assignment: `x = y`
+            cout << get_operand_string(instruction->result) << " = " 
+                 << get_operand_string(instruction->arg1);
+        }
+    } 
+    else cout<< "Nothing to print";
+    cout << endl;
+}
+
+void print_TAC() {
+    cout << "===== Three-Address Code (TAC) =====" << endl;
+    for (int i = 1; i < MAX_CODE_SIZE; ++i) {
+        if (code[i] == nullptr) break; // Stop when we reach uninitialized entries
+        print_TAC_instruction(code[i]);
+        // cout<<"Hello";
+    }
+    cout << "====================================" << endl;
+}
 
