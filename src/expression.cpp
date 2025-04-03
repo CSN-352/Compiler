@@ -1222,6 +1222,7 @@ Expression* create_and_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
+    M->result = x->result; // TAC
     return M;
 }
 
@@ -1244,25 +1245,45 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
 
     if(op->name == "BITWISE_AND"){
         if(lt.isInt() && rt.isInt()){
-            A->type = lt.typeIndex > rt.typeIndex ? lt : rt;
-            if(lt.isUnsigned() && rt.isUnsigned()){
-                A->type.make_unsigned();
+            if(lt.typeIndex > rt.typeIndex){
+                A->type = lt;
+                if(lt.isUnsigned() || rt.isUnsigned()){
+                    A->type.make_unsigned();
+                }
+                else if(!lt.isUnsigned() && !rt.isUnsigned()){
+                    A->type.make_signed();
+                }
+                TACOperand t1 = new_temp_var(); // TAC
+                A->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), right->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, left->result, t1); // TAC
             }
-            else if(!lt.isUnsigned() && rt.isUnsigned()){
-                A->type.make_unsigned();
+            else if(lt.typeIndex == rt.typeIndex){
+                A->type = lt;
+                A->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, left->result, right->result); // TAC
             }
-            else if(lt.isUnsigned() && !rt.isUnsigned()){
-                A->type.make_unsigned();
+            else{
+                A->type = rt;
+                if(lt.isUnsigned() || rt.isUnsigned()){
+                    A->type.make_unsigned();
+                }
+                else if(!lt.isUnsigned() && !rt.isUnsigned()){
+                    A->type.make_signed();
+                }
+                TACOperand t1 = new_temp_var(); // TAC
+                A->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), left->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, t1, right->result); // TAC
             }
-            else if(!lt.isUnsigned() && !rt.isUnsigned()){
-                A->type.make_signed();
-            }
-        } else {
+        } 
+        else {
             A->type = ERROR_TYPE;
             string error_msg = "Operands of '&' must be integers at line " +
                                to_string(A->line_no) + ", column " + to_string(A->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return A;
         }
     }
 
