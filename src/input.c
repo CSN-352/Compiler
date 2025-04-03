@@ -1,1 +1,4 @@
-int x = 5/3;
+int func(){
+    int x = 2;
+    return 5;
+}

@@ -246,7 +246,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
         }
         else {
             P->type = symbolTable.get_type_of_member_variable(x->type.defined_type_name, id->value);
-            TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name).type_definition;
+            TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name)->type_definition;
             Symbol* member = td->type_symbol_table.getSymbol(id->value);
             if(op->name == "DOT"){
                 TACOperand t1 = new_temp_var(); // TAC

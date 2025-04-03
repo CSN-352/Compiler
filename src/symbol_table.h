@@ -921,7 +921,7 @@ class FunctionDefinition : public NonTerminal{
 };
 
 FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declarator *d);
-FunctionDefinition* create_function_definition(FunctionDefinition* fd, Statement* cs);
+FunctionDefinition* create_function_definition(Declarator* declarator, FunctionDefinition* fd, Statement* cs);
 
 // ##############################################################################
 // ################################ IDENTIFIER ##################################
