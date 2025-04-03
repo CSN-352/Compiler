@@ -1308,6 +1308,7 @@ Expression* create_xor_expression(Expression* x){
     M->line_no = x->line_no;
     M->column_no = x->column_no;
     M->type = x->type;
+    M->result = x->result; // TAC
     return M;
 }
 
@@ -1330,25 +1331,45 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
 
     if(op->name == "BITWISE_XOR"){
         if(lt.isInt() && rt.isInt()){
-            X->type = lt.typeIndex > rt.typeIndex ? lt : rt;
-            if(lt.isUnsigned() && rt.isUnsigned()){
-                X->type.make_unsigned();
+            if(lt.typeIndex > rt.typeIndex){
+                X->type = lt;
+                if(lt.isUnsigned() || rt.isUnsigned()){
+                    X->type.make_unsigned();
+                }
+                else if(!lt.isUnsigned() && !rt.isUnsigned()){
+                    X->type.make_signed();
+                }
+                TACOperand t1 = new_temp_var(); // TAC
+                X->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, X->type.to_string()), right->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, left->result, t1); // TAC
             }
-            else if(!lt.isUnsigned() && rt.isUnsigned()){
-                X->type.make_unsigned();
+            else if(lt.typeIndex == rt.typeIndex){
+                X->type = lt;
+                X->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, left->result, right->result); // TAC
             }
-            else if(lt.isUnsigned() && !rt.isUnsigned()){
-                X->type.make_unsigned();
+            else{
+                X->type = rt;
+                if(lt.isUnsigned() || rt.isUnsigned()){
+                    X->type.make_unsigned();
+                }
+                else if(!lt.isUnsigned() && !rt.isUnsigned()){
+                    X->type.make_signed();
+                }
+                TACOperand t1 = new_temp_var(); // TAC
+                X->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, X->type.to_string()), left->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, t1, right->result); // TAC
             }
-            else if(!lt.isUnsigned() && !rt.isUnsigned()){
-                X->type.make_signed();
-            }
-        } else {
+        } 
+         else {
             X->type = ERROR_TYPE;
             string error_msg = "Operands of '^' must be integers at line " +
                                to_string(X->line_no) + ", column " + to_string(X->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return X;
         }
     }
     return X;
