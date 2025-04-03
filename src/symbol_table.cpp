@@ -63,17 +63,17 @@ Type::Type(int idx, int p_lvl, bool is_con)
     is_defined_type = false;
 }
 
-void Type::debug_type(){
-    debug("Type Index: " + primitive_type_name[typeIndex], BLUE);
-    debug("Pointer Level: " + to_string(ptr_level), BLUE);
-    debug("Is Pointer: " + to_string(is_pointer), BLUE);
-    debug("Is Array: " + to_string(is_array), BLUE);
-    debug("Array Dimension: " + to_string(array_dim), BLUE);
-    debug("Is Function: " + to_string(is_function), BLUE);
-    debug("Number of Arguments: " + to_string(num_args), BLUE);
-    debug("Is Defined Type: " + to_string(is_defined_type), BLUE);
-    debug("Defined Type Name: " + defined_type_name, BLUE);
-}
+// void Type::debug_type(){
+//     debug("Type Index: " + primitive_type_name[typeIndex], BLUE);
+//     debug("Pointer Level: " + to_string(ptr_level), BLUE);
+//     debug("Is Pointer: " + to_string(is_pointer), BLUE);
+//     debug("Is Array: " + to_string(is_array), BLUE);
+//     debug("Array Dimension: " + to_string(array_dim), BLUE);
+//     debug("Is Function: " + to_string(is_function), BLUE);
+//     debug("Number of Arguments: " + to_string(num_args), BLUE);
+//     debug("Is Defined Type: " + to_string(is_defined_type), BLUE);
+//     debug("Defined Type Name: " + defined_type_name, BLUE);
+// }
 
 bool Type::isPrimitive()
 {
@@ -2394,7 +2394,7 @@ FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declar
 FunctionDefinition *create_function_definition(FunctionDefinition *fd, Statement *cs)
 {
     cerr << "hello" << endl;
-    CompoundStatement *cs_cast = dynamic_cast<CompoundStatement *>(cs);
+    CompoundStatement *cs_cast = dynamic_cast<CompoundStatement*>(cs);
     cerr << "hello" << endl;
     fd->compound_statement = cs_cast;
     return fd;

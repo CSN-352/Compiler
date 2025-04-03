@@ -2,6 +2,7 @@
 #define STATEMENT_H
 
 #include <vector>
+#include <unordered_set>
 #include "ast.h"
 #include "expression.h"
 #include "symbol_table.h"
@@ -22,6 +23,7 @@ class JumpStatement;
 class Statement : public NonTerminal{
     public:
     Type type;
+    unordered_set<TACInstruction*> next_list; // List of next instructions (for jumps)
     Statement();  
 };
  
@@ -35,6 +37,7 @@ class LabeledStatement : public Statement{
         Identifier* identifier;
         Expression* expression;
         int label_type; // -1 for identifier, 0 for case, 1 for default  
+    
         LabeledStatement(); 
 };
 

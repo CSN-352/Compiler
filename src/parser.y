@@ -17,6 +17,7 @@ extern YYSTYPE yylval;
 extern FILE *yyin;
 int has_error=0;
 int function_flag = 0;
+int is_control_flow = 0;
 FunctionDefinition* fd;
 StructUnionSpecifier* sus;
 ClassSpecifier* cs;
@@ -181,12 +182,12 @@ error_case:
 
 //DONE
 primary_expression:
-    IDENTIFIER {$$ = create_primary_expression($1);}
-    | I_CONSTANT {$$ = create_primary_expression($1);}
-    | F_CONSTANT {$$ = create_primary_expression($1);}
-    | CHAR_CONSTANT {$$ = create_primary_expression($1);}
-    | STRING_LITERAL {$$ = create_primary_expression($1);}
-    | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($2);} 
+    IDENTIFIER {$$ = create_primary_expression($1); if(is_control_flow) $$->type.is_control_flow=1;}
+    | I_CONSTANT {$$ = create_primary_expression($1); if(is_control_flow) $$->type.is_control_flow=1; }
+    | F_CONSTANT {$$ = create_primary_expression($1); if(is_control_flow) $$->type.is_control_flow=1; }
+    | CHAR_CONSTANT {$$ = create_primary_expression($1); if(is_control_flow) $$->type.is_control_flow=1; }
+    | STRING_LITERAL {$$ = create_primary_expression($1); if(is_control_flow) $$->type.is_control_flow=1; }
+    | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($2); if(is_control_flow) $$->type.is_control_flow=1; } 
     ;
 
 //DONE
@@ -357,7 +358,7 @@ init_declarator_list:
 // DONE
 init_declarator:
     declarator {$$ = create_init_declarator($1, nullptr);}
-    | declarator ASSIGN initializer {$$ = create_init_declarator($1,$3);} 
+    | declarator ASSIGN initializer {$$ = create_init_declarator($1,$3);}
     ;
 
 // DONE
@@ -651,19 +652,19 @@ expression_statement:
 
 // DONE
 selection_statement:
-    IF LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_selection_statement_if($3,$5);}
-    | IF LEFT_PAREN expression RIGHT_PAREN statement ELSE statement {$$ = create_selection_statement_if_else($3,$5,$7);}
-    | SWITCH LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_selection_statement_switch($3,$5);}
+    IF LEFT_PAREN {is_control_flow=1;} expression {is_control_flow=0;} RIGHT_PAREN statement {$$ = create_selection_statement_if($4,$7);}
+    | IF LEFT_PAREN {is_control_flow=1;} expression {is_control_flow=0;} RIGHT_PAREN statement ELSE statement {$$ = create_selection_statement_if_else($4,$7,$9);}
+    | SWITCH LEFT_PAREN {is_control_flow=1;} expression {is_control_flow=0;} RIGHT_PAREN statement {$$ = create_selection_statement_switch($4,$7);}
 
 // DONE
 iteration_statement:
-    WHILE LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_iteration_statement_while($3,$5);}
-    | DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON {$$ = create_iteration_statement_do_while($5,$2);}
-    | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,nullptr,$6);}
-    | FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,$5,$7);}
-    | FOR LEFT_PAREN declaration expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$4,nullptr,$6);}
-    | FOR LEFT_PAREN declaration expression_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$4,$5,$7);}
-    | UNTIL LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_iteration_statement_until($3,$5);}
+    WHILE LEFT_PAREN {is_control_flow=1;} expression {is_control_flow=0;} RIGHT_PAREN statement {$$ = create_iteration_statement_while($4,$7);}
+    | DO statement WHILE LEFT_PAREN {is_control_flow=1;} expression {is_control_flow=0;} RIGHT_PAREN SEMICOLON {$$ = create_iteration_statement_do_while($6,$2);}
+    | FOR LEFT_PAREN expression_statement {is_control_flow=1;} expression_statement {is_control_flow=0;} RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$5,nullptr,$8);}
+    | FOR LEFT_PAREN expression_statement {is_control_flow=1;} expression_statement {is_control_flow=0;} expression RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$5,$7,$9);}
+    | FOR LEFT_PAREN declaration {is_control_flow=1;} expression_statement {is_control_flow=0;} RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$5,nullptr,$8);}
+    | FOR LEFT_PAREN declaration {is_control_flow=1;} expression_statement {is_control_flow=0;} expression RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$5,$7,$9);}
+    | UNTIL LEFT_PAREN {is_control_flow=1;} expression {is_control_flow=0;} RIGHT_PAREN statement {$$ = create_iteration_statement_until($4,$7);}
     ;
 
 // DONE
@@ -735,7 +736,6 @@ int main(int argc, char **argv) {
     symbolTable.print_defined_types();
     symbolTable.print_typedefs();
     symbolTable.print();
-    print_TAC();
     // if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;

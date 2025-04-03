@@ -46,7 +46,7 @@ TACOperand new_constant(string value);
 
 TACOperand new_identifier(string value);
 
-TACOperand new_type(string value, bool is_pointer);
+TACOperand new_type(string value);
 
 //TACOperand new_type(Type* t);
 
@@ -143,17 +143,14 @@ class TACOperator{
 class TACInstruction{
     public:
         int id; // Unique instruction ID
+        int flag; // if 0, then it is a normal instruction, if 1 then it is a goto instruction, if 2 then it is an if goto instruction
         TACOperator op; // Operator (e.g., ADD, SUB)
         TACOperand arg1; // First operand (e.g., t1, a, 5)
         TACOperand arg2; // Second operand (e.g., t2, b, 10)
         TACOperand result; // Result operand (e.g., t3, c)
-        unordered_set<TACInstruction*> next_list; // List of next instructions (for jumps and branches)
-        unordered_set<TACInstruction*> true_list; // List of true instructions (for conditional jumps)
-        unordered_set<TACInstruction*> false_list; // List of false instructions (for conditional jumps)
 
         // Default constructor
-        TACInstruction();
-        TACInstruction(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2);
+        TACInstruction(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2, int flag);
 
 }; 
 
@@ -161,9 +158,13 @@ bool is_assignment(TACInstruction* instruction);
 
 extern TACInstruction* code[MAX_CODE_SIZE]; // Array of TAC instructions
 
-void emit(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2);
+void emit(TACOperator op, TACOperand result, TACOperand arg1, TACOperand arg2, int flag);
 
-void backpatch(TACInstruction* instruction, TACOperand label);
+TACInstruction* get_instruction();
+
+TACOperand get_instruction_label();
+
+void backpatch(unordered_set<TACInstruction*> list, TACOperand label);
 
 unordered_set<TACInstruction*> merge_lists(unordered_set<TACInstruction*>& list1, unordered_set<TACInstruction*>& list2);
 

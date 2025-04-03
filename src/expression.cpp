@@ -29,6 +29,7 @@ Type ERROR_TYPE;
 Expression :: Expression() : NonTerminal("EXPRESSION"){
     operand_cnt = 0;
     result = TACOperand(TAC_OPERAND_EMPTY, "");
+    begin_label = TACOperand(TAC_OPERAND_EMPTY, "");
 }
 
 // ##############################################################################
@@ -90,6 +91,9 @@ Expression* create_primary_expression(Expression* x){
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->result = x->result; // TAC
+    P->true_list = x->true_list; // TAC
+    P->false_list = x->false_list; // TAC
+    P->begin_label = x->begin_label; // TAC
     return x;
 }
 
@@ -108,7 +112,10 @@ ArgumentExpressionList* create_argument_expression_list(Expression* x){
     P->line_no = x->line_no;   
     P->column_no = x->column_no;
     P->type = x->type; // if argument expression list does not have an erronous expression, set type to the type of the first expression. Else set it as ERROR_TYPE.
-    emit(TACOperator(TAC_OPERATOR_PARAM), TACOperand(TAC_OPERAND_EMPTY, ""), x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+    // P->true_list = x->true_list; // TAC
+    // P->false_list = x->false_list; // TAC
+    emit(TACOperator(TAC_OPERATOR_PARAM), TACOperand(TAC_OPERAND_EMPTY, ""), x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+    P->begin_label = get_instruction_label();
     return P;
 }
 
@@ -117,6 +124,7 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
     if(x->type.is_error()){
         args_expr_list->type = ERROR_TYPE;
     }
+    emit(TACOperator(TAC_OPERATOR_PARAM), TACOperand(TAC_OPERAND_EMPTY, ""), x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
     return args_expr_list;
 }
 
@@ -141,6 +149,9 @@ Expression* create_postfix_expression(Expression* x){
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->result = x->result; // TAC
+    P->true_list = x->true_list; // TAC
+    P->false_list = x->false_list; // TAC
+    P->begin_label = x->begin_label; // TAC
     return P;
 }
 
@@ -169,20 +180,26 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     else if(x->type.isInt()){
         P->type = x->type;
         P->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
-        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1")); // TAC
+        emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+        if(x->begin_label.type == TAC_OPERAND_EMPTY) P->begin_label = get_instruction_label(); // TAC
+        else P->begin_label = x->begin_label;
+        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1"), 0); // TAC
     }
     else if(x->type.isFloat()){
         P->type = x->type;
         P->result = x->result; // TAC
-        emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
-        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1")); // TAC
+        emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+        if(x->begin_label.type == TAC_OPERAND_EMPTY) P->begin_label = get_instruction_label(); // TAC
+        else P->begin_label = x->begin_label;
+        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1"), 0); // TAC
     }
     else if(x->type.is_pointer){
         P->type = x->type;
         P->result = x->result; // TAC
-        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), P->result, x->result, new_constant(to_string(primitive_type_size[x->type.typeIndex]))); // TAC
-        emit(TACOperator(TAC_OPERATOR_NOP), x->result, P->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), P->result, x->result, new_constant(to_string(primitive_type_size[x->type.typeIndex])), 0); // TAC
+        if(x->begin_label.type == TAC_OPERAND_EMPTY) P->begin_label = get_instruction_label(); // TAC
+        else P->begin_label = x->begin_label;
+        emit(TACOperator(TAC_OPERATOR_NOP), x->result, P->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
     }
     else{
         P->type = ERROR_TYPE;
@@ -246,25 +263,29 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
         }
         else {
             P->type = symbolTable.get_type_of_member_variable(x->type.defined_type_name, id->value);
-            TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name).type_definition;
+            TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name)->type_definition;
             Symbol* member = td->type_symbol_table.getSymbol(id->value);
             if(op->name == "DOT"){
                 TACOperand t1 = new_temp_var(); // TAC
                 TACOperand t2 = new_temp_var(); // TAC
                 TACOperand t3 = new_temp_var(); // TAC
                 P->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_ADDR_OF), t1, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
-                emit(TACOperator(TAC_OPERATOR_ADD), t2, t1, new_constant(to_string(member->offset))); // TAC
-                emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
-                emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(TAC_OPERATOR_ADDR_OF), t1, x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+                if(x->begin_label.type == TAC_OPERAND_EMPTY) P->begin_label = get_instruction_label(); // TAC
+                else P->begin_label = x->begin_label;
+                emit(TACOperator(TAC_OPERATOR_ADD), t2, t1, new_constant(to_string(member->offset)), 0); // TAC
+                emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+                emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
             }
             else if(op->name == "PTR_OP"){
                 TACOperand t1 = new_temp_var(); // TAC
                 TACOperand t2 = new_temp_var(); // TAC
                 P->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_ADD), t1, x->result, new_constant(to_string(member->offset))); // TAC
-                emit(TACOperator(TAC_OPERATOR_DEREF), t2, t1, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
-                emit(TACOperator(TAC_OPERATOR_NOP), P->result, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(TAC_OPERATOR_ADD), t1, x->result, new_constant(to_string(member->offset)), 0); // TAC
+                if(x->begin_label.type == TAC_OPERAND_EMPTY) P->begin_label = get_instruction_label(); // TAC
+                else P->begin_label = x->begin_label;
+                emit(TACOperator(TAC_OPERATOR_DEREF), t2, t1, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+                emit(TACOperator(TAC_OPERATOR_NOP), P->result, t2, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
             }
         }
     }
@@ -322,10 +343,12 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     TACOperand t2 = new_temp_var(); // TAC
     TACOperand t3 = new_temp_var(); // TAC
     P->result = new_temp_var(); // TAC
-    emit(TACOperator(TAC_OPERATOR_MUL), t1, index_expression->result, new_constant(to_string(primitive_type_size[x->type.typeIndex]))); // TAC
-    emit(TACOperator(TAC_OPERATOR_ADD), t2, x->result, t1); // TAC
-    emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
-    emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+    emit(TACOperator(TAC_OPERATOR_MUL), t1, index_expression->result, new_constant(to_string(primitive_type_size[x->type.typeIndex])), 0); // TAC
+    if(x->begin_label.type == TAC_OPERAND_EMPTY) P->begin_label = get_instruction_label(); // TAC
+    else x->begin_label = x->begin_label;
+    emit(TACOperator(TAC_OPERATOR_ADD), t2, x->result, t1, 0); // TAC
+    emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+    emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
     return P;
 }
 
@@ -382,7 +405,9 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type.arg_types.clear();
                 if(x->type.typeIndex == PrimitiveTypes :: VOID_T) P->result = TACOperand(TAC_OPERAND_EMPTY, ""); // TAC
                 else P->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CALL), P->result, x->result, new_constant(to_string(arguments.size()))); // TAC
+                emit(TACOperator(TAC_OPERATOR_CALL), P->result, x->result, new_constant(to_string(arguments.size())), 0); // TAC
+                if(x->begin_label.type == TAC_OPERAND_EMPTY) P->begin_label = get_instruction_label(); // TAC
+                else P->begin_label = x->begin_label;
             }
         }
     }
@@ -409,6 +434,9 @@ Expression* create_unary_expression(Expression* x){
     U->column_no = x->column_no;
     U->type = x->type;
     U->result = x->result; // TAC
+    U->true_list = x->true_list; // TAC 
+    U->false_list = x->false_list; // TAC
+    U->begin_label = x->begin_label; // TAC
     return U;
 }
 
@@ -445,12 +473,16 @@ Expression* create_unary_expression(Expression* x, Terminal* op){
             U->type = x->type;
             U->result = new_temp_var(); // TAC
             if(x->type.is_pointer){
-                emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), U->result, x->result, new_constant(to_string(primitive_type_size[x->type.typeIndex]))); // TAC
-                emit(TACOperator(TAC_OPERATOR_NOP), x->result, U->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), U->result, x->result, new_constant(to_string(primitive_type_size[x->type.typeIndex])), 0); // TAC
+                if(x->begin_label.type == TAC_OPERAND_EMPTY) U->begin_label = get_instruction_label(); // TAC
+                else U->begin_label = x->begin_label;
+                emit(TACOperator(TAC_OPERATOR_NOP), x->result, U->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
             }
             else{
-                emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), U->result, x->result, new_constant("1")); // TAC
-                emit(TACOperator(TAC_OPERATOR_NOP), x->result, U->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+                emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), U->result, x->result, new_constant("1"), 0); // TAC
+                if(x->begin_label.type == TAC_OPERAND_EMPTY) U->begin_label = get_instruction_label(); // TAC
+                else U->begin_label = x->begin_label;
+                emit(TACOperator(TAC_OPERATOR_NOP), x->result, U->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
             }
         } 
         else
@@ -504,7 +536,9 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
         U->type.ptr_level++;
         U->type.is_pointer = true;
         U->result = new_temp_var(); // TAC
-        emit(TAC_OPERATOR_ADDR_OF, U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TAC_OPERATOR_ADDR_OF, U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+        if(x->begin_label.type == TAC_OPERAND_EMPTY) U->begin_label = get_instruction_label(); // TAC
+        else U->begin_label = x->begin_label;
     }
     else if (op->name == "MULTIPLY")
     {
@@ -523,7 +557,9 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
             U->type.is_pointer = false;
         }
         U->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_DEREF), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(TAC_OPERATOR_DEREF), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+        if(x->begin_label.type == TAC_OPERAND_EMPTY) U->begin_label = get_instruction_label(); // TAC
+        else U->begin_label = x->begin_label;
         
     }
     else if (op->name == "MINUS" || op->name == "PLUS")
@@ -541,7 +577,9 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
         U->type = x->type;
         U->type.make_signed();
         U->result = new_temp_var(); // TAC
-        emit(TACOperator(op->name == "MINUS" ? TAC_OPERATOR_UMINUS : TAC_OPERATOR_ADD), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(op->name == "MINUS" ? TAC_OPERATOR_UMINUS : TAC_OPERATOR_ADD), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+        if(x->begin_label.type == TAC_OPERAND_EMPTY) U->begin_label = get_instruction_label(); // TAC
+        else U->begin_label = x->begin_label;
     }
     else if (op->name == "NOT")
     {
@@ -557,8 +595,16 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
         {
             U->type = Type(PrimitiveTypes::INT_T, 0, true);
         }
-        U->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_NOT), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        if(!U->type.is_control_flow){
+            U->result = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_NOT), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+            if(x->begin_label.type == TAC_OPERAND_EMPTY) U->begin_label = get_instruction_label(); // TAC
+            else U->begin_label = x->begin_label;
+        }
+        else{
+            U->true_list = x->false_list; // TAC
+            U->false_list = x->true_list; // TAC
+        }
     }
     else if (op->name == "BITWISE_NOT"){
         if (!x->type.isInt())
@@ -573,7 +619,9 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
             U->type = x->type.promote_to_int(x->type);
         }
         U->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_BIT_NOT), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+        emit(TACOperator(TAC_OPERATOR_BIT_NOT), U->result, x->result, TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+        if(x->begin_label.type == TAC_OPERAND_EMPTY) U->begin_label = get_instruction_label(); // TAC
+        else U->begin_label = x->begin_label;
     }
     return U;
 }
@@ -587,7 +635,8 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn){
     U->name = "UNARY EXPRESSION SIZEOF TYPE";
     U->type = Type(PrimitiveTypes::INT_T, 0, true);
     U->result = new_temp_var(); // TAC
-    emit(TACOperator(TAC_OPERATOR_NOP), U->result, new_constant(to_string(tn->type.get_size())), TACOperand(TAC_OPERAND_EMPTY, "")); // TAC
+    emit(TACOperator(TAC_OPERATOR_NOP), U->result, new_constant(to_string(tn->type.get_size())), TACOperand(TAC_OPERAND_EMPTY, ""), 0); // TAC
+    U->begin_label = get_instruction_label(); // TAC
     return U;
 }
 
@@ -609,6 +658,9 @@ Expression* create_cast_expression(Expression* x){
     C->column_no = x->column_no;
     C->type = x->type;
     C->result = x->result; // TAC
+    C->true_list = x->true_list; // TAC
+    C->false_list = x->false_list; // TAC
+    C->begin_label = x->begin_label; // TAC
     return C;
 }
 
@@ -634,7 +686,9 @@ Expression* create_cast_expression(TypeName* tn, Expression* x){
     }
     C->type = tn->type;
     C->result = new_temp_var(); // TAC
-    emit(TACOperator(TAC_OPERATOR_CAST), C->result, TACOperand(TAC_OPERAND_TYPE, tn->type.to_string()), x->result); // TAC
+    emit(TACOperator(TAC_OPERATOR_CAST), C->result, TACOperand(TAC_OPERAND_TYPE, tn->type.to_string()), x->result, 0); // TAC
+    if(x->begin_label.type == TAC_OPERAND_EMPTY) C->begin_label = get_instruction_label(); // TAC
+    else C->begin_label = x->begin_label;
 
     return C;
 }
@@ -658,6 +712,9 @@ Expression* create_multiplicative_expression(Expression* x){
     M->column_no = x->column_no;
     M->type = x->type;
     M->result = x->result; // TAC
+    M->true_list = x->true_list; // TAC
+    M->false_list = x->false_list; // TAC
+    M->begin_label = x->begin_label; // TAC
     return M;
 }
 
@@ -693,20 +750,29 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             if(lt.typeIndex > rt.typeIndex){
                 TACOperand t1 = new_temp_var(); // TAC
                 M->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result); // TAC
-                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) M->begin_label = get_instruction_label(); // TAC
+                else if (left->begin_label.type != TAC_OPERAND_EMPTY)M->begin_label = left->begin_label;
+                else M->begin_label = right->begin_label;
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1, 0); // TAC
             } 
             else if(lt.typeIndex == rt.typeIndex){
                 M->type = lt;
                 M->result = new_temp_var(); // TAC
-                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result); // TAC
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) M->begin_label = get_instruction_label(); // TAC
+                else if (left->begin_label.type != TAC_OPERAND_EMPTY)M->begin_label = left->begin_label;
+                else M->begin_label = right->begin_label;
             }
             else{
                 M->type = rt;
                 TACOperand t1 = new_temp_var(); // TAC
                 M->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result); // TAC
-                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) M->begin_label = get_instruction_label(); // TAC
+                else if (left->begin_label.type != TAC_OPERAND_EMPTY)M->begin_label = left->begin_label;
+                else M->begin_label = right->begin_label;
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result, 0); // TAC
             } 
         } 
         else if (lt.isInt() && rt.isInt()) {
@@ -718,13 +784,19 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 }
                 TACOperand t1 = new_temp_var(); // TAC
                 M->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), right->result); // TAC
-                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) M->begin_label = get_instruction_label(); // TAC
+                else if (left->begin_label.type != TAC_OPERAND_EMPTY)M->begin_label = left->begin_label;
+                else M->begin_label = right->begin_label;
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1, 0); // TAC
             }
             else if(lt.typeIndex == rt.typeIndex){
                 M->type = lt;
                 M->result = new_temp_var(); // TAC
-                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result); // TAC
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) M->begin_label = get_instruction_label(); // TAC
+                else if (left->begin_label.type != TAC_OPERAND_EMPTY)M->begin_label = left->begin_label;
+                else M->begin_label = right->begin_label;
             }
             else{
                 M->type = rt;
@@ -733,8 +805,11 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 }
                 TACOperand t1 = new_temp_var(); // TAC
                 M->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), left->result); // TAC
-                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), left->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) M->begin_label = get_instruction_label(); // TAC
+                else if (left->begin_label.type != TAC_OPERAND_EMPTY)M->begin_label = left->begin_label;
+                else M->begin_label = right->begin_label;
+                emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result, 0); // TAC
             }
         }
     }
@@ -755,13 +830,19 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             }
             TACOperand t1 = new_temp_var(); // TAC
             M->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), right->result); // TAC
-            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) M->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY)M->begin_label = left->begin_label;
+            else M->begin_label = right->begin_label;
+            emit(TACOperator(TAC_OPERATOR_MOD), M->result, left->result, t1, 0); // TAC
         }
         else if(lt.typeIndex == rt.typeIndex){
             M->type = lt;
             M->result = new_temp_var(); // TAC
-            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result); // TAC
+            emit(TACOperator(TAC_OPERATOR_MOD), M->result, left->result, right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) M->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY)M->begin_label = left->begin_label;
+            else M->begin_label = right->begin_label;
         }
         else{
             M->type = rt;
@@ -770,8 +851,11 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             }
             TACOperand t1 = new_temp_var(); // TAC
             M->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), left->result); // TAC
-            emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, M->type.to_string()), left->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) M->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY)M->begin_label = left->begin_label;
+            else M->begin_label = right->begin_label;
+            emit(TACOperator(TAC_OPERATOR_MOD), M->result, t1, right->result, 0); // TAC
         }
         
     }
@@ -797,6 +881,9 @@ Expression* create_additive_expression(Expression* x){
     M->column_no = x->column_no;
     M->type = x->type;
     M->result = x->result; // TAC
+    M->true_list = x->true_list; // TAC
+    M->false_list = x->false_list; // TAC
+    M->begin_label = x->begin_label; // TAC
     return M;
 }
 
@@ -822,20 +909,29 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         if(lt.typeIndex > rt.typeIndex){
             TACOperand t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result); // TAC
-            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
         } 
         else if(lt.typeIndex == rt.typeIndex){
             A->type = lt;
             A->result = new_temp_var(); // TAC
-            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result); // TAC
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
         }
         else{
             A->type = rt;
             TACOperand t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result); // TAC
-            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result, 0); // TAC
         } 
     } 
     else if (lt.isInt() && rt.isInt()) {
@@ -847,13 +943,19 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             }
             TACOperand t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), right->result); // TAC
-            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
         }
         else if(lt.typeIndex == rt.typeIndex){
             A->type = lt;
             A->result = new_temp_var(); // TAC
-            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result); // TAC
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
         }
         else{
             A->type = rt;
@@ -862,38 +964,53 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             }
             TACOperand t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), left->result); // TAC
-            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), left->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result, 0); // TAC
         }
     }
     else if (op->name == "ADD" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
         TACOperand t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(rt.get_size())), right->result); // TAC
-        emit(TACOperator(TAC_OPERATOR_ADD), A->result, left->result, t1); // TAC
+        emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(rt.get_size())), right->result, 0); // TAC
+        if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+        else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+        else A->begin_label = right->begin_label;
+        emit(TACOperator(TAC_OPERATOR_ADD), A->result, left->result, t1, 0); // TAC
     } 
     else if (op->name == "ADD" && lt.isInt() && rt.isPointer()) {
         A->type = rt;
         TACOperand t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(lt.get_size())), left->result); // TAC
-        emit(TACOperator(TAC_OPERATOR_ADD), A->result, right->result, t1); // TAC
+        emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(lt.get_size())), left->result, 0); // TAC
+        if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+        else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+        else A->begin_label = right->begin_label;
+        emit(TACOperator(TAC_OPERATOR_ADD), A->result, right->result, t1, 0); // TAC
     } 
     else if (op->name == "MINUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
         TACOperand t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(rt.get_size())), right->result); // TAC
-        emit(TACOperator(TAC_OPERATOR_SUB), A->result, left->result, t1); // TAC
+        emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(rt.get_size())), right->result, 0); // TAC
+        if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+        else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+        else A->begin_label = right->begin_label;
+        emit(TACOperator(TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
     } 
     else if (op->name == "MINUS" && lt.isPointer() && rt.isPointer()) {
         if (lt == rt) {
             A->type = Type(PrimitiveTypes::INT_T, 0, false); 
             TACOperand t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_SUB), t1, left->result, right->result); // TAC
-            emit(TACOperator(TAC_OPERATOR_DIV), A->result, t1, new_constant(to_string(lt.get_size()))); // TAC
+            emit(TACOperator(TAC_OPERATOR_SUB), t1, left->result, right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if (left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(TAC_OPERATOR_DIV), A->result, t1, new_constant(to_string(lt.get_size())), 0); // TAC
         } 
         else {
             A->type = ERROR_TYPE;
@@ -933,6 +1050,9 @@ Expression* create_shift_expression(Expression* x){
     M->column_no = x->column_no;
     M->type = x->type;
     M->result = x->result; // TAC
+    M->true_list = x->true_list; // TAC
+    M->false_list = x->false_list; // TAC
+    M->begin_label = x->begin_label; // TAC
     return M;
 }
 
@@ -977,13 +1097,19 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         }
         TACOperand t1 = new_temp_var(); // TAC
         S->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, S->type.to_string()), right->result); // TAC
-        emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, left->result, t1); // TAC
+        emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, S->type.to_string()), right->result, 0); // TAC
+        if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) S->begin_label = get_instruction_label(); // TAC
+        else if(left->begin_label.type != TAC_OPERAND_EMPTY) S->begin_label = left->begin_label;
+        else S->begin_label = right->begin_label;
+        emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, left->result, t1, 0); // TAC
     } 
     else if(lt.typeIndex == rt.typeIndex){
         S->type = lt;
         S->result = new_temp_var(); // TAC
-        emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, left->result, right->result); // TAC
+        emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, left->result, right->result, 0); // TAC
+        if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) S->begin_label = get_instruction_label(); // TAC
+        else if(left->begin_label.type != TAC_OPERAND_EMPTY) S->begin_label = left->begin_label;
+        else S->begin_label = right->begin_label;
     }
     else {
         S->type = rt;
@@ -996,8 +1122,11 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         }
         TACOperand t1 = new_temp_var(); // TAC
         S->result = new_temp_var(); // TAC
-        emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, S->type.to_string()), left->result); // TAC   
-        emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, t1, right->result); // TAC
+        emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, S->type.to_string()), left->result, 0); // TAC   
+        if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) S->begin_label = get_instruction_label(); // TAC
+        else if(left->begin_label.type != TAC_OPERAND_EMPTY) S->begin_label = left->begin_label;
+        else S->begin_label = right->begin_label;
+        emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, t1, right->result, 0); // TAC
     }
     return S;
 }
@@ -1021,6 +1150,9 @@ Expression* create_relational_expression(Expression* x){
     M->column_no = x->column_no;
     M->type = x->type;
     M->result = x->result; // TAC
+    M->true_list = x->true_list; // TAC
+    M->false_list = x->false_list; // TAC
+    M->begin_label = x->begin_label; // TAC
     return M;
 }
 
@@ -1044,6 +1176,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
     if ((lt.isIntorFloat() && rt.isIntorFloat())) {
         // Usual promotions can be added here if needed
         R->type = Type(PrimitiveTypes::INT_T, 0, false); 
+        R->type.is_control_flow = left->type.is_control_flow; // TAC
         if (lt.isUnsigned() != rt.isUnsigned()){
             // causes undefined behaviour
             R->type = ERROR_TYPE;
@@ -1055,38 +1188,100 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
         }
         if (lt.typeIndex > rt.typeIndex) {
             TACOperand t1 = new_temp_var(); // TAC
-            R->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result); // TAC
-            emit(TACOperator(op->name == "LT" ? TAC_OPERATOR_LT :
-                op->name == "LE" ? TAC_OPERATOR_LE :
-                op->name == "GT" ? TAC_OPERATOR_GT :
-                TAC_OPERATOR_GE), R->result, left->result, t1); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) R->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) R->begin_label = left->begin_label;
+            else R->begin_label = right->begin_label;
+            if(!R->type.is_control_flow){
+                R->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                    op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                    op->name == "GREATER" ? TAC_OPERATOR_GT :
+                    TAC_OPERATOR_GE), R->result, left->result, t1, 0); // TAC
+            }
+            else{
+                emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                    op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                    op->name == "GREATER" ? TAC_OPERATOR_GT :
+                    TAC_OPERATOR_GE), TACOperand(TAC_OPERAND_EMPTY,""), left->result, t1, 2); // TAC if goto
+                R->true_list.insert(get_instruction());
+                emit(TACOperator(TAC_OPERATOR_NOP), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), 1); // TAC goto
+                R->false_list.insert(get_instruction());
+            }
         } 
         else if(lt.typeIndex == rt.typeIndex){
-            R->result = new_temp_var(); // TAC
-            emit(TACOperator(op->name == "LT" ? TAC_OPERATOR_LT :
-                op->name == "LE" ? TAC_OPERATOR_LE :
-                op->name == "GT" ? TAC_OPERATOR_GT :
-                TAC_OPERATOR_GE), R->result, left->result, right->result); // TAC
+            if(!R->type.is_control_flow){
+                R->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                    op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                    op->name == "GREATER" ? TAC_OPERATOR_GT :
+                    TAC_OPERATOR_GE), R->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) R->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) R->begin_label = left->begin_label;
+                else R->begin_label = right->begin_label;
+            }
+            else{
+                emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                    op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                    op->name == "GREATER" ? TAC_OPERATOR_GT :
+                    TAC_OPERATOR_GE), TACOperand(TAC_OPERAND_EMPTY,""), left->result, right->result, 2); // TAC if goto
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) R->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) R->begin_label = left->begin_label;
+                else R->begin_label = right->begin_label;
+                R->true_list.insert(get_instruction());
+                emit(TACOperator(TAC_OPERATOR_NOP), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), 1); // TAC goto
+                R->false_list.insert(get_instruction());
+            }
         }
         else {
             TACOperand t1 = new_temp_var(); // TAC
-            R->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result); // TAC   
-            emit(TACOperator(op->name == "LT" ? TAC_OPERATOR_LT :
-                op->name == "LE" ? TAC_OPERATOR_LE :
-                op->name == "GT" ? TAC_OPERATOR_GT :
-                TAC_OPERATOR_GE), R->result, t1, right->result); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result, 0); // TAC   
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) R->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) R->begin_label = left->begin_label;
+            else R->begin_label = right->begin_label;
+            if(!R->type.is_control_flow){
+                R->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                    op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                    op->name == "GREATER" ? TAC_OPERATOR_GT :
+                    TAC_OPERATOR_GE), R->result, t1, right->result, 0); // TAC
+            }
+            else{
+                emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                    op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                    op->name == "GREATER" ? TAC_OPERATOR_GT :
+                    TAC_OPERATOR_GE), TACOperand(TAC_OPERAND_EMPTY,""), t1, right->result, 2); // TAC if goto
+                R->true_list.insert(get_instruction());
+                emit(TACOperator(TAC_OPERATOR_NOP), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), 1); // TAC goto
+                R->false_list.insert(get_instruction());
+            }
         }
     } 
     else if(lt.is_pointer && rt.is_pointer) {
         R->type = Type(PrimitiveTypes::INT_T, 0, false);
         if(lt == rt){
-            R->result = new_temp_var(); // TAC
-            emit(TACOperator(op->name == "LT" ? TAC_OPERATOR_LT :
-                op->name == "LE" ? TAC_OPERATOR_LE :
-                op->name == "GT" ? TAC_OPERATOR_GT :
-                TAC_OPERATOR_GE), R->result, left->result, right->result); // TAC
+            if(!R->type.is_control_flow){
+                R->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                    op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                    op->name == "GREATER" ? TAC_OPERATOR_GT :
+                    TAC_OPERATOR_GE), R->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) R->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) R->begin_label = left->begin_label;
+                else R->begin_label = right->begin_label;
+            }
+            else{
+                emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                    op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                    op->name == "GREATER" ? TAC_OPERATOR_GT :
+                    TAC_OPERATOR_GE), TACOperand(TAC_OPERAND_EMPTY,""), left->result, right->result, 2); // TAC if goto
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) R->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) R->begin_label = left->begin_label;
+                else R->begin_label = right->begin_label;
+                R->true_list.insert(get_instruction());
+                emit(TACOperator(TAC_OPERATOR_NOP), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), 1); // TAC goto
+                R->false_list.insert(get_instruction());
+            }
         } 
         else {
             R->type = ERROR_TYPE;
@@ -1127,6 +1322,9 @@ Expression* create_equality_expression(Expression* x){
     M->column_no = x->column_no;
     M->type = x->type;
     M->result = x->result; // TAC
+    M->true_list = x->true_list; // TAC
+    M->false_list = x->false_list; // TAC
+    M->begin_label = x->begin_label; // TAC
     return M;
 }
 
@@ -1160,27 +1358,77 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
         }
         if (lt.typeIndex > rt.typeIndex) {
             TACOperand t1 = new_temp_var(); // TAC
-            E->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result); // TAC
-            emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, left->result, t1); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) E->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) E->begin_label = left->begin_label;
+            else E->begin_label = right->begin_label;
+            if(!E->type.is_control_flow){
+                E->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, left->result, t1, 0); // TAC
+            }
+            else{
+                emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), TACOperand(TAC_OPERAND_EMPTY,""), left->result, t1, 2); // TAC if goto
+                E->true_list.insert(get_instruction());
+                emit(TACOperator(TAC_OPERATOR_NOP), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), 1); // TAC goto
+                E->false_list.insert(get_instruction());
+            }
         } 
         else if(lt.typeIndex == rt.typeIndex){
-            E->result = new_temp_var(); // TAC
-            emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, left->result, right->result); // TAC
+            if(!E->type.is_control_flow){
+                E->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) E->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) E->begin_label = left->begin_label;
+                else E->begin_label = right->begin_label;
+            }
+            else{
+                emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), TACOperand(TAC_OPERAND_EMPTY,""), left->result, right->result, 2); // TAC if goto
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) E->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) E->begin_label = left->begin_label;
+                else E->begin_label = right->begin_label;
+                E->true_list.insert(get_instruction());
+                emit(TACOperator(TAC_OPERATOR_NOP), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), 1); // TAC goto
+                E->false_list.insert(get_instruction());
+            }
         }
         else {
             TACOperand t1 = new_temp_var(); // TAC
-            E->result = new_temp_var(); // TAC
-            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result); // TAC   
-            emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, t1, right->result); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result, 0); // TAC   
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) E->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) E->begin_label = left->begin_label;
+            else E->begin_label = right->begin_label;
+            if(!E->type.is_control_flow){
+                E->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, t1, right->result, 0); // TAC
+            }
+            else{
+                emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), TACOperand(TAC_OPERAND_EMPTY,""), t1, right->result, 2); // TAC if goto
+                E->true_list.insert(get_instruction());
+                emit(TACOperator(TAC_OPERATOR_NOP), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), 1); // TAC goto
+                E->false_list.insert(get_instruction());
+            }
         }
         
     } 
     else if (lt.isPointer() && rt.isPointer()) {
         E->type = Type(PrimitiveTypes::INT_T, 0, false);
         if(lt == rt){
-            E->result = new_temp_var(); // TAC
-            emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, left->result, right->result); // TAC
+            if(!E->type.is_control_flow){
+                E->result = new_temp_var(); // TAC
+                emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), E->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) E->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) E->begin_label = left->begin_label;
+                else E->begin_label = right->begin_label;
+            }
+            else{
+                emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), TACOperand(TAC_OPERAND_EMPTY,""), left->result, right->result, 2); // TAC if goto
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) E->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) E->begin_label = left->begin_label;
+                else E->begin_label = right->begin_label;
+                E->true_list.insert(get_instruction());
+                emit(TACOperator(TAC_OPERATOR_NOP), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), TACOperand(TAC_OPERAND_EMPTY,""), 1); // TAC goto
+                E->false_list.insert(get_instruction());
+            }
         } 
         else {
             E->type = ERROR_TYPE;
@@ -1223,6 +1471,9 @@ Expression* create_and_expression(Expression* x){
     M->column_no = x->column_no;
     M->type = x->type;
     M->result = x->result; // TAC
+    M->true_list = x->true_list; // TAC
+    M->false_list = x->false_list; // TAC
+    M->begin_label = x->begin_label; // TAC
     return M;
 }
 
@@ -1254,14 +1505,19 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                     A->type.make_signed();
                 }
                 TACOperand t1 = new_temp_var(); // TAC
-                A->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), right->result); // TAC
-                emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, left->result, t1); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+                else A->begin_label = right->begin_label;
+                emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, left->result, t1, 0); // TAC
             }
             else if(lt.typeIndex == rt.typeIndex){
                 A->type = lt;
                 A->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, left->result, right->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+                else A->begin_label = right->begin_label;
             }
             else{
                 A->type = rt;
@@ -1273,8 +1529,11 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 }
                 TACOperand t1 = new_temp_var(); // TAC
                 A->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), left->result); // TAC
-                emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, t1, right->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, A->type.to_string()), left->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+                else A->begin_label = right->begin_label;
+                emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, t1, right->result, 0); // TAC
             }
         } 
         else {
@@ -1309,6 +1568,9 @@ Expression* create_xor_expression(Expression* x){
     M->column_no = x->column_no;
     M->type = x->type;
     M->result = x->result; // TAC
+    M->true_list = x->true_list; // TAC
+    M->false_list = x->false_list; // TAC
+    M->begin_label = x->begin_label; // TAC
     return M;
 }
 
@@ -1341,13 +1603,19 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 }
                 TACOperand t1 = new_temp_var(); // TAC
                 X->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, X->type.to_string()), right->result); // TAC
-                emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, left->result, t1); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, X->type.to_string()), right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) X->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) X->begin_label = left->begin_label;
+                else X->begin_label = right->begin_label;
+                emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, left->result, t1, 0); // TAC
             }
             else if(lt.typeIndex == rt.typeIndex){
                 X->type = lt;
                 X->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, left->result, right->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) X->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) X->begin_label = left->begin_label;
+                else X->begin_label = right->begin_label;
             }
             else{
                 X->type = rt;
@@ -1359,8 +1627,11 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 }
                 TACOperand t1 = new_temp_var(); // TAC
                 X->result = new_temp_var(); // TAC
-                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, X->type.to_string()), left->result); // TAC
-                emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, t1, right->result); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, X->type.to_string()), left->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) X->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) X->begin_label = left->begin_label;
+                else X->begin_label = right->begin_label;
+                emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, t1, right->result, 0); // TAC
             }
         } 
          else {
@@ -1393,6 +1664,10 @@ Expression* create_or_expression(Expression* x){
     C->line_no = x->line_no;
     C->column_no = x->column_no;
     C->type = x->type;
+    C->result = x->result; // TAC
+    C->true_list = x->true_list; // TAC
+    C->false_list = x->false_list; // TAC
+    C->begin_label = x->begin_label; // TAC
     return C;
 }
 
@@ -1415,25 +1690,54 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
 
     if(op->name == "BITWISE_OR"){
         if(lt.isInt() && rt.isInt()){
-            O->type = lt.typeIndex > rt.typeIndex ? lt : rt;
-            if(lt.isUnsigned() && rt.isUnsigned()){
-                O->type.make_unsigned();
+            if(lt.typeIndex > rt.typeIndex){
+                O->type = lt;
+                if(lt.isUnsigned() || rt.isUnsigned()){
+                    O->type.make_unsigned();
+                }
+                else if(!lt.isUnsigned() && !rt.isUnsigned()){
+                    O->type.make_signed();
+                }
+                TACOperand t1 = new_temp_var(); // TAC
+                O->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, O->type.to_string()), right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) O->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) O->begin_label = left->begin_label;
+                else O->begin_label = right->begin_label;
+                emit(TACOperator(TAC_OPERATOR_BIT_OR), O->result, left->result, t1, 0); // TAC
             }
-            else if(!lt.isUnsigned() && rt.isUnsigned()){
-                O->type.make_unsigned();
+            else if(lt.typeIndex == rt.typeIndex){
+                O->type = lt;
+                O->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_BIT_OR), O->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) O->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) O->begin_label = left->begin_label;
+                else O->begin_label = right->begin_label;
             }
-            else if(lt.isUnsigned() && !rt.isUnsigned()){
-                O->type.make_unsigned();
+            else{
+                O->type = rt;
+                if(lt.isUnsigned() || rt.isUnsigned()){
+                    O->type.make_unsigned();
+                }
+                else if(!lt.isUnsigned() && !rt.isUnsigned()){
+                    O->type.make_signed();
+                }
+                TACOperand t1 = new_temp_var(); // TAC
+                O->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, O->type.to_string()), left->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) O->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) O->begin_label = left->begin_label;
+                else O->begin_label = right->begin_label;
+                emit(TACOperator(TAC_OPERATOR_BIT_OR), O->result, t1, right->result, 0); // TAC
             }
-            else if(!lt.isUnsigned() && !rt.isUnsigned()){
-                O->type.make_signed();
-            }
-        } else {
+        } 
+        else {
             O->type = ERROR_TYPE;
             string error_msg = "Operands of '|' must be integers at line " +
                                to_string(O->line_no) + ", column " + to_string(O->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return O;
         }
     }
     return O;
@@ -1457,6 +1761,10 @@ Expression* create_logical_and_expression(Expression* x){
     C->line_no = x->line_no;
     C->column_no = x->column_no;
     C->type = x->type;
+    C->result = x->result; // TAC
+    C->true_list = x->true_list; // TAC
+    C->false_list = x->false_list; // TAC
+    C->begin_label = x->begin_label; // TAC
     return C;
 }
 
@@ -1480,7 +1788,66 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
     if(op->name == "LOGICAL_AND"){
         if(lt.isIntorFloat() && rt.isIntorFloat()){
             L->type = Type(PrimitiveTypes::INT_T, 0, false); 
-        } else {
+            if (lt.isUnsigned() != rt.isUnsigned()){
+                // causes undefined behaviour
+                L->type = ERROR_TYPE;
+                string error_msg = "Operands of '&&' must have same signedness " +
+                                to_string(L->line_no) + ", column " + to_string(L->column_no);
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return L;
+            }
+            if (lt.typeIndex > rt.typeIndex) {
+                TACOperand t1 = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) L->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) L->begin_label = left->begin_label;
+                else L->begin_label = right->begin_label;
+                if(!L->type.is_control_flow){
+                    L->result = new_temp_var(); // TAC
+                    emit(TACOperator(TAC_OPERATOR_AND), L->result, left->result, t1, 0); // TAC
+                }
+                else{
+                    backpatch(left->true_list, right->begin_label); // TAC
+                    L->true_list = right->true_list; // TAC
+                    L->false_list = merge_lists(left->false_list,right->false_list); // TAC
+                }
+            } 
+            else if(lt.typeIndex == rt.typeIndex){
+                if(!L->type.is_control_flow){
+                    L->result = new_temp_var(); // TAC
+                    emit(TACOperator(TAC_OPERATOR_AND), L->result, left->result, right->result, 0); // TAC
+                    if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) L->begin_label = get_instruction_label(); // TAC
+                    else if(left->begin_label.type != TAC_OPERAND_EMPTY) L->begin_label = left->begin_label;
+                    else L->begin_label = right->begin_label;
+                }
+                else{
+                    backpatch(left->true_list, right->begin_label); // TAC
+                    L->true_list = right->true_list; // TAC
+                    L->false_list = merge_lists(left->false_list,right->false_list); // TAC
+                    if(left->begin_label.type != TAC_OPERAND_EMPTY) L->begin_label = left->begin_label;
+                    else L->begin_label = right->begin_label;
+                }
+            }
+            else {
+                TACOperand t1 = new_temp_var(); // TAC
+                L->result = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result,0); // TAC   
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) L->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) L->begin_label = left->begin_label;
+                else L->begin_label = right->begin_label;
+                if(!L->type.is_control_flow){
+                    L->result = new_temp_var(); // TAC
+                    emit(TACOperator(TAC_OPERATOR_AND), L->result, t1, right->result, 0); // TAC
+                }
+                else{
+                    backpatch(left->true_list, right->begin_label); // TAC
+                    L->true_list = right->true_list; // TAC
+                    L->false_list = merge_lists(left->false_list,right->false_list); // TAC
+                }
+            }
+        } 
+        else {
             L->type = ERROR_TYPE;
             string error_msg = "Operands of '&&' must be integers or float at line " +
                                to_string(L->line_no) + ", column " + to_string(L->column_no);
@@ -1509,6 +1876,10 @@ Expression* create_logical_or_expression(Expression* x){
     C->line_no = x->line_no;
     C->column_no = x->column_no;
     C->type = x->type;
+    C->result = x->result; // TAC
+    C->true_list = x->true_list; // TAC
+    C->false_list = x->false_list; // TAC
+    C->begin_label = x->begin_label; // TAC
     return C;
 }
 
@@ -1532,7 +1903,67 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
     if(op->name == "LOGICAL_OR"){
         if(lt.isIntorFloat() && rt.isIntorFloat()){
             L->type = Type(PrimitiveTypes::INT_T, 0, false); 
-        } else {
+            if (lt.isUnsigned() != rt.isUnsigned()){
+                // causes undefined behaviour
+                L->type = ERROR_TYPE;
+                string error_msg = "Operands of '||' must have same signedness " +
+                                to_string(L->line_no) + ", column " + to_string(L->column_no);
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return L;
+            }
+            if (lt.typeIndex > rt.typeIndex) {
+                TACOperand t1 = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result,0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) L->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) L->begin_label = left->begin_label;
+                else L->begin_label = right->begin_label;
+                if(!L->type.is_control_flow){
+                    L->result = new_temp_var(); // TAC
+                    emit(TACOperator(TAC_OPERATOR_OR), L->result, left->result, t1, 0); // TAC
+                }
+                else{
+                    backpatch(left->false_list, right->begin_label); // TAC
+                    L->false_list = right->false_list; // TAC
+                    L->true_list = merge_lists(left->true_list,right->true_list); // TAC
+                    if(left->begin_label.type != TAC_OPERAND_EMPTY) L->begin_label = left->begin_label;
+                    else L->begin_label = right->begin_label;
+                }
+            } 
+            else if(lt.typeIndex == rt.typeIndex){
+                if(!L->type.is_control_flow){
+                    L->result = new_temp_var(); // TAC
+                    emit(TACOperator(TAC_OPERATOR_OR), L->result, left->result, right->result, 0); // TAC
+                    if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) L->begin_label = get_instruction_label(); // TAC
+                    else if(left->begin_label.type != TAC_OPERAND_EMPTY) L->begin_label = left->begin_label;
+                    else L->begin_label = right->begin_label;
+                }
+                else{
+                    backpatch(left->false_list, right->begin_label); // TAC
+                    L->false_list = right->false_list; // TAC
+                    L->true_list = merge_lists(left->true_list,right->true_list); // TAC
+                    if(left->begin_label.type != TAC_OPERAND_EMPTY) L->begin_label = left->begin_label;
+                    else L->begin_label = right->begin_label;
+                }
+            }
+            else {
+                TACOperand t1 = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, rt.to_string()), left->result,0); // TAC   
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) L->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) L->begin_label = left->begin_label;
+                else L->begin_label = right->begin_label;
+                if(!L->type.is_control_flow){
+                    L->result = new_temp_var(); // TAC
+                    emit(TACOperator(TAC_OPERATOR_OR), L->result, t1, right->result, 0); // TAC
+                }
+                else{
+                    backpatch(left->false_list, right->begin_label); // TAC
+                    L->false_list = right->false_list; // TAC
+                    L->true_list = merge_lists(left->true_list,right->true_list); // TAC
+                }
+            }
+        } 
+        else {
             L->type = ERROR_TYPE;
             string error_msg = "Operands of '||' must be integers or float at line " +
                                to_string(L->line_no) + ", column " + to_string(L->column_no);
@@ -1561,6 +1992,10 @@ Expression* create_conditional_expression(Expression* x){
     C->line_no = x->line_no;
     C->column_no = x->column_no;
     C->type = x->type;
+    C->result = x->result; // TAC
+    C->true_list = x->true_list; // TAC
+    C->false_list = x->false_list; // TAC
+    C->begin_label = x->begin_label; // TAC
     return C;
 }
 
@@ -1584,14 +2019,21 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
 
     if (!ct.isIntorFloat()) {
         C->type = ERROR_TYPE;
-        std::string error_msg = "Condition of conditional expression must be int at line " +
+        std::string error_msg = "Condition of conditional expression must be of type int or float at line " +
                                 std::to_string(C->line_no) + ", column " + std::to_string(C->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
         return C;
-    } else if (tt == ft) {
+    } 
+    else if (tt == ft) {
         C->type = tt;
-    } else if (tt.isIntorFloat() && ft.isIntorFloat()) {
+        backpatch(condition->true_list, true_expr->begin_label); // TAC
+        backpatch(condition->false_list, false_expr->begin_label); // TAC
+        if(condition->begin_label.type != TAC_OPERAND_EMPTY) C->begin_label = condition->begin_label;
+        else if(true_expr->begin_label.type != TAC_OPERAND_EMPTY) C->begin_label = true_expr->begin_label;
+        else C->begin_label = false_expr->begin_label;
+    } 
+    else if (tt.isIntorFloat() && ft.isIntorFloat()) {
         // Promote both and take the higher ranked one
         C->type = tt.typeIndex > ft.typeIndex ? tt : ft;
         if (tt.isUnsigned() && ft.isUnsigned()) {
@@ -1603,9 +2045,22 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
         } else if (!tt.isUnsigned() && !ft.isUnsigned()) {
             C->type.make_signed();
         }
-    } else if(tt == ft){
-        C->type = tt;
-    } else {
+        if(tt.typeIndex > ft.typeIndex){
+            C->type = tt;
+            if(tt.isUnsigned() || ft.isUnsigned()){
+                C->type.make_unsigned();
+            }
+            TACOperand t1 = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, C->type.to_string()), false_expr->result, 0); // TAC
+            if(condition->begin_label.type == TAC_OPERAND_EMPTY && true_expr->begin_label.type == TAC_OPERAND_EMPTY && false_expr->begin_label.type == TAC_OPERAND_EMPTY) C->begin_label = get_instruction_label(); // TAC
+            else if(condition->begin_label.type != TAC_OPERAND_EMPTY) C->begin_label = condition->begin_label;
+            else if(true_expr->begin_label.type != TAC_OPERAND_EMPTY) C->begin_label = true_expr->begin_label;
+            else C->begin_label = false_expr->begin_label;
+            backpatch(condition->true_list, true_expr->begin_label); // TAC
+            backpatch(condition->false_list, false_expr->begin_label); // TAC
+        }
+    } 
+    else {
         C->type = ERROR_TYPE;
         std::string error_msg = "Expressions are incomatible for ternary operator at line " +
                                 std::to_string(C->line_no) + ", column " + std::to_string(C->column_no);
@@ -1633,7 +2088,11 @@ Expression* create_assignment_expression(Expression* x){
     C->conditional_expression = dynamic_cast<ConditionalExpression*> (x);
     C->line_no = x->line_no;
     C->column_no = x->column_no;
-    C->type = x->type;  
+    C->type = x->type; 
+    C->result = x->result; // TAC
+    C->true_list = x->true_list; // TAC
+    C->false_list = x->false_list; // TAC
+    C->begin_label = x->begin_label; // TAC 
     return C;
 }
 
@@ -1670,8 +2129,22 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             return A;
         }
         A->type = lt;  // Resulting type is type of LHS
-        return A;
-    } else if (op->name == "MUL_ASSIGN" || op->name == "DIV_ASSIGN" ){
+        if(lt != rt){
+            TACOperand t1 = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(TAC_OPERATOR_NOP), left->result, t1, TACOperand(TAC_OPERAND_EMPTY,""), 0); // TAC
+        }
+        else{
+            emit(TACOperator(TAC_OPERATOR_NOP), left->result, right->result, TACOperand(TAC_OPERAND_EMPTY,""), 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+        }
+    } 
+    else if (op->name == "MUL_ASSIGN" || op->name == "DIV_ASSIGN" ){
         if (!lt.isIntorFloat() || !rt.isIntorFloat()) {
             A->type = ERROR_TYPE;
             string error_msg = "Operands of '" + op->name + "' must be int or float at line " +
@@ -1681,7 +2154,22 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             return A;
         }
         A->type = lt;  // Resulting type is type of LHS
-    } else if (op->name == "ADD_ASSIGN" || op->name == "SUB_ASSIGN") {
+        if(lt != rt){
+            TACOperand t1 = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(op->name == "MUL_ASSIGN" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), left->result, left->result, t1, 0); // TAC
+        }
+        else{
+            emit(TACOperator(op->name == "MUL_ASSIGN" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), left->result, left->result, right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+        }
+    } 
+    else if (op->name == "ADD_ASSIGN" || op->name == "SUB_ASSIGN") {
         if (!lt.isIntorFloat() || !rt.isIntorFloat()) {
             A->type = ERROR_TYPE;
             string error_msg = "Operands of '" + op->name + "' must be int or float at line " +
@@ -1689,12 +2177,35 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             yyerror(error_msg.c_str());
             symbolTable.set_error();
             return A;
-        } else if (lt.isPointer() && rt.isInt())
-        {
+        } 
+        else if (lt.isPointer() && rt.isInt()){
             A->type = lt; 
+            TACOperand t1 = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_MUL), t1, right->result, new_constant(to_string(lt.get_size())), 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), left->result, left->result, t1, 0); // TAC
         }
-        A->type = lt; 
-    } else if (op->name == "MOD_ASSIGN"){
+        else{
+            A->type = lt; 
+            if(lt != rt){
+                TACOperand t1 = new_temp_var(); // TAC
+                emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+                else A->begin_label = right->begin_label;
+                emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), left->result, left->result, t1, 0); // TAC
+            }
+            else{
+                emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), left->result, left->result, right->result, 0); // TAC
+                if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+                else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+                else A->begin_label = right->begin_label;
+            }
+        }
+    } 
+    else if (op->name == "MOD_ASSIGN"){
         if (!lt.isInt() || !rt.isInt()) {
             A->type = ERROR_TYPE;
             string error_msg = "Operands of '" + op->name + "' must be int at line " +
@@ -1704,7 +2215,47 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             return A;
         }
         A->type = lt; 
-    } else if (op->name == "AND_ASSIGN" || op->name == "OR_ASSIGN" || op->name == "XOR_ASSIGN") {
+        if(lt != rt){
+            TACOperand t1 = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(TAC_OPERATOR_MOD), left->result, left->result, t1, 0); // TAC
+        }
+        else{
+            emit(TACOperator(TAC_OPERATOR_MOD), left->result, left->result, right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+        }
+    } 
+    else if (op->name == "AND_ASSIGN" || op->name == "OR_ASSIGN" || op->name == "XOR_ASSIGN") {
+        if (!lt.isInt() || !rt.isInt()) {
+            A->type = ERROR_TYPE;
+            string error_msg = "Operands of '" + op->name + "' must be int at line " +
+                               to_string(A->line_no) + ", column " + to_string(A->column_no);
+            yyerror(error_msg.c_str());
+            symbolTable.set_error();
+            return A;
+        } 
+        A->type = lt;
+        if(lt != rt){
+            TACOperand t1 = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(op->name == "AND_ASSIGN" ? TAC_OPERATOR_BIT_AND : op->name == "OR_ASSIGN" ? TAC_OPERATOR_BIT_OR : TAC_OPERATOR_BIT_XOR), left->result, left->result, t1, 0); // TAC
+        }
+        else{
+            emit(TACOperator(op->name == "AND_ASSIGN" ? TAC_OPERATOR_BIT_AND : op->name == "OR_ASSIGN" ? TAC_OPERATOR_BIT_OR : TAC_OPERATOR_BIT_XOR), left->result, left->result, right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+        } 
+    } 
+    else if (op->name == "LEFT_ASSIGN" || op->name == "RIGHT_ASSIGN"){
         if (!lt.isInt() || !rt.isInt()) {
             A->type = ERROR_TYPE;
             string error_msg = "Operands of '" + op->name + "' must be int at line " +
@@ -1714,16 +2265,20 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             return A;
         } 
         A->type = lt; 
-    } else if (op->name == "LEFT_ASSIGN" || op->name == "RIGHT_ASSIGN"){
-        if (!lt.isInt() || !rt.isInt()) {
-            A->type = ERROR_TYPE;
-            string error_msg = "Operands of '" + op->name + "' must be int at line " +
-                               to_string(A->line_no) + ", column " + to_string(A->column_no);
-            yyerror(error_msg.c_str());
-            symbolTable.set_error();
-            return A;
-        } 
-        A->type = lt; 
+        if(lt != rt){
+            TACOperand t1 = new_temp_var(); // TAC
+            emit(TACOperator(TAC_OPERATOR_CAST), t1, TACOperand(TAC_OPERAND_TYPE, lt.to_string()), right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+            emit(TACOperator(op->name == "LEFT_ASSIGN" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), left->result, left->result, t1, 0); // TAC
+        }
+        else{
+            emit(TACOperator(op->name == "LEFT_ASSIGN" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), left->result, left->result, right->result, 0); // TAC
+            if(left->begin_label.type == TAC_OPERAND_EMPTY && right->begin_label.type == TAC_OPERAND_EMPTY) A->begin_label = get_instruction_label(); // TAC
+            else if(left->begin_label.type != TAC_OPERAND_EMPTY) A->begin_label = left->begin_label;
+            else A->begin_label = right->begin_label;
+        }
     } 
     return A;
 }
@@ -1737,12 +2292,16 @@ ExpressionList::ExpressionList() {
     type = ERROR_TYPE;
 }
 
-ExpressionList* create_expression_list(Expression* x){
+ExpressionList* create_expression_list(Expression* x){ // top level expression - corresponds to non terminal expression in grammar
     ExpressionList* E = new ExpressionList();
     E->expression_list.push_back(x);
     E->line_no = x->line_no;
     E->column_no = x->column_no;
     E->type = x->type;  // if expression list does not have an erronous expression, set type to the type of the first expression. Else set it as ERROR_TYPE.
+    E->result = x->result; // TAC
+    E->true_list = x->true_list; // TAC
+    E->false_list = x->false_list; // TAC
+    E->begin_label = x->begin_label; // TAC
     return E;
 }
 

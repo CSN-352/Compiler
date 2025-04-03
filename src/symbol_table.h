@@ -196,6 +196,8 @@ public:
     bool is_const_variable;
     bool is_const_literal;
 
+    bool is_control_flow;
+
     Type();
 
     Type(int idx, int p_lvl, bool is_con);
