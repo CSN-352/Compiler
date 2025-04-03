@@ -23,6 +23,7 @@ class JumpStatement;
 class Statement : public NonTerminal{
     public:
     Type type;
+    Type return_type;
     unordered_set<TACInstruction*> next_list; // List of next instructions (for jumps)
     Statement();  
 };

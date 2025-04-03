@@ -1529,7 +1529,7 @@ StructUnionSpecifier* create_struct_union_specifier(string struct_or_union, Iden
     
     // TypeDefinition* td = symbolTable.get_defined_type(id->value)->type_definition;
     // Unused variable
-    
+     
     return P;
 }
 
@@ -2391,14 +2391,25 @@ FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declar
     return P;
 }
 
-FunctionDefinition *create_function_definition(FunctionDefinition *fd, Statement *cs)
+FunctionDefinition *create_function_definition(Declarator* declarator,FunctionDefinition *fd, Statement *cs)
 {
     cerr << "hello" << endl;
     CompoundStatement *cs_cast = dynamic_cast<CompoundStatement*>(cs);
     cerr << "hello" << endl;
     fd->compound_statement = cs_cast;
+
+    Symbol* function = symbolTable.getSymbol(declarator->direct_declarator->identifier->value);
+    Type t1 = function->type;
+    Type t2 = cs->return_type;
+
+    if(!(t1 == t2) && !(t1.is_convertible_to(t2))){
+        string error_msg = "Function is returning incorrect data type " + to_string(declarator->direct_declarator->identifier->line_no) + ", column " + to_string(declarator->direct_declarator->identifier->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+    }
     return fd;
 }
+
 
 // ##############################################################################
 // ################################## IDENTIFIER ######################################
