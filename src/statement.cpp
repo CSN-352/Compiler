@@ -100,10 +100,18 @@ Statement* create_compound_statement() {
     return C;
 }
 
-Statement* create_compound_statement(Statement* statement) {
+Statement *create_compound_statement(DeclarationStatementList *statement)
+{
     CompoundStatement* C = new CompoundStatement();
     C->name = "COMPOUND STATEMENT WITH DECALARATION STATEMENT LIST";
-    C->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+    if (statement->type == ERROR_TYPE)
+    {
+        C->type = ERROR_TYPE;
+    }
+    else
+    {
+        C->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+    }
     return C;
 }
 

@@ -2573,6 +2573,7 @@ void SymbolTable::exitScope()
         {
             if ((*symIt)->scope == currentScope)
             {
+                print();
                 symIt = it->second.erase(symIt);
             }
             else
@@ -2592,6 +2593,7 @@ void SymbolTable::exitScope()
         {
             if ((*symIt)->scope == currentScope)
             {
+                print();
                 symIt = it->second.erase(symIt);
             }
             else

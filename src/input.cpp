@@ -75,4 +75,14 @@
 
 // class A a;
 
-struct as a;
+// struct as a;
+
+int main(int q, int w)
+{
+    int a = 0;
+
+    // while(a<1) {
+    //     a++;
+    //     {{int k =0;}}
+    // }
+}
