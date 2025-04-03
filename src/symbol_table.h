@@ -230,6 +230,8 @@ class DefinedTypes : public Type
         static int t_index_count;
         TypeCategory type_category;
         TypeDefinition *type_definition;
+        int relative_offset = 0;
+        int size = 0;
         DefinedTypes(TypeCategory tc, TypeDefinition *td);
 };
 

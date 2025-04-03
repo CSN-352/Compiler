@@ -22,6 +22,7 @@ LEX = flex
 YACC = bison
 YFLAGS = -d -v
 DEBUG ?= 0
+DJ ?= 0
 CC = gcc
 CXX = g++ -std=c++17
 CFLAGS = -lfl -I$(SRC_DIR)
@@ -31,6 +32,10 @@ endif
 ifeq ($(DEBUG),1)
     CFLAGS += -DDEBUG
 endif
+ifeq ($(DJ),1)
+    CFLAGS += -DDJ
+endif
+
 
 all: $(EXECUTABLE)
 

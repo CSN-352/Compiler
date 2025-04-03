@@ -334,7 +334,7 @@ expression:
 
 // DONE
 declaration:
-    declaration_specifiers SEMICOLON     { $$ = create_declaration($1, nullptr);}                      
+    declaration_specifiers SEMICOLON     { $$ = create_declaration($1, nullptr);}
     | declaration_specifiers init_declarator_list SEMICOLON  {$$ = create_declaration( $1, $2 );}
     | error_case skip_until_semicolon SEMICOLON
     ;
@@ -730,6 +730,8 @@ int main(int argc, char **argv) {
         debug("Parsing failed due to errors.", RED);
         return 1;
     }
+    symbolTable.print_defined_types();
+    symbolTable.print_typedefs();
     symbolTable.print();
     printf("Parsing completed successfully.\n");
     return 0;

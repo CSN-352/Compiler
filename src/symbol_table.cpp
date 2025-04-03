@@ -746,6 +746,7 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
 
     P->declaration_specifiers = declaration_specifiers;
     P->init_declarator_list = init_declarator_list;
+    debug("Declaration Specifiers: " + declaration_specifiers->type_specifiers[0]->type_name, BLUE);
 
     if (init_declarator_list != nullptr)
     {
@@ -939,6 +940,7 @@ void DeclarationSpecifiers ::set_type()
         else if (type_specifiers[i]->struct_union_specifier != nullptr)
         {
             isUnionOrStruct++;
+            debug("Struct/Union", GREEN);
         }
         else if (type_specifiers[i]->class_specifier != nullptr)
         {
@@ -1031,7 +1033,7 @@ void DeclarationSpecifiers ::set_type()
             string name = type_specifiers[0]->struct_union_specifier->identifier->value;
             DefinedTypes* dt = symbolTable.get_defined_type(name);
             type_index = PrimitiveTypes::TYPE_ERROR_T; 
-            if(dt != nullptr) dt->typeIndex;
+            if(dt != nullptr) type_index = dt->typeIndex;
         }
         else if (isClass)
         {
@@ -1051,7 +1053,10 @@ DeclarationSpecifiers *create_declaration_specifiers(SpecifierQualifierList *sql
 {
     DeclarationSpecifiers *P = new DeclarationSpecifiers();
     P->type_specifiers.insert(P->type_specifiers.end(), sql->type_specifiers.begin(), sql->type_specifiers.end());
+    debug(sql->type_specifiers.size());
+    // debug(sql->type_specifiers[0]->type_index);
     if(sql) sql->set_type();
+    debug(sql->type_index);
     P->set_type();
     if (P->type_index == -1)
     {
@@ -1872,6 +1877,7 @@ TypeSpecifier *create_type_specifier(StructUnionSpecifier *sus)
         symbolTable.set_error();
         return P;
     }
+    debug(dt->typeIndex);
     P->struct_union_specifier = sus;
     P->name += ": STRUCT/UNION";
     // if(sus.is_struct)
@@ -2061,15 +2067,10 @@ void SpecifierQualifierList ::set_type()
         }
         else if (isUnionOrStruct)
         {
-            cerr << "ASdfas";
             string name = type_specifiers[0]->struct_union_specifier->identifier->value;
-            cerr << "hehe";
             DefinedTypes* dt = symbolTable.get_defined_type(name);
-            cerr << dt->typeIndex;
-            cerr << "hasdha";
             type_index = PrimitiveTypes::TYPE_ERROR_T;
             if(dt) type_index = dt->typeIndex;
-            cerr << "======";
         }
         else if (isClass)
         {
@@ -2088,6 +2089,13 @@ SpecifierQualifierList *create_specifier_qualifier_list(TypeSpecifier *t)
 {
     SpecifierQualifierList *P = new SpecifierQualifierList();
     P->type_specifiers.push_back(t);
+    debug("Type Specifier: " + t->name);
+    if(t->struct_union_specifier != nullptr)
+    {
+        debug("Struct/Union Specifier: " + t->struct_union_specifier->identifier->value);
+        DefinedTypes* dt = symbolTable.get_defined_type(t->struct_union_specifier->identifier->value);
+        debug(dt->typeIndex);
+    }
     // P->set_type();
     // if (P->type_index == -1)
     // {
@@ -2545,7 +2553,7 @@ void SymbolTable::exitScope()
         {
             if (symIt->first == currentScope)
             {
-                delete symIt->second;  // Free the allocated memory
+                // delete symIt->second;  // Free the allocated memory
                 symIt = it->second.erase(symIt);
             }
             else
@@ -2612,7 +2620,7 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
         }
     }
     Symbol *sym = new Symbol(name, type, currentScope, currAddress);
-    currAddress += size;
+    // currAddress += size;
     table[name].push_front(sym);
     if (top.second.first.is_function)
     {
@@ -2622,18 +2630,27 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
     else if (top.second.first.is_defined_type)
     {
         DefinedTypes* dt = get_defined_type(top.second.second);
-        Symbol* sym_c = new Symbol(name, type, currentScope-1, currAddress);
         if(dt == nullptr) {
-            string error_msg = "Undefined type " + top.second.second + " at line " + to_string(sym->line_no) + ", column " + to_string(sym->column_no);
+            string error_msg = "Undefined type " + top.second.second;
             yyerror(error_msg.c_str());
             set_error();
             return;
         }
+        Symbol* sym_c = new Symbol(name, type, currentScope-1, dt->relative_offset);
+        if(dt->type_category == TYPE_CATEGORY_UNION) {
+            dt->relative_offset = 0;
+            dt->size = max(size, dt->size);
+        } else {
+            dt->relative_offset += size;
+            dt->size += size;
+        }
         dt->type_definition->type_symbol_table.table[sym->name].push_front(sym_c);
+    } else {
+        currAddress += size;
     }
 }
 
-void SymbolTable::insert_defined_type(std::string name, DefinedTypes type)
+void SymbolTable::insert_defined_type(std::string name, DefinedTypes* type)
 {
     cerr << "Name = " << name;
     pair<int, pair<Type, string>> top = {0, {Type(), name}};
@@ -2645,7 +2662,7 @@ void SymbolTable::insert_defined_type(std::string name, DefinedTypes type)
     {
         if (defined_type.first == currentScope)
         {
-            delete type;
+            // delete type;
             string error_msg = " '" + name + "' already declared in this scope.";
             yyerror(error_msg.c_str());
             set_error();
@@ -2662,7 +2679,7 @@ void SymbolTable::insert_defined_type(std::string name, DefinedTypes type)
     {
         DefinedTypes* dt = get_defined_type(top.second.second);
         if(dt == nullptr) {
-            string error_msg = "Undefined type " + top.second.second + " at line " + to_string(type->line_no) + ", column " + to_string(type->column_no);
+            string error_msg = "Undefined type " + top.second.second;
             yyerror(error_msg.c_str());
             set_error();
             return;
@@ -2701,7 +2718,7 @@ void SymbolTable ::insert_typedef(std::string name, Type type, int offset)
         DefinedTypes* dt = get_defined_type(top.second.second);
         Symbol* sym_c = new Symbol(name, type, currentScope-1, currAddress);
         if(dt == nullptr) {
-            string error_msg = "Undefined type " + top.second.second + " at line " + to_string(sym->line_no) + ", column " + to_string(sym->column_no);
+            string error_msg = "Undefined type " + top.second.second;
             yyerror(error_msg.c_str());
             set_error();
             return;
@@ -2956,7 +2973,7 @@ void SymbolTable::print()
         for (const auto symbol : entry.second)
         {
             cout << "| " << setw(20) << left << symbol->name
-                 << "| " << setw(26) << left << primitive_type_name[symbol->type.typeIndex]
+                 << "| " << setw(26) << left << symbol->type.typeIndex
                  // Aren ~ maine add kiya hai .typeIndex (isko change krna hai according to Type class)
                  << "| " << setw(8) << left << symbol->scope
                  << "| " << setw(12) << left << symbol->offset << " |\n";
@@ -2981,7 +2998,7 @@ void SymbolTable::print_typedefs()
         for (const auto symbol : entry.second)
         {
             cout << "| " << setw(20) << left << symbol->name
-                 << "| " << setw(26) << left << primitive_type_name[symbol->type.typeIndex]
+                 << "| " << setw(26) << left << symbol->type.typeIndex
                  << "| " << setw(8) << left << symbol->scope
                  << "| " << setw(12) << left << symbol->offset << " |\n";
         }
@@ -2992,5 +3009,26 @@ void SymbolTable::print_typedefs()
 
 void SymbolTable::print_defined_types()
 {
-    
+    cout << "\nDEFINED TYPES:\n";
+    cout << "----------------------------------------------------------------------------\n";
+    cout << "| " << setw(20) << left << "Name"
+         << "| " << setw(12) << left << "Type Index"
+         << "| " << setw(26) << left << "Type Category"
+         << "| " << setw(8) << left << "Scope" << " |\n";
+    cout << "----------------------------------------------------------------------------\n";
+
+    for (const auto &entry : defined_types)
+    {
+        for (const auto &symbol : entry.second)
+        {
+            cout << "| " << setw(20) << left << entry.first
+                 << "| " << setw(12) << left 
+                 << (symbol.second ? to_string(symbol.second->typeIndex) : "In")
+                 << "| " << setw(26) << left 
+                 << (symbol.second ? type_category_name[symbol.second->type_category] : "Unknown")
+                 << "| " << setw(8) << left << symbol.first << " |\n";
+        }
+    }
+
+    cout << "----------------------------------------------------------------------------\n";
 }

@@ -18,6 +18,7 @@ enum Colour
 template <typename T>
 static void debug(const T &msg, int colour = 1)
 {
+#ifdef DJ
     std::string color_code;
 
     if (colour == 1)
@@ -40,4 +41,5 @@ static void debug(const T &msg, int colour = 1)
         color_code = ""; // Default color
 
     std::cerr << color_code << msg << "\033[0m" << std::endl;
+#endif
 }
