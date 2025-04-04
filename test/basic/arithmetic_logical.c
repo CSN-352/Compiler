@@ -16,7 +16,7 @@ double main() {
     char ch = 'A';
     char next_ch = ch + 1;
     breakpoint;
+    breakpoint_global;
 }
 
 int y;
-breakpoint;

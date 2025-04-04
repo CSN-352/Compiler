@@ -115,15 +115,29 @@ void handleMultilineComment(const char* text, int length) {
     }
 }
 
-void debug_symbol_table() {
+void debug_global_symbol_table() {
     debug("\n========================================", MAGENTA);
+    debug("DEBUG: Global Symbol Table Snapshot", MAGENTA);
+    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
+
+    symbolTable.print_typedefs();
+    symbolTable.print_defined_types();
+    symbolTable.print();
+
+    debug("\n✅ End of Global Symbol Table Snapshot", MAGENTA);
+    debug("========================================\n", MAGENTA);
+}
+
+void debug_local_symbol_table() {
+    debug("\n========================================", MAGENTA);
+    debug("DEBUG: Local Symbol Table Snapshot", MAGENTA);
+    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
     bool printed = false;
 
     if (!symbolTable.scope_stack.empty()) {
         pair<int, pair<Type, string>> top = symbolTable.scope_stack.top();
 
         if (top.second.first.is_function) {
-
             Symbol* sym = symbolTable.getFunction(top.second.second, top.second.first.arg_types);
             if (!sym) {
                 debug("⚠️ ERROR: Function '" + top.second.second + "' not found!", RED);
@@ -134,8 +148,7 @@ void debug_symbol_table() {
                 return;
             }
             printed = true;
-            debug("🔍 DEBUG: Function Symbol Table Snapshot", MAGENTA);
-            debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
+            debug("🔍 SCOPE: Function", MAGENTA);
             sym->function_definition->function_symbol_table.print_typedefs();   
             sym->function_definition->function_symbol_table.print_defined_types();
             sym->function_definition->function_symbol_table.print();
@@ -143,8 +156,6 @@ void debug_symbol_table() {
         }
 
         else if (top.second.first.is_defined_type) {
-            debug("🔎 Checking defined type: " + top.second.second, BLUE);
-
             DefinedTypes* dt = symbolTable.get_defined_type(top.second.second);
             if (!dt) {
                 debug("⚠️ ERROR: Type '" + top.second.second + "' not found!", RED);
@@ -155,8 +166,7 @@ void debug_symbol_table() {
                 return;
             }
             printed = true;
-            debug("🔍 DEBUG: User-defined type Symbol Table Snapshot", MAGENTA);
-            debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
+            debug("🔍 SCOPE: User-defined type", MAGENTA);
             dt->type_definition->type_symbol_table.print_typedefs();
             dt->type_definition->type_symbol_table.print_defined_types();
             dt->type_definition->type_symbol_table.print();
@@ -164,14 +174,13 @@ void debug_symbol_table() {
     }
 
     if(!printed) {
-        debug("🔍 DEBUG: Global Symbol Table Snapshot", MAGENTA);
-        debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
+        debug("🔍 SCOPE: Global", MAGENTA);
         symbolTable.print_typedefs();
         symbolTable.print_defined_types();
         symbolTable.print();
     }
 
-    debug("\n✅ End of Symbol Table Snapshot", MAGENTA);
+    debug("\n✅ End of Local Symbol Table Snapshot", MAGENTA);
     debug("========================================\n", MAGENTA);
 }
 
@@ -183,6 +192,7 @@ void debug_symbol_table() {
 
 /* Keywords for the C language */
 BREAKPOINT    "breakpoint;"
+BREAKPOINT_GLOBAL "breakpoint_global;"
 AUTO          "auto"
 BREAK         "break"
 CASE          "case"
@@ -296,7 +306,8 @@ WHITESPACE     [ \t\v\f\r]+
 NEWLINE        \n
 
 %%
-{BREAKPOINT}          { debug_symbol_table(); updateColumn(yyleng);}
+{BREAKPOINT}          { debug_local_symbol_table(); updateColumn(yyleng);}
+{BREAKPOINT_GLOBAL}   { debug_global_symbol_table(); updateColumn(yyleng);}
 {AUTO}                { yylval.intval = AUTO; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AUTO); }
 {BREAK}               { Terminal* t = new Terminal("BREAK",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BREAK); }
 {CASE}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CASE); }
