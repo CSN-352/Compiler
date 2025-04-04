@@ -1,5 +1,3 @@
-class Point{
-    int x;
-};
-
-class Point p1;
+int func(){
+    return 0;
+}

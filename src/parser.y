@@ -599,12 +599,12 @@ initializer:
 //     ;
 
 statement:
-    labeled_statement 
-	| compound_statement
-    | expression_statement
-	| selection_statement
-	| iteration_statement
-	| jump_statement
+    labeled_statement {$$ = $1;}
+	| compound_statement {$$ = $1;}
+    | expression_statement {$$ = $1;}
+	| selection_statement {$$ = $1;}
+	| iteration_statement {$$ = $1;}
+	| jump_statement {$$ = $1;}
     | error_case skip_until_semicolon
 	;
 
@@ -687,7 +687,7 @@ external_declaration:
 
 // DONE
 function_definition:
-    declaration_specifiers declarator {fd = create_function_definition($1,$2); function_flag=1;} compound_statement {$$ = create_function_definition(fd,$4);}
+    declaration_specifiers declarator {fd = create_function_definition($1,$2); function_flag=1;} compound_statement {$$ = create_function_definition($2,fd,$4); }
     ;
 
 skip_until_semicolon:

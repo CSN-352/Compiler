@@ -17,6 +17,7 @@ extern void yyerror(const char *msg);
 
 Statement::Statement() : NonTerminal("STATEMENT") {
     type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+    return_type = Type(PrimitiveTypes::VOID_T, 0, false);
 }
 
 // ##############################################################################
@@ -97,6 +98,7 @@ Statement* create_compound_statement() {
     CompoundStatement* C = new CompoundStatement();
     C->name = "COMPOUND STATEMENT";
     C->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+    C->return_type = Type(PrimitiveTypes::VOID_T, 0, false);
     return C;
 }
 
@@ -104,6 +106,7 @@ Statement *create_compound_statement(DeclarationStatementList *statement)
 {
     CompoundStatement* C = new CompoundStatement();
     C->name = "COMPOUND STATEMENT WITH DECALARATION STATEMENT LIST";
+    C->return_type = statement->return_type;
     if (statement->type == ERROR_TYPE)
     {
         C->type = ERROR_TYPE;
@@ -126,12 +129,14 @@ DeclarationStatementList::DeclarationStatementList() : Statement() {
 DeclarationStatementList* create_declaration_statement_list(DeclarationList* declaration_list) {
     DeclarationStatementList* D = new DeclarationStatementList();
     D->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+    
     return D;
 }
    
 DeclarationStatementList* create_declaration_statement_list(StatementList* statement_list){
     DeclarationStatementList* D = new DeclarationStatementList();
     D->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+    D->return_type = statement_list->return_type;
     return D;
 }
 
@@ -146,7 +151,7 @@ StatementList::StatementList() : Statement() {
 StatementList* create_statement_list(Statement* statement) {
     StatementList* S = new StatementList();
     S->statements.push_back(statement);
-
+    S->return_type = statement->return_type;
     if(statement->type == ERROR_TYPE){
         S->type = ERROR_TYPE;
     } else {
@@ -157,7 +162,7 @@ StatementList* create_statement_list(Statement* statement) {
 
 StatementList* create_statement_list(StatementList* statement_list, Statement* statement) {
     statement_list->statements.push_back(statement);
-
+    statement_list->return_type = statement->return_type;
     if(statement->type == ERROR_TYPE){
         statement_list->type = ERROR_TYPE;
     } 
@@ -423,7 +428,7 @@ Statement* create_jump_statement(Expression* expression) {
     S->return_type = expression->type;
     S->column_no = expression->column_no;
     S->name = "JUMP STATEMENT RETURN WITH EXPRESSION";
-
+    S->return_type = expression->type;
     if(expression->type == ERROR_TYPE){
         S->type = ERROR_TYPE;
     } else {

@@ -22,6 +22,7 @@ class JumpStatement;
 class Statement : public NonTerminal{
     public:
     Type type;
+    Type return_type;
     Statement();  
 };
  
