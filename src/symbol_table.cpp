@@ -277,6 +277,7 @@ int Type::get_size()
     {
         DefinedTypes* dt = symbolTable.get_defined_type(defined_type_name);
         if (is_defined_type && dt != nullptr && dt->type_definition != nullptr){
+            debug("Here also");
             return dt->type_definition->get_size();
         }
         else
@@ -402,20 +403,14 @@ bool TypeDefinition::get_member(string member)
 int TypeDefinition::get_size()
 {
     int size = 0;
-    if (type_category == TYPE_CATEGORY_UNION)
-    {
-        for (auto member : members)
-        {
-            Symbol *sym = symbolTable.getSymbol(member.first);
-            size = max(size, sym->type.get_size());
-        }
-        return size;
-    }
     for (auto member : members)
     {
-
-        Symbol *sym = type_symbol_table.getSymbol(member.first);
-        size += sym->type.get_size();
+        Symbol *sym = this->type_symbol_table.getSymbol(member.first);
+        if (type_category == TYPE_CATEGORY_UNION){
+            size = max(size, sym->type.get_size());
+        } else {
+            size += sym->type.get_size();
+        }
     }
     return size;
 }
@@ -747,9 +742,12 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
     P->declaration_specifiers = declaration_specifiers;
     P->init_declarator_list = init_declarator_list;
     debug("Declaration Specifiers: " + declaration_specifiers->type_specifiers[0]->type_name, BLUE);
+    debug(declaration_specifiers->is_type_name);
+    debug(declaration_specifiers->type_index);
 
     if (init_declarator_list != nullptr)
     {
+        debug("Here");
         for (int index = 0; index < init_declarator_list->init_declarator_list.size(); index++)
         {
             Declarator *variable = init_declarator_list->init_declarator_list[index]->declarator;
@@ -810,6 +808,10 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
             if (declaration_specifiers->is_typedef)
                         symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
             else{
+                debug("Symbol Table", GREEN);
+                debug(variable->direct_declarator->identifier->value, GREEN);
+                debug(t.get_size(), GREEN);
+                debug(overloaded, GREEN);
                 symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
             }
         }
@@ -2515,7 +2517,7 @@ void SymbolTable::exitScope()
         {
             if ((*symIt)->scope == currentScope)
             {
-                print();
+                // print();
                 symIt = it->second.erase(symIt);
             }
             else
@@ -2535,7 +2537,7 @@ void SymbolTable::exitScope()
         {
             if ((*symIt)->scope == currentScope)
             {
-                print();
+                // print();
                 symIt = it->second.erase(symIt);
             }
             else
