@@ -23,7 +23,6 @@ using namespace std;
 
 extern void yyerror(const char *msg);
 
-static unsigned int currAddress = 0;
 SymbolTable symbolTable;
 
 // ##############################################################################
@@ -277,7 +276,6 @@ int Type::get_size()
     {
         DefinedTypes* dt = symbolTable.get_defined_type(defined_type_name);
         if (is_defined_type && dt != nullptr && dt->type_definition != nullptr){
-            debug("Here also");
             return dt->type_definition->get_size();
         }
         else
@@ -465,7 +463,7 @@ TypeDefinition *create_type_definition(TypeDefinition *P, StructDeclarationSet *
                             P->members.insert({id->value, ACCESS_SPECIFIER_PRIVATE});
                     }
                     else
-                        currAddress += d->bit_field_width;
+                        symbolTable.currAddress += d->bit_field_width;
                 }
             }
         }
@@ -741,13 +739,9 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
 
     P->declaration_specifiers = declaration_specifiers;
     P->init_declarator_list = init_declarator_list;
-    debug("Declaration Specifiers: " + declaration_specifiers->type_specifiers[0]->type_name, BLUE);
-    debug(declaration_specifiers->is_type_name);
-    debug(declaration_specifiers->type_index);
 
     if (init_declarator_list != nullptr)
     {
-        debug("Here");
         for (int index = 0; index < init_declarator_list->init_declarator_list.size(); index++)
         {
             Declarator *variable = init_declarator_list->init_declarator_list[index]->declarator;
@@ -808,10 +802,6 @@ Declaration *create_declaration(DeclarationSpecifiers *declaration_specifiers,
             if (declaration_specifiers->is_typedef)
                         symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
             else{
-                debug("Symbol Table", GREEN);
-                debug(variable->direct_declarator->identifier->value, GREEN);
-                debug(t.get_size(), GREEN);
-                debug(overloaded, GREEN);
                 symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
             }
         }
@@ -942,7 +932,6 @@ void DeclarationSpecifiers ::set_type()
         else if (type_specifiers[i]->struct_union_specifier != nullptr)
         {
             isUnionOrStruct++;
-            debug("Struct/Union", GREEN);
         }
         else if (type_specifiers[i]->class_specifier != nullptr)
         {
@@ -1055,10 +1044,7 @@ DeclarationSpecifiers *create_declaration_specifiers(SpecifierQualifierList *sql
 {
     DeclarationSpecifiers *P = new DeclarationSpecifiers();
     P->type_specifiers.insert(P->type_specifiers.end(), sql->type_specifiers.begin(), sql->type_specifiers.end());
-    debug(sql->type_specifiers.size());
-    // debug(sql->type_specifiers[0]->type_index);
     if(sql) sql->set_type();
-    debug(sql->type_index);
     P->set_type();
     if (P->type_index == -1)
     {
@@ -1157,7 +1143,6 @@ DirectDeclarator *create_direct_declarator_array(DirectDeclarator *dd, Expressio
     {
         ConditionalExpression *c_cast = dynamic_cast<ConditionalExpression *>(e);
         int arr_dim = stoi(c_cast->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value);
-        debug(arr_dim);
         dd->array_dimensions.push_back(arr_dim);
         dd->is_array = true;
     }
@@ -1871,7 +1856,6 @@ TypeSpecifier *create_type_specifier(EnumSpecifier *es)
 TypeSpecifier *create_type_specifier(StructUnionSpecifier *sus)
 {
     TypeSpecifier *P = new TypeSpecifier();
-    debug(type_category_name[sus->type_category] + " " + sus->identifier->value);
     DefinedTypes* dt = symbolTable.get_defined_type(sus->identifier->value);
     if(dt == nullptr){
         string error_msg = "Undefined type " + sus->identifier->value + " at line " + to_string(sus->identifier->line_no) + ", column " + to_string(sus->identifier->column_no);
@@ -1879,7 +1863,6 @@ TypeSpecifier *create_type_specifier(StructUnionSpecifier *sus)
         symbolTable.set_error();
         return P;
     }
-    debug(dt->typeIndex);
     P->struct_union_specifier = sus;
     P->name += ": STRUCT/UNION";
     // if(sus.is_struct)
@@ -2091,12 +2074,9 @@ SpecifierQualifierList *create_specifier_qualifier_list(TypeSpecifier *t)
 {
     SpecifierQualifierList *P = new SpecifierQualifierList();
     P->type_specifiers.push_back(t);
-    debug("Type Specifier: " + t->name);
     if(t->struct_union_specifier != nullptr)
     {
-        debug("Struct/Union Specifier: " + t->struct_union_specifier->identifier->value);
         DefinedTypes* dt = symbolTable.get_defined_type(t->struct_union_specifier->identifier->value);
-        debug(dt->typeIndex);
     }
     // P->set_type();
     // if (P->type_index == -1)
@@ -2337,9 +2317,7 @@ FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declar
 
 FunctionDefinition *create_function_definition(Declarator* declarator,FunctionDefinition *fd, Statement *cs)
 {
-    cerr << "hello" << endl;
     CompoundStatement *cs_cast = dynamic_cast<CompoundStatement *>(cs);
-    cerr << "hello" << endl;
     fd->compound_statement = cs_cast;
 
     Symbol* function = symbolTable.getSymbol(declarator->direct_declarator->identifier->value);
@@ -2634,34 +2612,38 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
             }
         }
     }
-    Symbol *sym = new Symbol(name, type, currentScope, currAddress);
-    // currAddress += size;
+    Symbol* sym = new Symbol(name, type, currentScope, this->currAddress);
     table[name].push_front(sym);
     if (top.second.first.is_function)
     {
-        FunctionDefinition *func = getFunction(top.second.second, top.second.first.arg_types)->function_definition;
-        func->function_symbol_table.table[sym->name].push_front(sym);
+        FunctionDefinition* func = getFunction(top.second.second, top.second.first.arg_types)->function_definition;
+        if (func == nullptr) {
+            string error_msg = "Function " + top.second.second + " not defined";
+            yyerror(error_msg.c_str());
+            set_error();
+            return;
+        }
+        Symbol* sym_f = new Symbol(name, type, currentScope, func->function_symbol_table.currAddress);
+        func->function_symbol_table.table[sym->name].push_front(sym_f);
+        func->function_symbol_table.currAddress += size;
     }
     else if (top.second.first.is_defined_type)
     {
         DefinedTypes* dt = get_defined_type(top.second.second);
-        if(dt == nullptr) {
+        if (dt == nullptr || dt->type_definition == nullptr) {
             string error_msg = "Undefined type " + top.second.second;
             yyerror(error_msg.c_str());
             set_error();
             return;
         }
-        Symbol* sym_c = new Symbol(name, type, currentScope-1, dt->relative_offset);
-        if(dt->type_category == TYPE_CATEGORY_UNION) {
-            dt->relative_offset = 0;
-            dt->size = max(size, dt->size);
-        } else {
-            dt->relative_offset += size;
-            dt->size += size;
-        }
+        Symbol* sym_c = new Symbol(name, type, currentScope - 1, dt->type_definition->type_symbol_table.currAddress);
         dt->type_definition->type_symbol_table.table[sym->name].push_front(sym_c);
-    } else {
-        currAddress += size;
+        if (dt->type_category != TYPE_CATEGORY_UNION) {
+            dt->type_definition->type_symbol_table.currAddress += size;
+        }
+    }
+    else {
+        this->currAddress += size;
     }
 }
 
@@ -2720,8 +2702,8 @@ void SymbolTable ::insert_typedef(std::string name, Type type, int offset)
             return;
         }
     }
-    Symbol *sym = new Symbol(name, type, currentScope, currAddress);
-    currAddress += offset;
+    Symbol *sym = new Symbol(name, type, currentScope, this->currAddress);
+    this->currAddress += offset;
     typedefs[name].push_front(sym);
     if (top.second.first.is_function)
     {
@@ -2731,7 +2713,7 @@ void SymbolTable ::insert_typedef(std::string name, Type type, int offset)
     else if (top.second.first.is_defined_type)
     {
         DefinedTypes* dt = get_defined_type(top.second.second);
-        Symbol* sym_c = new Symbol(name, type, currentScope-1, currAddress);
+        Symbol* sym_c = new Symbol(name, type, currentScope-1, this->currAddress);
         if(dt == nullptr) {
             string error_msg = "Undefined type " + top.second.second;
             yyerror(error_msg.c_str());
@@ -2975,6 +2957,11 @@ void SymbolTable::remove(string name)
 
 void SymbolTable::print()
 {
+    if(table.empty()){
+        cout<<"The Symbol Table is empty!\n";
+        return;
+    }
+
     cout << "\nSYMBOL TABLE:\n";
     cout << "----------------------------------------------------------------------------\n";
     cout << "| " << setw(20) << left << "Name"
@@ -3000,6 +2987,11 @@ void SymbolTable::print()
 
 void SymbolTable::print_typedefs()
 {
+    if(typedefs.empty()){
+        cout << "The Typedef Table is empty.\n";
+        return;
+    }
+
     cout << "\nTYPEDEFS:\n";
     cout << "----------------------------------------------------------------------------\n";
     cout << "| " << setw(20) << left << "Name"
@@ -3024,6 +3016,11 @@ void SymbolTable::print_typedefs()
 
 void SymbolTable::print_defined_types()
 {
+    if(defined_types.empty()){
+        cout << "The Defined Types Table is empty.\n";
+        return;
+    }
+
     cout << "\nDEFINED TYPES:\n";
     cout << "----------------------------------------------------------------------------\n";
     cout << "| " << setw(20) << left << "Name"

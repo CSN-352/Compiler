@@ -117,13 +117,59 @@ void handleMultilineComment(const char* text, int length) {
 
 void debug_symbol_table() {
     debug("\n========================================", MAGENTA);
-    debug("🔍 DEBUG: Symbol Table Snapshot", MAGENTA);
-    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), MAGENTA);
-    debug("========================================", MAGENTA);
+    bool printed = false;
 
-    symbolTable.print_typedefs();
-    symbolTable.print_defined_types();
-    symbolTable.print();
+    if (!symbolTable.scope_stack.empty()) {
+        pair<int, pair<Type, string>> top = symbolTable.scope_stack.top();
+
+        if (top.second.first.is_function) {
+
+            Symbol* sym = symbolTable.getFunction(top.second.second, top.second.first.arg_types);
+            if (!sym) {
+                debug("⚠️ ERROR: Function '" + top.second.second + "' not found!", RED);
+                return;
+            }
+            if (!sym->function_definition) {
+                debug("⚠️ ERROR: Function '" + top.second.second + "' is declared but not defined!", RED);
+                return;
+            }
+            printed = true;
+            debug("🔍 DEBUG: Function Symbol Table Snapshot", MAGENTA);
+            debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
+            sym->function_definition->function_symbol_table.print_typedefs();   
+            sym->function_definition->function_symbol_table.print_defined_types();
+            sym->function_definition->function_symbol_table.print();
+
+        }
+
+        else if (top.second.first.is_defined_type) {
+            debug("🔎 Checking defined type: " + top.second.second, BLUE);
+
+            DefinedTypes* dt = symbolTable.get_defined_type(top.second.second);
+            if (!dt) {
+                debug("⚠️ ERROR: Type '" + top.second.second + "' not found!", RED);
+                return;
+            }
+            if (!dt->type_definition) {
+                debug("⚠️ ERROR: Type '" + top.second.second + "' has no definition!", RED);
+                return;
+            }
+            printed = true;
+            debug("🔍 DEBUG: User-defined type Symbol Table Snapshot", MAGENTA);
+            debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
+            dt->type_definition->type_symbol_table.print_typedefs();
+            dt->type_definition->type_symbol_table.print_defined_types();
+            dt->type_definition->type_symbol_table.print();
+        }
+    }
+
+    if(!printed) {
+        debug("🔍 DEBUG: Global Symbol Table Snapshot", MAGENTA);
+        debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
+        symbolTable.print_typedefs();
+        symbolTable.print_defined_types();
+        symbolTable.print();
+    }
 
     debug("\n✅ End of Symbol Table Snapshot", MAGENTA);
     debug("========================================\n", MAGENTA);

@@ -184,7 +184,7 @@ primary_expression:
     | F_CONSTANT {$$ = create_primary_expression($1);}
     | CHAR_CONSTANT {$$ = create_primary_expression($1);}
     | STRING_LITERAL {$$ = create_primary_expression($1);}
-    | LEFT_PAREN primary_expression RIGHT_PAREN {$$ = create_primary_expression($2);} 
+    | LEFT_PAREN expression RIGHT_PAREN {$$ = create_primary_expression($2);} 
     ;
 
 //DONE

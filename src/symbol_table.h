@@ -230,8 +230,6 @@ class DefinedTypes : public Type
         static int t_index_count;
         TypeCategory type_category;
         TypeDefinition *type_definition;
-        int relative_offset = 0;
-        int size = 0;
         DefinedTypes(TypeCategory tc, TypeDefinition *td);
 };
 
@@ -264,6 +262,7 @@ public:
     std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes*>>> defined_types;
     std::unordered_map<std::string, std::list<Symbol *>> typedefs;
     int currentScope;
+    unsigned int currAddress = 0;
     bool error;
     stack<pair<int,pair<Type,string>>> scope_stack;
 
@@ -916,6 +915,7 @@ class FunctionDefinition : public NonTerminal{
         Declarator *declarator;
         CompoundStatement* compound_statement;
         SymbolTable function_symbol_table;
+        int relative_offset = 0;
         FunctionDefinition();
 };
 
