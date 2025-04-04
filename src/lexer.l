@@ -115,12 +115,28 @@ void handleMultilineComment(const char* text, int length) {
     }
 }
 
+void debug_symbol_table() {
+    debug("\n========================================", MAGENTA);
+    debug("🔍 DEBUG: Symbol Table Snapshot", MAGENTA);
+    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), MAGENTA);
+    debug("========================================", MAGENTA);
+
+    symbolTable.print_typedefs();
+    symbolTable.print_defined_types();
+    symbolTable.print();
+
+    debug("\n✅ End of Symbol Table Snapshot", MAGENTA);
+    debug("========================================\n", MAGENTA);
+}
+
+
 %}
 
 %option noyywrap
 %option yylineno
 
 /* Keywords for the C language */
+BREAKPOINT    "breakpoint;"
 AUTO          "auto"
 BREAK         "break"
 CASE          "case"
@@ -234,6 +250,7 @@ WHITESPACE     [ \t\v\f\r]+
 NEWLINE        \n
 
 %%
+{BREAKPOINT}          { debug_symbol_table(); updateColumn(yyleng);}
 {AUTO}                { yylval.intval = AUTO; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AUTO); }
 {BREAK}               { Terminal* t = new Terminal("BREAK",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BREAK); }
 {CASE}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CASE); }
