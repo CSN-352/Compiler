@@ -699,10 +699,15 @@ skip_until_semicolon:
 %%
 
 void yyerror(const char *msg) {
-    /* fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg); */
+#ifdef DJ
     string error_msg = "Syntax error at line " + to_string(yylineno) + ": " + msg;
     has_error = 1;
     debug(error_msg, RED);
+#endif
+
+#ifndef DJ
+    fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
+#endif
 }
 
 

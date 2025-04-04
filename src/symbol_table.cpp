@@ -275,7 +275,7 @@ int Type::get_size()
         return WORD_SIZE;
     else if (!isPrimitive())
     {
-            DefinedTypes* dt = symbolTable.get_defined_type(defined_type_name);
+        DefinedTypes* dt = symbolTable.get_defined_type(defined_type_name);
         if (is_defined_type && dt != nullptr && dt->type_definition != nullptr){
             return dt->type_definition->get_size();
         }
@@ -1060,7 +1060,7 @@ DeclarationSpecifiers *create_declaration_specifiers(SpecifierQualifierList *sql
     P->set_type();
     if (P->type_index == -1)
     {
-        string error_msg = "Invalid Type at line " + to_string(P->type_specifiers[0]->line_no) + ", column " + to_string(P->type_specifiers[0]->column_no);
+        string error_msg = "Invalid Type";
         yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
