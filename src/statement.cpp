@@ -11,6 +11,9 @@ using namespace std;
 
 extern void yyerror(const char *msg);
 
+unordered_map<string, TACOperand*> labels; // Map to store identifiers and their corresponding TAC operands
+unordered_map<string, vector<TACOperand*>> labels_list; // Map to store identifiers and their corresponding TAC operands
+
 // ##############################################################################
 // ################################## STATEMENT ######################################
 // ##############################################################################
@@ -37,6 +40,10 @@ Statement* create_labeled_statement_identifier(Identifier *identifier, Statement
     L->identifier = identifier;
     L->label_type = -1; // No label
     L->name = "Labeled Statement IDENTIFIER";
+    L->code = statement->code; // TAC
+    L->jump_code = statement->jump_code; // TAC
+    L->begin_label = statement->begin_label; //TAC
+    labels.insert({identifier->name, statement->begin_label}); // Add label to the map
 
     if(statement->type == ERROR_TYPE){
         L->type = ERROR_TYPE;
@@ -58,13 +65,15 @@ Statement* create_labeled_statement_case(Expression *expression, Statement* stat
 
     if(!expression->type.isInt()){
         string error_msg = "Case label must be an integer at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
-    } else if(expression->type == ERROR_TYPE || statement->type == ERROR_TYPE){
+    } 
+    else if(expression->type == ERROR_TYPE || statement->type == ERROR_TYPE){
        L->type = ERROR_TYPE;
        string error_msg = "Invalid statement at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
        yyerror(error_msg.c_str());
        symbolTable.set_error();
     } else {
         L->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        L->switch_case.insert({expression, statement->begin_label}); // Add case label to the map
     }
     return L;
 } 
@@ -92,7 +101,7 @@ Statement* create_labeled_statement_default(Statement* statement) {
 
 CompoundStatement::CompoundStatement() : Statement() {
     name = "COMPOUND STATEMENT";
-}
+} 
 
 Statement* create_compound_statement() {
     CompoundStatement* C = new CompoundStatement();
@@ -155,6 +164,7 @@ StatementList* create_statement_list(Statement* statement) {
     if(statement->type == ERROR_TYPE){
         S->type = ERROR_TYPE;
     } else {
+        S->begin_label = statement->begin_label;
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
     }
     return S;
@@ -193,6 +203,10 @@ Statement* create_expression_statement(Expression* x){
     if(x->type == ERROR_TYPE){
         S->type = ERROR_TYPE;
     } else {
+        // TAC_CODE.insert(TAC_CODE.end(),x->code.begin(),x->code.end());
+        S->code.insert(S->code.begin(),x->code.begin(),x->code.end()); //TAC
+        S->jump_code.insert(S->jump_code.begin(),x->jump_code.begin(),x->jump_code.end()); //TAC
+        S->begin_label = &x->code[0]->label; //TAC
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
     }
     return S;
@@ -209,7 +223,7 @@ SelectionStatement::SelectionStatement() : Statement() {
     selection_type = -1; // -1 for if, 0 for switch
     name = "SELECTION STATEMENT";
 }
-
+// expression ki next->list bhi backpatch krni hai
 Statement* create_selection_statement_if(Expression* expression, Statement* statement) {
     SelectionStatement* S = new SelectionStatement();
     S->expression = expression;
@@ -297,6 +311,7 @@ Statement* create_iteration_statement_while(Expression* expression, Statement* s
     S->column_no = expression->column_no;
     S->name = "ITERATION STATEMENT WHILE";
 
+
     if(expression->type == ERROR_TYPE || statement->type == ERROR_TYPE){
         S->type = ERROR_TYPE;
     } else if(!expression->type.isIntorFloat()){
@@ -305,6 +320,11 @@ Statement* create_iteration_statement_while(Expression* expression, Statement* s
         yyerror(error_msg.c_str());
         symbolTable.set_error();
     } else {
+        //TAC_CODE.insert(TAC_CODE.end(),expression->jump_code.begin(),expression->jump_code.end()); //TAC
+        S->code.insert(S->code.begin(),expression->jump_code.begin(),expression->jump_code.end()); //TAC
+
+        backpatch(S->next_list,&expression->jump_code[0]->label); //TAC
+        backpatch(expression->true_list,statement->begin_label); //TAC
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
     }
     return S;

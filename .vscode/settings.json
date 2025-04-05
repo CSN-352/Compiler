@@ -66,6 +66,9 @@
     "thread": "cpp",
     "cinttypes": "cpp",
     "typeinfo": "cpp",
-    "xhash": "cpp"
+    "xhash": "cpp",
+    "ranges": "cpp",
+    "span": "cpp",
+    "xutility": "cpp"
   }
 }

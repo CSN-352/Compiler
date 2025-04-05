@@ -28,10 +28,13 @@ class Expression : public NonTerminal{
     public:
         Type type;
         int operand_cnt;
-        TACOperand begin_label; // Beginning of the expression
-        TACOperand result; // Result of the expression
+        TACOperand* result; // Result of the expression
         unordered_set<TACInstruction*> true_list; // List of true instructions (for conditional jumps)
         unordered_set<TACInstruction*> false_list; // List of false instructions (for conditional jumps)
+        unordered_set<TACInstruction*> next_list; // List of next instructions (for jumps) (conditional expressions)
+        unordered_set<TACInstruction*> jump_next_list; // List of break instructions (for loops)
+        vector<TACInstruction*> code; // List of instructions for the expression
+        vector<TACInstruction*> jump_code; // List of instructions for the expression if it is part of a jump/selection/iteration statement
         Expression();
         virtual ~Expression() {}; // Virtual destructor for proper cleanup
 };

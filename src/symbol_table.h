@@ -8,6 +8,7 @@
 #include <list>
 #include "ast.h"
 #include "utils.h"
+class TACInstruction;
 
 class Expression;
 class PrimaryExpression;
@@ -195,8 +196,6 @@ public:
 
     bool is_const_variable;
     bool is_const_literal;
-
-    bool is_control_flow;
 
     Type();
 
@@ -436,6 +435,7 @@ class InitDeclarator : public NonTerminal
     public:
         Declarator* declarator;
         Initializer* initializer;
+        vector<TACInstruction*> code;
         InitDeclarator();
 };
 
