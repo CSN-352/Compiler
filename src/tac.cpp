@@ -129,7 +129,7 @@ string get_operand_string(const TACOperand& operand) {
     else if (operand.type == TAC_OPERAND_EMPTY) {
         return "";  // Empty operand
     }
-    return "UNKNOWN"; // Default case
+    return ""; // Default case
 }
 
 string get_operator_string(TACOperatorType op) {
@@ -157,7 +157,7 @@ string get_operator_string(TACOperatorType op) {
     case TAC_OPERATOR_BIT_NOT: return "~";
     case TAC_OPERATOR_ASSIGN: return "=";
     case TAC_OPERATOR_ADDR_OF: return "&"; // Address of operator
-    default: return "UNKNOWN"; // Default case
+    default: return ""; // Default case
     }
 }
 
@@ -165,6 +165,7 @@ void print_TAC_instruction(TACInstruction* instruction) {
     if (!instruction) return;
 
     // **Jump Instructions**
+    cout<< instruction->label.value << ": "; // Print the label of the instruction
     if (instruction->flag == 1) {
         cout << "goto " << get_operand_string(*instruction->result); // may need to change depending on emit call
     }
@@ -219,9 +220,6 @@ void print_TAC_instruction(TACInstruction* instruction) {
     else if (is_assignment(instruction)) {
         if (instruction->arg2->type != TAC_OPERAND_EMPTY) {
             // Binary operation: `x = y op z`
-            cout << "inside printing binary operation";
-            if (instruction->op.type == TAC_OPERATOR_MUL)
-                cerr << "inside printing binary operation mul";
             cout << get_operand_string(*instruction->result) << " = "
                 << get_operand_string(*instruction->arg1) << " "
                 << get_operator_string(instruction->op.type) << " "
@@ -245,8 +243,8 @@ void print_TAC_instruction(TACInstruction* instruction) {
 
 void print_TAC() {
     cout << "===== Three-Address Code (TAC) =====" << endl;
-    for (int i = 1; i < MAX_CODE_SIZE; ++i) {
-        if (TAC_CODE[i] == nullptr) break; // Stop when we reach uninitialized entries
+    for (int i = 0; i < TAC_CODE.size(); ++i) {
+         // Stop when we reach uninitialized entries
         print_TAC_instruction(TAC_CODE[i]);
     }
     cout << "====================================" << endl;

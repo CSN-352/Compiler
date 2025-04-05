@@ -12,6 +12,7 @@
 // External declarations 
 extern "C" int yylex();
 extern int yyparse();
+extern void print_TAC();
 extern int yylineno;
 extern YYSTYPE yylval;
 extern FILE *yyin;
@@ -689,7 +690,7 @@ for_iterartion_statement:
 
 // DONE
 jump_statement:
-    GOTO IDENTIFIER SEMICOLON {$$ = create_jump_statement($1);}
+    GOTO IDENTIFIER SEMICOLON {$$ = create_jump_statement($2);}
 	| CONTINUE SEMICOLON {$$ = create_jump_statement($1);}
 	| BREAK SEMICOLON {$$ = create_jump_statement($1);}
 	| RETURN SEMICOLON {$$ = create_jump_statement($1);}
@@ -754,6 +755,10 @@ int main(int argc, char **argv) {
     yyparse();    // Call the parser
     fclose(file); // Close file after parsing
     has_error |= symbolTable.has_error();
+    if(!labels_list.empty()){
+         yyerror("Undefined labels");
+         has_error=1;
+     }
     if(has_error) {
         debug("Parsing failed due to errors.", RED);
         return 1;
@@ -761,6 +766,7 @@ int main(int argc, char **argv) {
     symbolTable.print_defined_types();
     symbolTable.print_typedefs();
     symbolTable.print();
+    print_TAC();
     // if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;

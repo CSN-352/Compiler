@@ -20,6 +20,8 @@ class IterationStatement;
 class JumpStatement;
 struct ForIterationStruct;
 
+extern unordered_map<string, TACOperand*> labels; // Map to store labels and their corresponding TAC operands
+ extern unordered_map<string, unordered_set<TACInstruction*>> labels_list; // Map to store labels and their corresponding goto
 
 class Statement : public NonTerminal {
 public:

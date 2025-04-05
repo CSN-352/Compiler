@@ -2314,6 +2314,7 @@ ExternalDeclaration* create_external_declaration(FunctionDefinition* fd)
 {
     ExternalDeclaration* P = new ExternalDeclaration();
     P->function_definition = fd;
+    TAC_CODE.insert(TAC_CODE.end(), fd->code.begin(), fd->code.end()); // TAC
     return P;
 }
 
@@ -2321,6 +2322,9 @@ ExternalDeclaration* create_external_declaration(Declaration* d)
 {
     ExternalDeclaration* P = new ExternalDeclaration();
     P->declaration = d;
+    for (auto id : d->init_declarator_list->init_declarator_list) {
+        if (id->initializer != nullptr) TAC_CODE.insert(TAC_CODE.end(), id->code.begin(), id->code.end()); //TAC
+    }
     return P;
 }
 

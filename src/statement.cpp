@@ -12,7 +12,7 @@ using namespace std;
 extern void yyerror(const char* msg);
 
 unordered_map<string, TACOperand*> labels; // Map to store labels and their corresponding TAC operands
-unordered_map<string, vector<TACInstruction*>> labels_list; // Map to store labels and their corresponding goto instructions
+unordered_map<string, unordered_set<TACInstruction*>> labels_list; // Map to store labels and their corresponding goto instructions
 //unordered_set<TACInstruction*> switch_case; // Map to store switch case labels
 
 // ##############################################################################
@@ -47,6 +47,11 @@ Statement* create_labeled_statement_identifier(Identifier* identifier, Statement
     L->continue_list = statement->continue_list; //TAC
      L->break_list = statement->break_list; //TAC
     labels.insert({ identifier->name, statement->begin_label }); // Add label to the map
+
+    if(labels_list.find(identifier->name) != labels_list.end()) {
+        backpatch(labels_list[identifier->name], L->begin_label); // Backpatch the label with the statement's begin label
+        labels_list.erase(identifier->name); // Remove the label from the list
+    }
 
     if (statement->type == ERROR_TYPE) {
         L->type = ERROR_TYPE;
@@ -576,10 +581,7 @@ JumpStatement::JumpStatement() : Statement() {
 
 Statement* create_jump_statement(Terminal* op) {
     JumpStatement* S = new JumpStatement();
-    if (op->name == "GOTO") {
-        S->name = "JUMP STATEMENT GOTO";
-    }
-    else if (op->name == "CONTINUE") {
+    if (op->name == "CONTINUE") {
         S->name = "JUMP STATEMENT CONTINUE";
     }
     else if (op->name == "BREAK") {
@@ -589,6 +591,24 @@ Statement* create_jump_statement(Terminal* op) {
         S->name = "JUMP STATEMENT RETURN";
     }
     S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+    return S;
+}
+
+Statement* create_jump_statement(Identifier* identifier) {
+    JumpStatement* S = new JumpStatement();
+    S->line_no = identifier->line_no;
+    S->column_no = identifier->column_no;
+    S->name = "JUMP STATEMENT GOTO";
+    S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+    if(labels.find(identifier->name) != labels.end()) {
+        i1->result = labels[identifier->name]; //TAC
+    }
+    else {
+        labels_list[identifier->name].insert(i1); //TAC
+    }
+    S->code.push_back(i1); //TAC
+    S->begin_label = &i1->label; //TAC
     return S;
 }
 
