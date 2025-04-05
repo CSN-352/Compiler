@@ -42,6 +42,7 @@ Type::Type()
     is_defined_type = false;
     defined_type_name = "";
     is_function = false;
+    is_variadic = false;
     num_args = 0;
 }
 
@@ -58,6 +59,7 @@ Type::Type(int idx, int p_lvl, bool is_con)
     array_dim = 0;
 
     is_function = false;
+    is_variadic = false;
     num_args = 0;
     is_defined_type = false;
 }
@@ -2261,6 +2263,15 @@ FunctionDefinition *create_function_definition(DeclarationSpecifiers *ds, Declar
             {
                 arg_types.push_back(parameters[i]->type);
             }
+            cerr << "arg types size 12" << arg_types.size() << endl;
+        }
+        if(d!=nullptr && d->direct_declarator!=nullptr && d->direct_declarator->parameters!=nullptr && d->direct_declarator->parameters->is_variadic){
+        cerr << "arg types size" << arg_types.size() << endl;
+            if(arg_types.size() > 0){
+                arg_types[arg_types.size()-1].is_variadic = true;
+                cerr << "made function variadic"<< endl;
+            }
+            // arg_types[arg_types.size()-1].is_variadic = false;
         }
         type.is_function = true;
         type.arg_types = arg_types;
@@ -2754,6 +2765,19 @@ bool SymbolTable::lookup_function(std::string name, vector<Type> arg_types)
             }
             return true;
         } 
+        else if(arg_types.size() > 0 && sym->type.arg_types.size() > 0 && sym->type.arg_types[sym->type.arg_types.size()-1].is_variadic && arg_types.size() >= sym->type.arg_types.size()){
+            for(int i=0;i<sym->type.arg_types.size();i++){
+                if(arg_types[i].is_convertible_to(sym->type.arg_types[i]) == false){
+                    return false;
+                }
+            }
+            for(int i=sym->type.arg_types.size();i<arg_types.size();i++){
+                if(arg_types[i].is_convertible_to(sym->type.arg_types[sym->type.arg_types.size()-1]) == false){
+                    return false;
+                }
+            }
+            return true;
+        } 
     }
     return false;
 }
@@ -2880,6 +2904,24 @@ Symbol *SymbolTable::getFunction(std::string name, vector<Type> arg_types)
             {
                 if (arg_types[i].is_convertible_to(_sym->type.arg_types[i]) == false)
                 {
+                    return nullptr;
+                }
+            }
+            if (sym == nullptr || _sym->scope > sym->scope)
+            {
+                sym = _sym;
+            }
+        }
+        else if(arg_types.size() > 0 && _sym->type.arg_types.size() > 0 && arg_types[arg_types.size()-1].is_variadic && arg_types.size() >= _sym->type.arg_types.size()){
+            
+            for(int i=0;i<_sym->type.arg_types.size();i++){
+                if (arg_types[i].is_convertible_to(_sym->type.arg_types[i]) == false)
+                {
+                    return nullptr;
+                }
+            }
+            for(int i=_sym->type.arg_types.size();i<arg_types.size();i++){
+                if(arg_types[i].is_convertible_to(_sym->type.arg_types[_sym->type.arg_types.size()-1]) == false){
                     return nullptr;
                 }
             }

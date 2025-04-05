@@ -187,6 +187,7 @@ public:
     vector<int> array_dims;
 
     bool is_function;
+    bool is_variadic;
     int num_args;
     vector<Type> arg_types;
 
