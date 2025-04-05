@@ -645,8 +645,8 @@ compound_statement:
 declaration_statement_list:
     declaration_list {$$ = create_declaration_statement_list($1);}
     | statement_list {$$ = create_declaration_statement_list($1);}
-    | declaration_statement_list declaration_list {$$ = create_declaration_statement_list($2);}
-    | declaration_statement_list statement_list {$$ = create_declaration_statement_list($2);}
+    | declaration_statement_list declaration_list {$$ = create_declaration_statement_list($1,$2);}
+    | declaration_statement_list statement_list {$$ = create_declaration_statement_list($1,$2);}
     ;
 
 // DONE

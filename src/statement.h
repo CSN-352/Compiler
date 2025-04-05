@@ -26,12 +26,13 @@ extern unordered_map<string, TACOperand*> labels; // Map to store labels and the
 class Statement : public NonTerminal {
 public:
     Type type;
-    Type return_type;
+    vector<Type> return_type;
     unordered_set<TACInstruction*> next_list; // List of next instructions (for jumps)
     TACOperand* begin_label; // Label for the beginning of the statement
     vector<TACInstruction*> code;
-    vector<TACInstruction*> continue_list; // List of continue instructions (for loops)
-    vector<TACInstruction*> break_list;
+    unordered_set<TACInstruction*> continue_list; // List of continue instructions (for loops)
+    unordered_set<TACInstruction*> break_list; // List of break instructions (for loops)
+
     Statement();
 };
 
@@ -72,9 +73,13 @@ Statement* create_compound_statement(DeclarationStatementList* statement);
 class DeclarationStatementList : public Statement {
 public:
     DeclarationStatementList();
+    vector<DeclarationList*> declarations;
+    vector<StatementList*> statements;
 };
 DeclarationStatementList* create_declaration_statement_list(DeclarationList* declaration_list);
 DeclarationStatementList* create_declaration_statement_list(StatementList* statement_list);
+DeclarationStatementList* create_declaration_statement_list(DeclarationStatementList* declaration_statement_list, StatementList* statement_list);
+DeclarationStatementList* create_declaration_statement_list(DeclarationStatementList* declaration_statement_list, DeclarationList* declaration_list);
 
 // ##############################################################################
 // ################################## STATEMENT LIST ######################################
@@ -154,7 +159,6 @@ struct ForIterationStruct {
 class JumpStatement : public Statement {
 public:
     // return type ko function definition me return krvana hai
-    Type return_type;
     JumpStatement();
 };
 

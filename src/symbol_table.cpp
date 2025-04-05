@@ -2428,20 +2428,23 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
 
     Symbol* function = symbolTable.getSymbol(declarator->direct_declarator->identifier->value);
     Type t1 = function->type;
-    Type t2 = cs->return_type;
-
+    Type t2 = Type(PrimitiveTypes::VOID_T, 0, false);
+    if(!cs->return_type.empty()) t2 = cs->return_type[0];
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_empty_var(), new_constant(declarator->direct_declarator->identifier->value), new_empty_var(), 0); // TAC
     fd->code.push_back(i1); // TAC
-    for(auto pd:declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
-         if(pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
-             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_empty_var(), new_constant(pd->declarator->direct_declarator->identifier->value), new_empty_var(), 0); // TAC
-             fd->code.push_back(i2); // TAC
+    if(declarator->direct_declarator->parameters != nullptr) {
+         for(auto pd:declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
+             if(pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
+                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_empty_var(), new_constant(pd->declarator->direct_declarator->identifier->value), new_empty_var(), 0); // TAC
+                 fd->code.push_back(i2); // TAC
+             }
          }
-     }
-     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_empty_var(), new_empty_var(), new_empty_var(), 0); // TAC
-     backpatch(cs_cast->next_list, &i2->label); // TAC
-     fd->code.insert(fd->code.end(), cs_cast->code.begin(), cs_cast->code.end()); // TAC
-     fd->code.push_back(i2); // TAC
+    }
+    
+    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_empty_var(), new_empty_var(), new_empty_var(), 0); // TAC
+    backpatch(cs_cast->next_list, &i2->label); // TAC
+    fd->code.insert(fd->code.end(), cs_cast->code.begin(), cs_cast->code.end()); // TAC
+    fd->code.push_back(i2); // TAC
 
     if (!(t1 == t2) && !(t1.is_convertible_to(t2))) {
         string error_msg = "Function is returning incorrect data type " + to_string(declarator->direct_declarator->identifier->line_no) + ", column " + to_string(declarator->direct_declarator->identifier->column_no);
