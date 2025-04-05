@@ -106,7 +106,7 @@ enum TACOperatorType {
     TAC_OPERATOR_CALL,       // Function call
     TAC_OPERATOR_RETURN,     // return value
     TAC_OPERATOR_PARAM,      // Function parameter passing
-    // TAC_OPERATOR_FUNC_BEGIN, // Function prologue
+    TAC_OPERATOR_FUNC_BEGIN, // Function prologue
     TAC_OPERATOR_FUNC_END,   // Function epilogue
 
     // Array and Indexing Operators

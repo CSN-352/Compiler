@@ -192,6 +192,12 @@ void print_TAC_instruction(TACInstruction* instruction) {
     else if (instruction->op.type == TAC_OPERATOR_RETURN) { // MAY NEED TO CHANGE
         cout << "return " << get_operand_string(*instruction->arg1);
     }
+    else if(instruction->op.type == TAC_OPERATOR_FUNC_BEGIN) {
+        cout << "function " << get_operand_string(*instruction->arg1);
+    }
+    else if (instruction->op.type == TAC_OPERATOR_FUNC_END) {
+        cout << "end function ";
+    }
     // **Pointer Instructions**
     // else if (instruction->op.type == TAC_OPERATOR_ASSIGN && instruction->arg1.type == TAC_OPERAND_POINTER) {
     //     cout << "*" << get_operand_string(instruction->result) << " = " 

@@ -919,6 +919,7 @@ public:
     Declarator* declarator;
     CompoundStatement* compound_statement;
     SymbolTable function_symbol_table;
+    vector<TACInstruction*> code;
     int relative_offset = 0;
     FunctionDefinition();
 };

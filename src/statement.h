@@ -28,7 +28,8 @@ public:
     unordered_set<TACInstruction*> next_list; // List of next instructions (for jumps)
     TACOperand* begin_label; // Label for the beginning of the statement
     vector<TACInstruction*> code;
-
+    vector<TACInstruction*> continue_list; // List of continue instructions (for loops)
+    vector<TACInstruction*> break_list;
     Statement();
 };
 

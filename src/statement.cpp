@@ -44,6 +44,8 @@ Statement* create_labeled_statement_identifier(Identifier* identifier, Statement
     L->code = statement->code; // TAC
     L->begin_label = statement->begin_label; //TAC
     L->next_list = statement->next_list; //TAC
+    L->continue_list = statement->continue_list; //TAC
+     L->break_list = statement->break_list; //TAC
     labels.insert({ identifier->name, statement->begin_label }); // Add label to the map
 
     if (statement->type == ERROR_TYPE) {
@@ -84,6 +86,8 @@ Statement* create_labeled_statement_case(Expression* expression, Statement* stat
         L->begin_label = &i1->label; //TAC
         L->next_list = statement->next_list; //TAC
         L->next_list.insert(i2); //TAC
+        L->continue_list = statement->continue_list; //TAC
+         L->break_list = statement->break_list; //TAC
     }
     return L;
 }
@@ -105,6 +109,8 @@ Statement* create_labeled_statement_default(Statement* statement) {
         L->code.insert(L->code.begin(), statement->code.begin(), statement->code.end()); //TAC
         L->begin_label = statement->begin_label; //TAC
         L->next_list = statement->next_list; //TAC
+        L->continue_list = statement->continue_list; //TAC
+         L->break_list = statement->break_list; //TAC
     }
     return L;
 }
@@ -141,6 +147,8 @@ Statement* create_compound_statement(DeclarationStatementList* statement)
     C->code = statement->code; //TAC
     C->next_list = statement->next_list; //TAC
     C->begin_label = statement->begin_label; //TAC
+    C->continue_list = statement->continue_list; //TAC
+     C->break_list = statement->break_list; //TAC
     return C;
 }
 
@@ -176,6 +184,8 @@ DeclarationStatementList* create_declaration_statement_list(StatementList* state
     D->code = statement_list->code; //TAC
     D->begin_label = statement_list->begin_label; //TAC
     D->next_list = statement_list->next_list; //TAC
+    D->continue_list = statement_list->continue_list; //TAC
+     D->break_list = statement_list->break_list; //TAC
     return D;
 }
 
@@ -199,6 +209,8 @@ StatementList* create_statement_list(Statement* statement) {
         S->code = statement->code; //TAC
         S->next_list = statement->next_list; //TAC
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        S->continue_list = statement->continue_list; //TAC
+         S->break_list = statement->break_list; //TAC
     }
     return S;
 }
@@ -212,6 +224,8 @@ StatementList* create_statement_list(StatementList* statement_list, Statement* s
     statement_list->code.insert(statement_list->code.end(), statement->code.begin(), statement->code.end()); //TAC
     backpatch(statement_list->next_list, statement->begin_label); //TAC
     statement_list->next_list = statement->next_list; //TAC
+    statement_list->continue_list = statement->continue_list; //TAC
+     statement_list->break_list = statement->break_list; //TAC
     return statement_list;
 }
 
@@ -292,6 +306,8 @@ Statement* create_selection_statement_if(Expression* expression, Statement* stat
         backpatch(expression->true_list, statement->begin_label); //TAC
         S->next_list = merge_lists(statement->next_list, expression->false_list); //TAC
         S->begin_label = &expression->jump_code[0]->label; //TAC
+        S->continue_list = statement->continue_list; //TAC
+         S->break_list = statement->break_list; //TAC
     }
     return S;
 }
@@ -328,6 +344,8 @@ Statement* create_selection_statement_if_else(Expression* expression, Statement*
         S->next_list = else_statement->next_list; //TAC
         S->next_list.insert(i1); //TAC
         S->begin_label = &expression->jump_code[0]->label; //TAC
+        S->continue_list = statement->continue_list; //TAC
+         S->break_list = statement->break_list; //TAC
     }
     return S;
 }
