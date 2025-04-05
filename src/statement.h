@@ -27,8 +27,6 @@ class Statement : public NonTerminal{
     unordered_set<TACInstruction*> next_list; // List of next instructions (for jumps)
     TACOperand* begin_label; // Label for the beginning of the statement
     vector<TACInstruction*> code;
-    vector<TACInstruction*> jump_code;
-    unordered_map<Expression*, TACOperand*> switch_case; // Map to store switch expressions and their corresponding labels
     
     Statement();  
 };
@@ -94,6 +92,7 @@ StatementList* create_statement_list(StatementList* statement_list, Statement* s
 class ExpressionStatement : public Statement{
     public:
         Expression* expression;
+        vector<TACInstruction*> jump_code; //TAC
         ExpressionStatement();
 };
 

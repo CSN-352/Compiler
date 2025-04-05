@@ -11,8 +11,9 @@ using namespace std;
 
 extern void yyerror(const char *msg);
 
-unordered_map<string, TACOperand*> labels; // Map to store identifiers and their corresponding TAC operands
-unordered_map<string, vector<TACOperand*>> labels_list; // Map to store identifiers and their corresponding TAC operands
+unordered_map<string, TACOperand*> labels; // Map to store labels and their corresponding TAC operands
+unordered_map<string, vector<TACInstruction*>> labels_list; // Map to store labels and their corresponding goto instructions
+//unordered_set<TACInstruction*> switch_case; // Map to store switch case labels
 
 // ##############################################################################
 // ################################## STATEMENT ######################################
@@ -41,8 +42,8 @@ Statement* create_labeled_statement_identifier(Identifier *identifier, Statement
     L->label_type = -1; // No label
     L->name = "Labeled Statement IDENTIFIER";
     L->code = statement->code; // TAC
-    L->jump_code = statement->jump_code; // TAC
     L->begin_label = statement->begin_label; //TAC
+    L->next_list = statement->next_list; //TAC
     labels.insert({identifier->name, statement->begin_label}); // Add label to the map
 
     if(statement->type == ERROR_TYPE){
@@ -62,9 +63,9 @@ Statement* create_labeled_statement_case(Expression *expression, Statement* stat
     L->expression = expression;
     L->label_type = 0; // Case label
     L->name = "Labeled Statement CASE";
-
-    if(!expression->type.isInt()){
-        string error_msg = "Case label must be an integer at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
+    ConditionalExpression* cond_expr = dynamic_cast<ConditionalExpression*>(expression);
+    if(!expression->type.isInt() || !cond_expr->type.is_const_literal){
+        string error_msg = "Case label must be a constant integer or character at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
     } 
     else if(expression->type == ERROR_TYPE || statement->type == ERROR_TYPE){
        L->type = ERROR_TYPE;
@@ -73,7 +74,14 @@ Statement* create_labeled_statement_case(Expression *expression, Statement* stat
        symbolTable.set_error();
     } else {
         L->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
-        L->switch_case.insert({expression, statement->begin_label}); // Add case label to the map
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_EQ), statement->begin_label, new_empty_var(), expression->result, 2); //TAC
+        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        L->code.push_back(i1); //TAC
+        L->code.push_back(i2); //TAC
+        L->code.insert(L->code.end(),statement->code.begin(),statement->code.end()); //TAC
+        L->begin_label = &i1->label; //TAC
+        L->next_list = statement->next_list; //TAC
+        L->next_list.insert(i2); //TAC
     }
     return L;
 } 
@@ -91,6 +99,9 @@ Statement* create_labeled_statement_default(Statement* statement) {
         symbolTable.set_error();
     } else {
         L->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        L->code.insert(L->code.begin(),statement->code.begin(),statement->code.end()); //TAC
+        L->begin_label = statement->begin_label; //TAC
+        L->next_list = statement->next_list; //TAC
     }
     return L;
 }
@@ -124,6 +135,9 @@ Statement *create_compound_statement(DeclarationStatementList *statement)
     {
         C->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
     }
+    C->code = statement->code; //TAC
+    C->next_list = statement->next_list; //TAC
+    C->begin_label = statement->begin_label; //TAC
     return C;
 }
 
@@ -138,7 +152,17 @@ DeclarationStatementList::DeclarationStatementList() : Statement() {
 DeclarationStatementList* create_declaration_statement_list(DeclarationList* declaration_list) {
     DeclarationStatementList* D = new DeclarationStatementList();
     D->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
-    
+    for(Declaration* d:declaration_list->declaration_list){
+        for(InitDeclarator* id : d->init_declarator_list->init_declarator_list){
+            D->code.insert(D->code.end(),id->code.begin(),id->code.end()); //TAC
+        }
+    }
+    if(!D->code.empty()){
+        D->begin_label = &D->code[0]->label; //TAC
+    }
+     else {
+        D->begin_label = new TACOperand(TAC_OPERAND_EMPTY, ""); //TAC
+    }
     return D;
 }
    
@@ -146,6 +170,9 @@ DeclarationStatementList* create_declaration_statement_list(StatementList* state
     DeclarationStatementList* D = new DeclarationStatementList();
     D->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
     D->return_type = statement_list->return_type;
+    D->code = statement_list->code; //TAC
+    D->begin_label = statement_list->begin_label; //TAC
+    D->next_list = statement_list->next_list; //TAC
     return D;
 }
 
@@ -165,6 +192,8 @@ StatementList* create_statement_list(Statement* statement) {
         S->type = ERROR_TYPE;
     } else {
         S->begin_label = statement->begin_label;
+        S->code = statement->code; //TAC
+        S->next_list = statement->next_list; //TAC
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
     }
     return S;
@@ -176,6 +205,9 @@ StatementList* create_statement_list(StatementList* statement_list, Statement* s
     if(statement->type == ERROR_TYPE){
         statement_list->type = ERROR_TYPE;
     } 
+    statement_list->code.insert(statement_list->code.end(),statement->code.begin(),statement->code.end()); //TAC
+    backpatch(statement_list->next_list, statement->begin_label); //TAC
+    statement_list->next_list = statement->next_list; //TAC
     return statement_list;
 }
 
@@ -204,9 +236,14 @@ Statement* create_expression_statement(Expression* x){
         S->type = ERROR_TYPE;
     } else {
         // TAC_CODE.insert(TAC_CODE.end(),x->code.begin(),x->code.end());
-        S->code.insert(S->code.begin(),x->code.begin(),x->code.end()); //TAC
-        S->jump_code.insert(S->jump_code.begin(),x->jump_code.begin(),x->jump_code.end()); //TAC
-        S->begin_label = &x->code[0]->label; //TAC
+        S->code = x->code; //TAC
+        S->jump_code = x->jump_code; //TAC
+        S->next_list = x->next_list; //TAC
+        if(!x->code.empty()){
+            S->begin_label = &x->code[0]->label; //TAC
+        } else {
+            S->begin_label = new TACOperand(TAC_OPERAND_EMPTY, ""); //TAC
+        }
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
     }
     return S;
@@ -223,6 +260,7 @@ SelectionStatement::SelectionStatement() : Statement() {
     selection_type = -1; // -1 for if, 0 for switch
     name = "SELECTION STATEMENT";
 }
+
 // expression ki next->list bhi backpatch krni hai
 Statement* create_selection_statement_if(Expression* expression, Statement* statement) {
     SelectionStatement* S = new SelectionStatement();
@@ -241,8 +279,13 @@ Statement* create_selection_statement_if(Expression* expression, Statement* stat
         string error_msg = "Condition of if statement must be an integer at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-    } else {
+    } 
+    else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        S->code = expression->jump_code; //TAC
+        backpatch(expression->true_list,statement->begin_label); //TAC
+        S->next_list = merge_lists(statement->next_list, expression->false_list); //TAC
+        S->begin_label = &expression->jump_code[0]->label; //TAC
     }
     return S;
 }
@@ -265,12 +308,25 @@ Statement* create_selection_statement_if_else(Expression* expression, Statement*
         string error_msg = "Condition of if statement must be an integer at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-    } else {
+    }
+    else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        S->code = expression->jump_code; //TAC
+        S->code.insert(S->code.end(), statement->code.begin(), statement->code.end()); //TAC
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        S->code.push_back(i1); //TAC
+        S->code.insert(S->code.end(), else_statement->code.begin(), else_statement->code.end()); //TAC
+        backpatch(expression->true_list,statement->begin_label); //TAC
+        backpatch(expression->false_list,else_statement->begin_label); //TAC
+        backpatch(statement->next_list, &i1->label); //TAC
+        S->next_list = else_statement->next_list; //TAC
+        S->next_list.insert(i1); //TAC
+        S->begin_label = &expression->jump_code[0]->label; //TAC
     }
     return S;
 }
 
+//TODO: switch statement ki case label ki list ko backpatch krna hai
 Statement* create_selection_statement_switch(Expression* expression, Statement* statement) {
     SelectionStatement* S = new SelectionStatement();
     S->expression = expression;
@@ -319,13 +375,17 @@ Statement* create_iteration_statement_while(Expression* expression, Statement* s
         string error_msg = "Condition of while statement must be an integer at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-    } else {
-        //TAC_CODE.insert(TAC_CODE.end(),expression->jump_code.begin(),expression->jump_code.end()); //TAC
-        S->code.insert(S->code.begin(),expression->jump_code.begin(),expression->jump_code.end()); //TAC
-
-        backpatch(S->next_list,&expression->jump_code[0]->label); //TAC
-        backpatch(expression->true_list,statement->begin_label); //TAC
+    } 
+    else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        S->code = expression->jump_code; //TAC
+        backpatch(expression->true_list, statement->begin_label); //TAC
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        i1->result = &expression->jump_code[0]->label; //TAC
+        S->code.push_back(i1); //TAC
+        backpatch(statement->next_list, &i1->label); //TAC
+        S->next_list = expression->false_list; //TAC
+        S->begin_label = &S->code[0]->label; //TAC
     }
     return S;
 }
@@ -346,20 +406,24 @@ Statement* create_iteration_statement_do_while(Expression* expression, Statement
         string error_msg = "Condition of while statement must be an integer at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-    } else {
+    } 
+    else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        S->code = statement->code; //TAC
+        S->code.insert(S->code.end(), expression->jump_code.begin(), expression->jump_code.end()); //TAC
+        backpatch(statement->next_list, &expression->jump_code[0]->label); //TAC
+        backpatch(expression->true_list, statement->begin_label); //TAC
+        S->next_list = expression->false_list; //TAC
+        S->begin_label = &S->code[0]->label; //TAC
     }
     return S;
 }
-
 
 Statement* create_iteration_statement_for(Statement* statement1, Statement* statement2, Expression* expression, Statement* statement3){
     IterationStatement* S = new IterationStatement();
     S->line_no = expression->line_no;
     S->column_no = expression->column_no;
     S->name = "ITERATION STATEMENT FOR";
-
-    
     if(statement1->type == ERROR_TYPE || statement2->type == ERROR_TYPE || statement3->type == ERROR_TYPE){
         S->type = ERROR_TYPE;
     } else if(expression!=nullptr){
@@ -371,8 +435,27 @@ Statement* create_iteration_statement_for(Statement* statement1, Statement* stat
         string error_msg = "Condition of for statement must be an integerorfloat at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-    } else {
+    } 
+    else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        S->code = statement1->code; //TAC
+        ExpressionStatement* exp = dynamic_cast<ExpressionStatement*>(statement2);
+        S->code.insert(S->code.end(), exp->jump_code.begin(), exp->jump_code.end()); //TAC
+        backpatch(statement1->next_list, &exp->jump_code[0]->label); //TAC
+        backpatch(exp->expression->true_list, statement3->begin_label); //TAC
+        S->code.insert(S->code.end(), statement3->code.begin(), statement3->code.end()); //TAC
+        if(expression != nullptr){
+            S->code.insert(S->code.end(), expression->code.begin(), expression->code.end()); //TAC
+            if(!expression->code.empty()){
+                backpatch(statement3->next_list, &expression->code[0]->label); //TAC
+            } 
+        }
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        i1->result = statement2->begin_label; //TAC
+        backpatch(statement3->next_list, &i1->label); //TAC
+        S->code.push_back(i1); //TAC
+        S->next_list = exp->expression->false_list; //TAC
+        S->begin_label = &S->code[0]->label; //TAC
     }
     return S;
 }
@@ -394,8 +477,28 @@ Statement* create_iteration_statement_for_dec(Declaration* declaration, Statemen
         string error_msg = "Condition of for statement must be an integerorfloat at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-    } else {
+    } 
+    else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        for(auto id:declaration->init_declarator_list->init_declarator_list){
+            if(id->initializer != nullptr) S->code.insert(S->code.end(),id->code.begin(),id->code.end()); //TAC
+        }
+        ExpressionStatement* exp = dynamic_cast<ExpressionStatement*>(statement1);
+        S->code.insert(S->code.end(), exp->jump_code.begin(), exp->jump_code.end()); //TAC
+        backpatch(exp->expression->true_list, statement2->begin_label); //TAC
+        S->code.insert(S->code.end(), statement2->code.begin(), statement2->code.end()); //TAC
+        if(expression != nullptr){
+            S->code.insert(S->code.end(), expression->code.begin(), expression->code.end()); //TAC
+            if(!expression->code.empty()){
+                backpatch(statement2->next_list, &expression->code[0]->label); //TAC
+            } 
+        }
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        i1->result = statement1->begin_label; //TAC
+        backpatch(statement2->next_list, &i1->label); //TAC
+        S->code.push_back(i1); //TAC
+        S->next_list = exp->expression->false_list; //TAC
+        S->begin_label = &S->code[0]->label; //TAC
     }
     return S;    
 }
@@ -413,8 +516,18 @@ Statement* create_iteration_statement_until(Expression* expression, Statement* s
         string error_msg = "Condition of until statement must be an integer at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
-    } else {
+    } 
+    else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        S->code = expression->jump_code; //TAC
+        S->code.insert(S->code.end(), statement->code.begin(), statement->code.end()); //TAC
+        backpatch(expression->false_list, statement->begin_label); //TAC
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        i1->result = &expression->jump_code[0]->label; //TAC
+        backpatch(statement->next_list, &i1->label); //TAC
+        S->code.push_back(i1); //TAC
+        S->next_list = expression->true_list; //TAC
+        S->begin_label = &expression->jump_code[0]->label; //TAC
     }
     return S;
 }

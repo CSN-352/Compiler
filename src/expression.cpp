@@ -131,6 +131,7 @@ ArgumentExpressionList* create_argument_expression_list(Expression* x){
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_PARAM), new_empty_var(), x->result, new_empty_var(), 0); // TAC
     backpatch(x->next_list, &i1->label); // TAC
     backpatch(x->jump_next_list, &i1->label); // TAC
+    P->type.is_const_literal = false;
     P->code.push_back(i1); // TAC
     return P;
 }
@@ -188,7 +189,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
     P->jump_code.insert(P->jump_code.begin(),x->code.begin(),x->code.end()); // TAC
     if(op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
     else P->name = "POSTFIX EXPRESSION DEC OP";
-
+    
     if(x->type.is_error()){
         P->type = ERROR_TYPE;
         return P;
@@ -265,6 +266,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op){
         symbolTable.set_error();
         return P;
     }
+    P->type.is_const_literal = false;
     return P;
 }
 
@@ -377,6 +379,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             }
         }
     }
+    P->type.is_const_literal = false;
     return P;
 }
 
@@ -455,6 +458,7 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     P->jump_code.push_back(i4); // TAC
     P->jump_code.push_back(i5); // TAC
     P->jump_code.push_back(i6); // TAC
+    P->type.is_const_literal = false;
     return P;
 }
 
@@ -528,6 +532,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
             }
         }
     }
+    P->type.is_const_literal = false;
     return P;
 }
 
@@ -645,6 +650,7 @@ Expression* create_unary_expression(Expression* x, Terminal* op){
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
     }
+    U->type.is_const_literal = false;
     return U;
 }
 
@@ -656,6 +662,7 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
     //U->postfix_expression = U->base_expression->postfix_expression;
     U->line_no = x->line_no;
     U->column_no = x->column_no;
+    
     U->code.insert(U->code.begin(),x->code.begin(),x->code.end()); // TAC
     U->jump_code.insert(U->jump_code.begin(),x->code.begin(),x->code.end()); // TAC
 
@@ -817,6 +824,7 @@ Expression *create_unary_expression_cast(Expression* x, Terminal* op)
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
     }
+    U->type.is_const_literal = false;
     return U;
 }
 
@@ -828,6 +836,7 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn){
     U->column_no = op->column_no;
     U->name = "UNARY EXPRESSION SIZEOF TYPE";
     U->type = Type(PrimitiveTypes::INT_T, 0, true);
+    U->type.is_const_literal = false;
     U->result = new_temp_var(); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), U->result, new_constant(to_string(tn->type.get_size())), new_empty_var(), 0); // TAC
     U->code.push_back(i1); // TAC
@@ -839,7 +848,7 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn){
     U->jump_code.push_back(i1); // TAC
     U->jump_code.push_back(i2); // TAC
     U->jump_code.push_back(i3); // TAC
-
+    U->type.is_const_literal = false;
     return U;
 }
 
@@ -905,7 +914,7 @@ Expression* create_cast_expression(TypeName* tn, Expression* x){
     C->jump_code.push_back(i1); // TAC
     C->jump_code.push_back(i2); // TAC
     C->jump_code.push_back(i3); // TAC
-
+    C->type.is_const_literal = false;
     return C;
 }
 
@@ -1183,6 +1192,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
         }
         
     }
+    M->type.is_const_literal = false;
     return M;
 }
 
@@ -1476,6 +1486,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         symbolTable.set_error();
         return A;
     }
+    A->type.is_const_literal = false;
     return A;
 }
 
@@ -1616,6 +1627,7 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         S->jump_code.push_back(i3); // TAC
         S->jump_code.push_back(i4); // TAC
     }
+    S->type.is_const_literal = false;
     return S;
 }
 
@@ -1844,6 +1856,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
         symbolTable.set_error();
         return R;
     }
+    R->type.is_const_literal = false;
     return R;
 }
 
@@ -2046,7 +2059,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
         symbolTable.set_error();
         return E;
     }
-
+    E->type.is_const_literal = false;
     return E;
 } 
 
@@ -2185,7 +2198,7 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
             return A;
         }
     }
-
+    A->type.is_const_literal = false;
     return A;
 }
 
@@ -2324,6 +2337,7 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
             return X;
         }
     }
+    X->type.is_const_literal = false;
     return X;
 }
 
@@ -2462,6 +2476,7 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
             return O;
         }
     }
+    O->type.is_const_literal = false;
     return O;
 }
 
@@ -2636,6 +2651,7 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
             symbolTable.set_error();
         }
     }
+    L->type.is_const_literal = false;
     return L;
 }
 
@@ -2809,6 +2825,7 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
             symbolTable.set_error();
         }
     }
+    L->type.is_const_literal = false;
     return L;
 }
 
@@ -2985,7 +3002,7 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
         yyerror(error_msg.c_str());
         symbolTable.set_error();
     }
-
+    C->type.is_const_literal = false;
     return C;
 }
 
@@ -3337,6 +3354,7 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
         }
     } 
+    A->type.is_const_literal = false;
     return A;
 }
 

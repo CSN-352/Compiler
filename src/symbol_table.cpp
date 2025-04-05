@@ -1886,9 +1886,8 @@ InitDeclarator *create_init_declarator(Declarator *d, Initializer *i)
     P->declarator = d;
     P->initializer = i;
     if(i != nullptr){
-        TACOperand id = new_identifier(d->direct_declarator->identifier->value); // TAC
-        TACOperand e1 = TACOperand(TAC_OPERAND_EMPTY,""); // TAC
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), &id, i->assignment_expression->result, &e1, 0); // TAC
+        TACOperand* id = new_identifier(d->direct_declarator->identifier->value); // TAC
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
         backpatch(i->assignment_expression->next_list,&i1->label); // TAC
         backpatch(i->assignment_expression->jump_next_list,&i1->label); // TAC
         P->code.insert(P->code.begin(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
