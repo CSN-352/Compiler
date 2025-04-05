@@ -1,3 +1,4 @@
+// Passing
 int x;
 
 double main() {
@@ -15,8 +16,8 @@ double main() {
     float f_quot = c / d;
     char ch = 'A';
     char next_ch = ch + 1;
-    breakpoint;
-    breakpoint_global;
+    // breakpoint;
+    // breakpoint_global;
 }
 
 int y;
