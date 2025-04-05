@@ -16,7 +16,7 @@ enum Colour
 
 // Template function definition
 template <typename T>
-static void debug(const T &msg, int colour = 1)
+static void debug(const T& msg, int colour = 1)
 {
 #ifdef DJ
     std::string color_code;

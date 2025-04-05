@@ -6,6 +6,7 @@
 #include "symbol_table.h" 
 #include "ast.h"
 #include "expression.h"
+#include "tac.h"
 #include "utils.h"
 
 // External declarations 
@@ -29,6 +30,7 @@ void yyerror(const char *msg);
     #include "expression.h"
     #include "symbol_table.h"
     #include "statement.h"
+    #include "tac.h"
 }
 
 /* Token definitions */
@@ -176,8 +178,8 @@ void yyerror(const char *msg);
 error_case:
     I_CONSTANT IDENTIFIER { yyerror("Invalid Identifier"); has_error=1; yyclearin;}
     | DIVIDE MULTIPLY { yyerror("Unterminated Comment"); has_error=1; yyclearin;}
-    | ERROR { has_error=1; yyclearin;}
-    | error {  has_error=1; yyclearin;}
+    | ERROR {has_error=1; yyclearin;}
+    | error {has_error=1; yyclearin;}
     ;
 
 //DONE
@@ -224,7 +226,7 @@ unary_operator:
     | MULTIPLY {$$ = $1;}
     | PLUS  {$$ = $1;}
     | MINUS {$$ = $1;}
-    | NOT   {$$ = $1;}
+    | NOT {$$ = $1;}
     | BITWISE_NOT   {$$ = $1;}
     ;
 
@@ -759,6 +761,7 @@ int main(int argc, char **argv) {
     symbolTable.print_defined_types();
     symbolTable.print_typedefs();
     symbolTable.print();
+    // if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");
     return 0;
 }
