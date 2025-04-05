@@ -391,7 +391,7 @@ type_specifier:
 
 // DONE
 struct_or_union_specifier:
-    struct_or_union IDENTIFIER LEFT_CURLY {sus = create_struct_union_specifier($1->name,$2); Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} struct_declaration_set RIGHT_CURLY { $$ = create_struct_union_specifier(sus,$5); symbolTable.exitScope();}  
+    struct_or_union IDENTIFIER LEFT_CURLY {sus = create_struct_union_specifier($1->name,$2); Type t; t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} struct_declaration_set RIGHT_CURLY { $$ = create_struct_union_specifier(sus,$5); symbolTable.exitScope();}  
 	// | struct_or_union LEFT_CURLY {symbolTable.enterScope();} struct_declaration_set RIGHT_CURLY {create_struct_union_specifier($1->name,nullptr,$4); symbolTable.exitScope();}  
 	| struct_or_union IDENTIFIER {$$ = create_struct_union_specifier($1->name,$2,nullptr);}                  
 	;
@@ -422,8 +422,8 @@ struct_declaration_list:
 
 // DONE
 class_specifier:
-    CLASS IDENTIFIER LEFT_CURLY {cs = create_class_specifier($2); Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier(cs,nullptr,$5); symbolTable.exitScope();} 
-    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {cs = create_class_specifier($2); Type t(-1,0,false); t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier(cs,$4,$7); symbolTable.exitScope();} 
+    CLASS IDENTIFIER LEFT_CURLY {cs = create_class_specifier($2); Type t; t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier(cs,nullptr,$5); symbolTable.exitScope();} 
+    | CLASS IDENTIFIER INHERITANCE_OP class_declarator_list LEFT_CURLY {cs = create_class_specifier($2); Type t; t.is_defined_type = true; symbolTable.enterScope(t,$2->value);} class_declaration_list RIGHT_CURLY {$$ = create_class_specifier(cs,$4,$7); symbolTable.exitScope();} 
     | CLASS IDENTIFIER {$$ = create_class_specifier($2,nullptr,nullptr);}
     ;
 
@@ -622,7 +622,7 @@ labeled_statement:
 
 compound_statement:
     LEFT_CURLY {
-        Type t(-1,0,false);
+        Type t;
         if(function_flag == 1)
             function_flag = 0;
         else if(for_flag == 1)
@@ -631,7 +631,7 @@ compound_statement:
     } RIGHT_CURLY {symbolTable.exitScope(); $$ = create_compound_statement();}
     // left to implement will be done after remaining classes
     | LEFT_CURLY {
-        Type t(-1,0,false);
+        Type t;
         if(function_flag == 1)
             function_flag = 0;
         else if(for_flag == 1)
@@ -704,8 +704,8 @@ translation_unit:
 
 // DONE
 external_declaration:
-	function_definition {create_external_declaration($1);}
-	| declaration {create_external_declaration($1);}
+	function_definition {$$ = create_external_declaration($1);}
+	| declaration {$$ = create_external_declaration($1);}
 	;
 
 // DONE

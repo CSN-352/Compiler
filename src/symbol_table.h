@@ -306,7 +306,7 @@ class TypeDefinition
 public:
     TypeCategory type_category;
     unordered_map<string, AccessSpecifiers> members;
-    bool get_member(string member);
+    bool lookup_member(string member);
     AccessSpecifiers get_member_access_specifier(string member);
     SymbolTable type_symbol_table;
     int get_size();

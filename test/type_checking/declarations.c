@@ -1,10 +1,10 @@
 // [Passing]
 // Test 1: Basic type checking
-int a;
+// int a;
 // char b;
 // double c;
-breakpoint;
-unsigned int d;
+// breakpoint;
+// unsigned int d;
 
 // [Passing]
 // Test 2: List of declarations 
@@ -40,8 +40,9 @@ unsigned int d;
 // [Passing]
 // // Test 7: Struct instantiation
 // struct Point {
-//     int x;
-//     int y;
+//     int arr[25];
+//     int* x;
+//     double* y;
 // };
 // struct Point obj;
 
@@ -92,6 +93,8 @@ unsigned int d;
 // } Point_t;
 // Point_t p1, p2;
 
+// [Passing]
+// Test 15: Function Declaration
 // int foo() {
 //     return 0;
 // }
@@ -100,3 +103,16 @@ unsigned int d;
 //     x = foo();
 //     return 0;
 // }
+
+// Test 16: Class Declaration
+int a;
+int a();
+// class AccessTest {
+// // int x;
+//     void foo(){}
+//     //     breakpoint;
+//     //     x = 5;
+//     //     breakpoint;
+//     //     breakpoint_global;
+    
+// };

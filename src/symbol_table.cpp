@@ -452,7 +452,7 @@ TypeDefinition::TypeDefinition(TypeCategory tc)
     type_category = tc;
 }
 
-bool TypeDefinition::get_member(string member)
+bool TypeDefinition::lookup_member(string member)
 {
     if (members.find(member) != members.end())
         return true;
@@ -523,6 +523,7 @@ TypeDefinition* create_type_definition(TypeDefinition* P, StructDeclarationSet* 
                             P->members.insert({ id->value, ACCESS_SPECIFIER_PROTECTED });
                         else if (sdla->access_specifier->name == "PRIVATE")
                             P->members.insert({ id->value, ACCESS_SPECIFIER_PRIVATE });
+                        else P->members.insert({id->value, ACCESS_SPECIFIER_PUBLIC}); // default access specifier
                     }
                     else
                         symbolTable.currAddress += d->bit_field_width;
@@ -541,27 +542,42 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
         {
             for (int i = 0; i < cd->translation_unit->external_declarations.size(); i++)
             {
-                Declaration* d = cd->translation_unit->external_declarations[i]->declaration;
-                if (d->init_declarator_list == nullptr)
-                {
-                    string error_msg = "Struct/Union/Class cannot be part of Class at line " + to_string(d->declaration_specifiers->type_specifiers[0]->line_no) + ", column " + to_string(d->declaration_specifiers->type_specifiers[0]->column_no);
-                    yyerror(error_msg.c_str());
-                    symbolTable.set_error();
-                    return P;
-                }
-                for (int j = 0; j < d->init_declarator_list->init_declarator_list.size(); j++)
-                {
-                    Declarator* dd = d->init_declarator_list->init_declarator_list[j]->declarator;
-                    if (d != nullptr)
+                Declaration *d = cd->translation_unit->external_declarations[i]->declaration;
+                FunctionDefinition *fd = cd->translation_unit->external_declarations[i]->function_definition;
+
+                if (d != nullptr) {
+                    if (d->init_declarator_list == nullptr)
                     {
-                        Identifier* id = dd->direct_declarator->identifier;
-                        if (cd->access_specifier->name == "PUBLIC")
-                            P->members.insert({ id->value, ACCESS_SPECIFIER_PUBLIC });
-                        else if (cd->access_specifier->name == "PROTECTED")
-                            P->members.insert({ id->value, ACCESS_SPECIFIER_PROTECTED });
-                        else if (cd->access_specifier->name == "PRIVATE")
-                            P->members.insert({ id->value, ACCESS_SPECIFIER_PRIVATE });
+                        string error_msg = "Struct/Union/Class cannot be part of Class";
+                        yyerror(error_msg.c_str());
+                        symbolTable.set_error();
+                        return P;
                     }
+                    for (int j = 0; j < d->init_declarator_list->init_declarator_list.size(); j++)
+                    {
+                        Declarator* dec = d->init_declarator_list->init_declarator_list[j]->declarator;
+                        if (dec != nullptr)
+                        {
+                            DirectDeclarator* dd = dec->direct_declarator;
+                            if(dd == nullptr){
+                                string error_msg = "Direct  Declarator is null in a class";
+                                yyerror(error_msg.c_str());
+                                symbolTable.set_error();
+                                return P;
+                            }
+                            Identifier* id = dd->identifier;
+                            if (cd->access_specifier->name == "PUBLIC")
+                                P->members.insert({ id->value, ACCESS_SPECIFIER_PUBLIC });
+                            else if (cd->access_specifier->name == "PROTECTED")
+                                P->members.insert({ id->value, ACCESS_SPECIFIER_PROTECTED });
+                            else if (cd->access_specifier->name == "PRIVATE")
+                                P->members.insert({ id->value, ACCESS_SPECIFIER_PRIVATE });
+                            else P->members.insert({ id->value, ACCESS_SPECIFIER_PRIVATE }); // default access specifier
+                        }
+                    }
+                } else if (fd != nullptr)
+                {
+                    // Not implemented yet
                 }
             }
         }
@@ -1092,8 +1108,8 @@ void DeclarationSpecifiers::set_type()
         {
             string name = type_specifiers[0]->class_specifier->identifier->value;
             DefinedTypes* dt = symbolTable.get_defined_type(name);
-            type_index = PrimitiveTypes::TYPE_ERROR_T;
-            if (dt != nullptr) dt->typeIndex;
+            type_index = PrimitiveTypes::TYPE_ERROR_T; 
+            if(dt != nullptr) type_index = dt->typeIndex;
         }
         else if (isTypeName)
         {
@@ -1556,6 +1572,12 @@ ClassSpecifier* create_class_specifier(ClassSpecifier* cs, ClassDeclaratorList* 
         return cs;
     }
     TypeDefinition* td = dt->type_definition;
+    if(td == nullptr){
+        string error_msg = "Class '" + cs->identifier->value + "' not defined at line " + to_string(cs->identifier->line_no) + ", column " + to_string(cs->identifier->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return cs;
+    }
     cs->class_declarator_list = idl;
     cs->class_declaration_list = cdl;
     if (cdl != nullptr) {
@@ -2131,7 +2153,8 @@ void SpecifierQualifierList::set_type()
         {
             string name = type_specifiers[0]->class_specifier->identifier->value;
             DefinedTypes* dt = symbolTable.get_defined_type(name);
-            type_index = dt->typeIndex;
+            type_index = PrimitiveTypes::TYPE_ERROR_T; 
+            if(dt != nullptr) type_index = dt->typeIndex;
         }
         else if (isTypeName)
         {
@@ -2887,18 +2910,18 @@ bool SymbolTable::check_member_variable(string name, string member)
         set_error();
         return false;
     }
-    if (t->type_definition->get_member(member) && t->type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PUBLIC)
+    if (t->type_definition->lookup_member(member) && t->type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PUBLIC)
     {
         return true;
     }
-    else if (t->type_definition->get_member(member) && t->type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PRIVATE)
+    else if (t->type_definition->lookup_member(member) && t->type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PRIVATE)
     {
         string error_msg = "Member variable '" + member + "' is private in class '" + name;
         yyerror(error_msg.c_str());
         set_error();
         return false;
     }
-    else if (t->type_definition->get_member(member) && t->type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PROTECTED)
+    else if (t->type_definition->lookup_member(member) && t->type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PROTECTED)
     {
         string error_msg = "Member variable '" + member + "' is protected in class '" + name;
         yyerror(error_msg.c_str());
