@@ -1,9 +1,10 @@
 // [Passing]
 // Test 1: Basic type checking
-// int a;
+int a;
 // char b;
 // double c;
-// unsigned int d;
+breakpoint;
+unsigned int d;
 
 // [Passing]
 // Test 2: List of declarations 
@@ -13,7 +14,8 @@
 // [Passing]
 // Test 3: Error redeclaration
 // int a;
-int a;
+// int a;
+// breakpoint
 
 // [Passing]
 // Test 4: Pointer declarations
@@ -89,3 +91,12 @@ int a;
 //     int y;
 // } Point_t;
 // Point_t p1, p2;
+
+// int foo() {
+//     return 0;
+// }
+// int x;
+// int main(){
+//     x = foo();
+//     return 0;
+// }

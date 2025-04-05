@@ -27,11 +27,11 @@ enum TACOperandType {
     TAC_OPERAND_TYPE,            // Type (e.g., int, float)
     TAC_OPERAND_EMPTY           // Empty operand (used for NOP or no operation)
 };
-class TACOperand{
-    public:
+class TACOperand {
+public:
     TACOperandType type; // Type of the operand (e.g., TEMP_VAR, IDENTIFIER, CONSTANT)
     string value;        // Value of the operand (e.g., variable name, constant value)
-    
+
     TACOperand() : type(TACOperandType::TAC_OPERAND_EMPTY), value("") {}
 
     TACOperand(TACOperandType type, string value);
@@ -117,8 +117,8 @@ enum TACOperatorType {
     TAC_OPERATOR_NOP         // No operation
 };
 
-class TACOperator{
-    public:
+class TACOperator {
+public:
     TACOperatorType type; // Type of the operator (e.g., ADD, SUB, MUL)
     // string value;        // Value of the operator (e.g., "+", "-", "*")
     TACOperator(); // Default constructor
@@ -143,18 +143,18 @@ class TACOperator{
 //################################## TACInstruction ######################################
 //##############################################################################
 
-class TACInstruction{
-    public:
-        TACOperand label; // Unique instruction label (instruction number)
-        int flag; // if 0, then it is a normal instruction, if 1 then it is a goto instruction, if 2 then it is an if goto instruction
-        TACOperator op; // Operator (e.g., ADD, SUB)
-        TACOperand* arg1; // First operand (e.g., t1, a, 5)
-        TACOperand* arg2; // Second operand (e.g., t2, b, 10)
-        TACOperand* result; // Result operand (e.g., t3, c)
+class TACInstruction {
+public:
+    TACOperand label; // Unique instruction label (instruction number)
+    int flag; // if 0, then it is a normal instruction, if 1 then it is a goto instruction, if 2 then it is an if goto instruction
+    TACOperator op; // Operator (e.g., ADD, SUB)
+    TACOperand* arg1; // First operand (e.g., t1, a, 5)
+    TACOperand* arg2; // Second operand (e.g., t2, b, 10)
+    TACOperand* result; // Result operand (e.g., t3, c)
 
-        // Default constructor
-        TACInstruction(TACOperator op, TACOperand* result, TACOperand* arg1, TACOperand* arg2, int flag);
-}; 
+    // Default constructor
+    TACInstruction(TACOperator op, TACOperand* result, TACOperand* arg1, TACOperand* arg2, int flag);
+};
 
 bool is_assignment(TACInstruction* instruction);
 

@@ -115,12 +115,84 @@ void handleMultilineComment(const char* text, int length) {
     }
 }
 
+void debug_global_symbol_table() {
+    debug("\n========================================", MAGENTA);
+    debug("DEBUG: Global Symbol Table Snapshot", MAGENTA);
+    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no) + ", Scope: " + to_string(symbolTable.currentScope) , CYAN);
+
+    symbolTable.print_typedefs();
+    symbolTable.print_defined_types();
+    symbolTable.print();
+
+    debug("\n✅ End of Global Symbol Table Snapshot", MAGENTA);
+    debug("========================================\n", MAGENTA);
+}
+
+void debug_local_symbol_table() {
+    debug("\n========================================", MAGENTA);
+    debug("DEBUG: Local Symbol Table Snapshot", MAGENTA);
+    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no) + ", Scope: " + to_string(symbolTable.currentScope) , CYAN);
+    bool printed = false;
+
+    if (!symbolTable.scope_stack.empty()) {
+        pair<int, pair<Type, string>> top = symbolTable.scope_stack.top();
+
+        if (top.second.first.is_function) {
+            Symbol* sym = symbolTable.getFunction(top.second.second, top.second.first.arg_types);
+            if (!sym) {
+                debug("⚠️ ERROR: Function '" + top.second.second + "' not found!", RED);
+                return;
+            }
+            if (!sym->function_definition) {
+                debug("⚠️ ERROR: Function '" + top.second.second + "' is declared but not defined!", RED);
+                return;
+            }
+            printed = true;
+            debug("🔍 SCOPE: Function", MAGENTA);
+            sym->function_definition->function_symbol_table.print_typedefs();   
+            sym->function_definition->function_symbol_table.print_defined_types();
+            sym->function_definition->function_symbol_table.print();
+
+        }
+
+        else if (top.second.first.is_defined_type) {
+            DefinedTypes* dt = symbolTable.get_defined_type(top.second.second);
+            if (!dt) {
+                debug("⚠️ ERROR: Type '" + top.second.second + "' not found!", RED);
+                return;
+            }
+            if (!dt->type_definition) {
+                debug("⚠️ ERROR: Type '" + top.second.second + "' has no definition!", RED);
+                return;
+            }
+            printed = true;
+            debug("🔍 SCOPE: User-defined type", MAGENTA);
+            dt->type_definition->type_symbol_table.print_typedefs();
+            dt->type_definition->type_symbol_table.print_defined_types();
+            dt->type_definition->type_symbol_table.print();
+        }
+    }
+
+    if(!printed) {
+        debug("🔍 SCOPE: Global", MAGENTA);
+        symbolTable.print_typedefs();
+        symbolTable.print_defined_types();
+        symbolTable.print();
+    }
+
+    debug("\n✅ End of Local Symbol Table Snapshot", MAGENTA);
+    debug("========================================\n", MAGENTA);
+}
+
+
 %}
 
 %option noyywrap
 %option yylineno
 
 /* Keywords for the C language */
+BREAKPOINT    "breakpoint;"
+BREAKPOINT_GLOBAL "breakpoint_global;"
 AUTO          "auto"
 BREAK         "break"
 CASE          "case"
@@ -234,6 +306,8 @@ WHITESPACE     [ \t\v\f\r]+
 NEWLINE        \n
 
 %%
+{BREAKPOINT}          { debug_local_symbol_table(); updateColumn(yyleng);}
+{BREAKPOINT_GLOBAL}   { debug_global_symbol_table(); updateColumn(yyleng);}
 {AUTO}                { yylval.intval = AUTO; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(AUTO); }
 {BREAK}               { Terminal* t = new Terminal("BREAK",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(BREAK); }
 {CASE}                { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "keyword"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(CASE); }
@@ -322,7 +396,7 @@ NEWLINE        \n
 {RIGHT_CURLY}         { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_CURLY); }
 {COMMA}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(COMMA); }
 {COLON}               { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(COLON); }
-{ASSIGN}              { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ASSIGN); }
+{ASSIGN}              { Terminal* t = new Terminal("ASSIGN",yytext,line_no,column_no); yylval.terminal = t; addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(ASSIGN); }
 {LEFT_PAREN}          { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_PAREN); }
 {RIGHT_PAREN}         { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(RIGHT_PAREN); }
 {LEFT_SQUARE}        { yylval.strval = strdup(yytext); addToSymbolTable(yytext, "punctuator"); updateColumn(yyleng); RETURN_IF_NOT_MAIN(LEFT_SQUARE); }
