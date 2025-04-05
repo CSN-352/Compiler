@@ -200,7 +200,7 @@ argument_expression_list:
 postfix_expression:
     primary_expression {$$ = create_postfix_expression($1);}
     | postfix_expression LEFT_SQUARE expression RIGHT_SQUARE { $$ = create_postfix_expression($1, $3);}
-    | postfix_expression LEFT_PAREN argument_expression_list RIGHT_PAREN {$$ = create_postfix_expression($1, $3);}
+    | postfix_expression LEFT_PAREN argument_expression_list RIGHT_PAREN {$$ = create_postfix_expression_func($1, $3);}
     | postfix_expression LEFT_PAREN RIGHT_PAREN  { $$ = create_postfix_expression_func($1, nullptr);}
     | postfix_expression DOT IDENTIFIER {$$ = create_postfix_expression($1, $2, $3);}
     | postfix_expression PTR_OP IDENTIFIER {$$ = create_postfix_expression($1, $2, $3);}

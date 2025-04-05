@@ -2746,8 +2746,14 @@ bool SymbolTable::lookup_function(std::string name, vector<Type> arg_types)
 
     for (const Symbol *sym : it->second)
     {
-        if (sym->scope <= currentScope && sym->type.arg_types == arg_types)
+        if (sym->scope <= currentScope && arg_types.size() == sym->type.arg_types.size()){
+            for(int i = 0; i<arg_types.size(); i++){
+                if(arg_types[i].is_convertible_to(sym->type.arg_types[i]) == false){
+                    return false;
+                }
+            }
             return true;
+        } 
     }
     return false;
 }
@@ -2868,8 +2874,15 @@ Symbol *SymbolTable::getFunction(std::string name, vector<Type> arg_types)
 
     for (Symbol *_sym : it->second)
     {
-        if (_sym->scope <= currentScope && _sym->type.arg_types == arg_types)
+        if (_sym->scope <= currentScope && (int)_sym->type.arg_types.size() == (int)arg_types.size())
         {
+            for(int i = 0; i < arg_types.size(); i++)
+            {
+                if (arg_types[i].is_convertible_to(_sym->type.arg_types[i]) == false)
+                {
+                    return nullptr;
+                }
+            }
             if (sym == nullptr || _sym->scope > sym->scope)
             {
                 sym = _sym;

@@ -325,7 +325,15 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
             return P;
         }
         else{
-            FunctionDefinition* fd = symbolTable.getFunction(P->primary_expression->identifier->value, arguments)->function_definition;
+            Symbol* sym = symbolTable.getSymbol(P->primary_expression->identifier->value);
+            if(sym == nullptr){
+                P->type = ERROR_TYPE;
+                string error_msg = "Function " + P->primary_expression->identifier->value+ " not found";
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return P;
+            }
+            FunctionDefinition* fd = sym->function_definition;
             if(fd == nullptr){
                 P->type = ERROR_TYPE;
                 string error_msg = "Function " + P->primary_expression->identifier->value+ " is declared but not defined at line " + to_string(x->line_no) + ", column " + to_string(x->column_no);
