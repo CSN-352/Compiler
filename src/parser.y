@@ -16,6 +16,7 @@ extern YYSTYPE yylval;
 extern FILE *yyin;
 int has_error=0;
 int function_flag = 0;
+int for_flag = 0;
 FunctionDefinition* fd;
 StructUnionSpecifier* sus;
 ClassSpecifier* cs;
@@ -80,6 +81,7 @@ void yyerror(const char *msg);
     TranslationUnit* translation_unit;
     ExternalDeclaration* external_declaration;
     FunctionDefinition* function_definition;
+    ForIterationStruct* for_iterartion_struct;
 
     Statement* statement;
     LabeledStatement* labeled_statement;
@@ -105,6 +107,7 @@ void yyerror(const char *msg);
 %type <expression> assignment_expression primary_expression postfix_expression unary_expression cast_expression conditional_expression multiplicative_expression additive_expression shift_expression relational_expression equality_expression and_expression xor_expression or_expression logical_and_expression logical_or_expression
 %type <argument_expression_list> argument_expression_list
 %type <expression_list> expression
+%type <for_iterartion_struct> for_iterartion_statement
 
 %type <declaration> declaration
 %type <declaration_specifiers> declaration_specifiers
@@ -616,9 +619,23 @@ labeled_statement:
 	;
 
 compound_statement:
-    LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} RIGHT_CURLY {symbolTable.exitScope(); $$ = create_compound_statement();}
+    LEFT_CURLY {
+        Type t(-1,0,false);
+        if(function_flag == 1)
+            function_flag = 0;
+        else if(for_flag == 1)
+            for_flag = 0;
+        else symbolTable.enterScope(t, "");
+    } RIGHT_CURLY {symbolTable.exitScope(); $$ = create_compound_statement();}
     // left to implement will be done after remaining classes
-    | LEFT_CURLY {Type t(-1,0,false); if(function_flag == 1) function_flag = 0; else symbolTable.enterScope(t, "");} declaration_statement_list RIGHT_CURLY {symbolTable.exitScope();  $$ = create_compound_statement($3);} 
+    | LEFT_CURLY {
+        Type t(-1,0,false);
+        if(function_flag == 1)
+            function_flag = 0;
+        else if(for_flag == 1)
+            for_flag = 0;
+        else symbolTable.enterScope(t, "");
+    } declaration_statement_list RIGHT_CURLY {symbolTable.exitScope();  $$ = create_compound_statement($3);} 
     ;
 
 // DONE
@@ -659,9 +676,13 @@ iteration_statement:
     | DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON {$$ = create_iteration_statement_do_while($5,$2);}
     | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,nullptr,$6);}
     | FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for($3,$4,$5,$7);}
-    | FOR LEFT_PAREN declaration expression_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$4,nullptr,$6);}
-    | FOR LEFT_PAREN declaration expression_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($3,$4,$5,$7);}
+    | for_iterartion_statement RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($1,nullptr,$3);}
+    | for_iterartion_statement expression RIGHT_PAREN statement {$$ = create_iteration_statement_for_dec($1,$2,$4);}
     | UNTIL LEFT_PAREN expression RIGHT_PAREN statement {$$ = create_iteration_statement_until($3,$5);}
+    ;
+
+for_iterartion_statement:
+    FOR LEFT_PAREN {symbolTable.enterScope(Type(), ""); for_flag = 1;} declaration expression_statement {$$ = new ForIterationStruct($4, $5);}
     ;
 
 // DONE

@@ -357,7 +357,9 @@ Statement* create_iteration_statement_for(Statement* statement1, Statement* stat
     return S;
 }
 
-Statement* create_iteration_statement_for_dec(Declaration* declaration, Statement* statement1, Expression* expression, Statement* statement2){
+Statement* create_iteration_statement_for_dec(ForIterationStruct* fis, Expression* expression, Statement* statement2){
+    Declaration* declaration = fis->declaration;
+    Statement* statement1 = fis->statement1;
     IterationStatement* S = new IterationStatement();
     S->line_no = expression->line_no;
     S->column_no = expression->column_no;

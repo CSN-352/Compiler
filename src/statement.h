@@ -17,6 +17,7 @@ class ExpressionStatement;
 class SelectionStatement;
 class IterationStatement;
 class JumpStatement;
+struct ForIterationStruct;
 
 
 class Statement : public NonTerminal{
@@ -120,8 +121,21 @@ class IterationStatement : public Statement{
 Statement* create_iteration_statement_while(Expression* expression, Statement* statement);
 Statement* create_iteration_statement_do_while(Expression* expression, Statement* statement);
 Statement* create_iteration_statement_for(Statement* statement1, Statement* statement2, Expression* expression, Statement* statement3);
-Statement* create_iteration_statement_for_dec(Declaration* declaration, Statement* statement1, Expression* expression, Statement* statement2);
+Statement* create_iteration_statement_for_dec(ForIterationStruct* fis, Expression* expression, Statement* statement2);
 Statement* create_iteration_statement_until(Expression* expression, Statement* statement);
+
+// ##############################################################################
+// ################################## FOR ITERATION STRUCT ######################################
+// ##############################################################################
+
+struct ForIterationStruct{
+    Declaration* declaration;
+    Statement* statement1;
+    ForIterationStruct(Declaration* declaration, Statement* statement1){
+        this->declaration = declaration;
+        this->statement1 = statement1;
+    }
+};
 
 // ##############################################################################
 // ################################## JUMP STATEMENT ######################################
