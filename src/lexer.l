@@ -118,7 +118,7 @@ void handleMultilineComment(const char* text, int length) {
 void debug_global_symbol_table() {
     debug("\n========================================", MAGENTA);
     debug("DEBUG: Global Symbol Table Snapshot", MAGENTA);
-    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
+    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no) + ", Scope: " + to_string(symbolTable.currentScope) , CYAN);
 
     symbolTable.print_typedefs();
     symbolTable.print_defined_types();
@@ -131,7 +131,7 @@ void debug_global_symbol_table() {
 void debug_local_symbol_table() {
     debug("\n========================================", MAGENTA);
     debug("DEBUG: Local Symbol Table Snapshot", MAGENTA);
-    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no), CYAN);
+    debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no) + ", Scope: " + to_string(symbolTable.currentScope) , CYAN);
     bool printed = false;
 
     if (!symbolTable.scope_stack.empty()) {
