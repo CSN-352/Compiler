@@ -129,6 +129,9 @@ string get_operand_string(const TACOperand& operand) {
     else if (operand.type == TAC_OPERAND_EMPTY) {
         return "";  // Empty operand
     }
+    else if (operand.type == TAC_OPERAND_TYPE) {
+        return operand.value;
+    }
     return ""; // Default case
 }
 
@@ -158,6 +161,7 @@ string get_operator_string(TACOperatorType op) {
     case TAC_OPERATOR_BIT_NOT: return "~";
     case TAC_OPERATOR_ASSIGN: return "=";
     case TAC_OPERATOR_ADDR_OF: return "&"; // Address of operator
+    case TAC_OPERATOR_CAST: return "cast"; // Type casting operator
     default: return ""; // Default case
     }
 }
@@ -176,6 +180,12 @@ void print_TAC_instruction(TACInstruction* instruction) {
             << get_operand_string(*instruction->result);
     }
     // **Function Instructions**
+    else if(instruction->op.type == TAC_OPERATOR_CAST) {
+        cout << get_operand_string(*instruction->result) << " = "
+        << get_operator_string(instruction->op.type) << " "
+                << "(" << get_operand_string(*instruction->arg1) << ")"
+                << get_operand_string(*instruction->arg2) ;
+    }
     else if (instruction->op.type == TAC_OPERATOR_PARAM) {
         cout << "param " << get_operand_string(*instruction->arg1);
     }
