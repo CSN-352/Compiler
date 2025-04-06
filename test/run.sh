@@ -25,26 +25,38 @@ COL_WIDTH=30
 
 # Run tests
 for test_file in $test_files; do
-    test_name=$(basename "$test_file" .c)  # Extract filename without extension
-    relative_path="${test_file#$TEST_DIR/}"  # Remove test directory prefix
-    output_file="$OUTPUT_DIR/${relative_path%.c}.txt"
+    test_name=$(basename "$test_file" .c)
+    relative_path="${test_file#$TEST_DIR/}"
+    output_txt="$OUTPUT_DIR/${relative_path%.c}.txt"
+    output_err="$OUTPUT_DIR/${relative_path%.c}.err"
 
     # Ensure subdirectories exist
-    mkdir -p "$(dirname "$output_file")"
+    mkdir -p "$(dirname "$output_txt")"
 
-    # Print test name with fixed width
+    # Print test name
     printf "Running test: %-*s" "$COL_WIDTH" "$test_name"
 
-    # Run the test, capturing stdout and stderr separately
-    "$SRC" "$test_file" > "$output_file" 2> "${output_file%.txt}.err"
+    # Run the parser and capture stdout and stderr
+    stdout_file=$(mktemp)
+    stderr_file=$(mktemp)
+    "$SRC" "$test_file" >"$stdout_file" 2>"$stderr_file"
+    exit_code=$?
 
-    # Check if there were any errors
-    if [[ -s "${output_file%.txt}.err" ]]; then
-        echo "❌"
-        rm -f "$output_file"
-    else 
+    # Determine outcome
+    if [[ $exit_code -eq 0 && ! -s "$stderr_file" ]]; then
+        mv "$stdout_file" "$output_txt"
+        rm -f "$stderr_file"
         echo "✅"
-        rm -f "${output_file%.txt}.err"
+    else
+        if [[ $exit_code -eq 139 ]]; then
+            echo "💥 Segmentation Fault" > "$stderr_file"
+        elif [[ $exit_code -ne 0 ]]; then
+            echo "❌ Exit Code $exit_code" >> "$stderr_file"
+        fi
+        cat "$stdout_file" >> "$stderr_file"
+        mv "$stderr_file" "$output_err"
+        rm -f "$stdout_file"
+        echo "❌"
     fi
 done
 

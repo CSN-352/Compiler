@@ -2410,13 +2410,10 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers* ds, Declar
             {
                 arg_types.push_back(parameters[i]->type);
             }
-            cerr << "arg types size 12" << arg_types.size() << endl;
         }
         if (d != nullptr && d->direct_declarator != nullptr && d->direct_declarator->parameters != nullptr && d->direct_declarator->parameters->is_variadic) {
-            cerr << "arg types size" << arg_types.size() << endl;
             if (arg_types.size() > 0) {
                 arg_types[arg_types.size() - 1].is_variadic = true;
-                cerr << "made function variadic" << endl;
             }
             // arg_types[arg_types.size()-1].is_variadic = false;
         }
@@ -2857,7 +2854,6 @@ void SymbolTable :: add_function_definition(Symbol* sym, FunctionDefinition* fd)
 
 void SymbolTable::insert_defined_type(std::string name, DefinedTypes* type)
 {
-    cerr << "Name = " << name;
     pair<int, pair<Type, string>> top = { 0, {Type(), name} };
     if (!scope_stack.empty())
     {

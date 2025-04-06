@@ -1,3 +1,5 @@
+// Passing
+
 class AccessTest {
     private:
         int secret;
