@@ -398,7 +398,9 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->code.insert(P->code.begin(), x->code.begin(), x->code.end()); // TAC
+    P->code.insert(P->code.end(), index_expression->code.begin(), index_expression->code.end()); // TAC
     P->jump_code.insert(P->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
+    P->jump_code.insert(P->jump_code.end(), index_expression->code.begin(), index_expression->code.end()); // TAC
 
     if (x->type.is_error()) {
         P->type = ERROR_TYPE;
