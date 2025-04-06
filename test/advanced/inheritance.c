@@ -51,7 +51,7 @@ int main() {
     class B obj;
     int x;
     // breakpoint_global;
-    int sum = obj.inherited_from_A3(1, 2);
+    int sum = obj.func(1, 2);
     x = obj.x1;
     // x = obj.y1; // Error: y1 is protected in A1
     // x = obj.z1; // Error: z1 is private in A1
