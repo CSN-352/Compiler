@@ -5,3 +5,4 @@ int factorial(int n) {
 int main(){
     int result = factorial(5); 
 }
+ 

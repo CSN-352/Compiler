@@ -675,7 +675,10 @@ Statement* create_jump_statement(Terminal* op) {
     else if (op->name == "RETURN") {
         S->return_type.push_back(Type(PrimitiveTypes::VOID_T, 0, false));
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_RETURN), new_empty_var(), new_empty_var(), new_empty_var(), 0); //TAC
+        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP),new_empty_var(), new_empty_var(), new_empty_var(),1);
         S->code.push_back(i1); //TAC
+        S->code.push_back(i2);
+        S->break_list.insert(i2);
         S->begin_label = i1->label; //TAC
         S->name = "JUMP STATEMENT RETURN";
     }
@@ -715,7 +718,10 @@ Statement* create_jump_statement(Expression* expression) {
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_RETURN), new_empty_var(),expression->result, new_empty_var(), 0); //TAC
         S->code.insert(S->code.end(), expression->code.begin(), expression->code.end()); //TAC
         S->code.push_back(i1); //TAC
-        S->begin_label = i1->label; //TAC
+        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP),new_empty_var(), new_empty_var(), new_empty_var(),1);
+        S->begin_label = S->code[0]->label; //TAC
+        S->break_list.insert(i2);
+        S->code.push_back(i2);
     }
     return S;
 }

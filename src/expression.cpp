@@ -138,6 +138,7 @@ ArgumentExpressionList* create_argument_expression_list(Expression* x) {
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
     P->type.is_const_literal = false;
+    P->code.insert(P->code.end(), x->code.begin(), x->code.end());
     P->code.push_back(i1); // TAC
     return P;
 }
@@ -150,6 +151,7 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_PARAM), new_empty_var(), x->result, new_empty_var(), 0); // TAC
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
+    args_expr_list->code.insert(args_expr_list->code.end(), x->code.begin(), x->code.end());
     args_expr_list->code.push_back(i1); // TAC
     return args_expr_list;
 }
