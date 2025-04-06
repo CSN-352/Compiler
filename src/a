@@ -1,0 +1,4 @@
+20: t5 = i
+25: t6 = (int)10
+31: if t5 < t6 goto 
+32: goto 

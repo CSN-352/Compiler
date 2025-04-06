@@ -2560,8 +2560,6 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
     L->name = "LOGICAL AND EXPRESSION";
     L->code.insert(L->code.begin(), left->code.begin(), left->code.end()); // TAC
     L->code.insert(L->code.end(), right->code.begin(), right->code.end()); // TAC
-    L->jump_code.insert(L->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
-    L->jump_code.insert(L->jump_code.end(), right->code.begin(), right->code.end()); // TAC
 
     if (left->type.is_error() || right->type.is_error()) {
         L->type = ERROR_TYPE;
@@ -2599,10 +2597,11 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 i3->result = i8->label; // TAC
                 i5->result = i8->label; // TAC
                 L->next_list.insert(i7); // TAC
-                backpatch(left->next_list, i1->label); // TAC
+                backpatch(left->next_list, right->code[0]->label); // TAC
                 backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, right->code[0]->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                
                 L->code.push_back(i1); // TAC
                 L->code.push_back(i2); // TAC
                 L->code.push_back(i3); // TAC
@@ -2632,7 +2631,7 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 i2->result = i7->label; // TAC
                 i4->result = i7->label; // TAC
                 L->next_list.insert(i6); // TAC
-                backpatch(left->next_list, i1->label); // TAC
+                backpatch(left->next_list, right->code[0]->label); // TAC
                 backpatch(right->next_list, i1->label); // TAC
                 L->code.push_back(i1); // TAC
                 L->code.push_back(i2); // TAC
@@ -2665,9 +2664,9 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 i3->result = i8->label; // TAC
                 i5->result = i8->label; // TAC
                 L->next_list.insert(i7); // TAC
-                backpatch(left->next_list, i1->label); // TAC
+                backpatch(left->next_list, right->code[0]->label); // TAC
                 backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, right->code[0]->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
                 L->code.push_back(i1); // TAC
                 L->code.push_back(i2); // TAC
@@ -2734,8 +2733,6 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
     L->column_no = left->column_no;
     L->code.insert(L->code.begin(), left->code.begin(), left->code.end()); // TAC
     L->code.insert(L->code.end(), right->code.begin(), right->code.end()); // TAC
-    L->jump_code.insert(L->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
-    L->jump_code.insert(L->jump_code.end(), right->code.begin(), right->code.end()); // TAC
 
     if (left->type.is_error() || right->type.is_error()) {
         L->type = ERROR_TYPE;
