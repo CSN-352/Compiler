@@ -394,7 +394,7 @@ Statement* create_selection_statement_if_else(Expression* expression, Statement*
         S->code.push_back(i1); //TAC
         S->code.insert(S->code.end(), else_statement->code.begin(), else_statement->code.end()); //TAC
         backpatch(expression->true_list, statement->begin_label); //TAC
-        backpatch(expression->false_list, else_statement->begin_label); //TAC
+        backpatch(expression->false_list, else_statement->code[0]->label); //TAC
         backpatch(statement->next_list, i1->label); //TAC
         S->next_list = else_statement->next_list; //TAC
         S->next_list.insert(i1); //TAC

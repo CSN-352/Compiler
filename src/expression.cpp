@@ -554,10 +554,15 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type.is_function = false;
                 P->type.num_args = 0;
                 P->type.arg_types.clear();
+                TACInstruction* i1;
                 if(argument_expression_list != nullptr)P->code = argument_expression_list->code; // TAC
-                if (x->type.type_index == PrimitiveTypes::VOID_T) P->result = new_empty_var(); // TAC
-                else P->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CALL), (*x->code.rbegin())->arg1, x->result, new_constant(to_string(arguments.size())), 0); // TAC
+                if (x->type.type_index == PrimitiveTypes::VOID_T){
+                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_empty_var(), x->result, new_constant(to_string(arguments.size())), 0); // TAC
+                }
+                else{
+                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), (*x->code.rbegin())->arg1, x->result, new_constant(to_string(arguments.size())), 0); // TAC
+                }
+                
                 backpatch(x->next_list, i1->label); // TAC
                 backpatch(x->jump_next_list, i1->label); // TAC
                 P->code.push_back(i1); // TAC

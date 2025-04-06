@@ -7,14 +7,6 @@ int main(){
     else {
         int x;
         b = b - x;
-        breakpoint;
-    }
-    breakpoint;
-    {
-        int x;
-        a = x;
-        breakpoint;
     }
 
-    breakpoint;
 }

@@ -1,6 +1,6 @@
 struct Calculator
 {
-    int x;
+    int operation;
 };
 
 int add(int a, int b)
@@ -14,6 +14,6 @@ int main()
     struct Calculator calc;
     calc.operation = add;
 
-    printf("Sum: %d\n", calc.operation(3, 7));
+    // printf("Sum: %d\n", calc.operation(3, 7));
     return 0;
 }
