@@ -2329,8 +2329,10 @@ ExternalDeclaration* create_external_declaration(Declaration* d)
 {
     ExternalDeclaration* P = new ExternalDeclaration();
     P->declaration = d;
+    if(d->init_declarator_list != nullptr){
     for (auto id : d->init_declarator_list->init_declarator_list) {
         if (id->initializer != nullptr) TAC_CODE.insert(TAC_CODE.end(), id->code.begin(), id->code.end()); //TAC
+        }
     }
     return P;
 }

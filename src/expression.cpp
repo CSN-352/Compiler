@@ -314,7 +314,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             return P;
         }
     }
-    else {
+    
         if (!symbolTable.lookup_defined_type(x->type.defined_type_name)) {
             P->type = ERROR_TYPE;
             string error_msg = "Defined_Type not found in Symbol Table " + to_string(op->line_no) + ", column " + to_string(op->column_no);
@@ -384,7 +384,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
                 P->jump_code.push_back(i5); // TAC
             }
         }
-    }
+
     P->type.is_const_literal = false;
     return P;
 }
