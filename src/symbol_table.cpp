@@ -32,7 +32,7 @@ SymbolTable symbolTable;
 
 Type::Type()
 {
-    typeIndex = -1;
+    type_index = -1;
     ptr_level = -1;
     is_const_variable = false;
     is_const_literal = false;
@@ -49,7 +49,7 @@ Type::Type()
 
 Type::Type(int idx, int p_lvl, bool is_con)
 {
-    typeIndex = idx;
+    type_index = idx;
     is_const_variable = is_con;
     is_const_literal = false;
 
@@ -66,7 +66,7 @@ Type::Type(int idx, int p_lvl, bool is_con)
 }
 
 void Type::debug_type() {
-    debug("Type Index: " + primitive_type_name[typeIndex], BLUE);
+    debug("Type Index: " + primitive_type_name[type_index], BLUE);
     debug("Pointer Level: " + ::to_string(ptr_level), BLUE);
     debug("Is Pointer: " + ::to_string(is_pointer), BLUE);
     debug("Is Array: " + ::to_string(is_array), BLUE);
@@ -79,7 +79,7 @@ void Type::debug_type() {
 
 bool Type::isPrimitive()
 {
-    if (typeIndex >= 0 && typeIndex <= VOID_T)
+    if (type_index >= 0 && type_index <= VOID_T)
     {
         return true;
     }
@@ -91,7 +91,7 @@ bool Type::isPrimitive()
 
 bool Type::isInt()
 {
-    if (typeIndex > U_CHAR_T && typeIndex <= LONG_LONG_T)
+    if (type_index > U_CHAR_T && type_index <= LONG_LONG_T)
     {
         if (ptr_level == 0)
         {
@@ -110,7 +110,7 @@ bool Type::isInt()
 
 bool Type::isChar()
 {
-    if (typeIndex == U_CHAR_T || typeIndex == CHAR_T)
+    if (type_index == U_CHAR_T || type_index == CHAR_T)
     {
         if (ptr_level == 0)
         {
@@ -129,7 +129,7 @@ bool Type::isChar()
 
 bool Type::isFloat()
 {
-    if (typeIndex >= 10 && typeIndex <= 12 && ptr_level == 0)
+    if (type_index >= 10 && type_index <= 12 && ptr_level == 0)
         return true;
     else
         return false;
@@ -137,7 +137,7 @@ bool Type::isFloat()
 
 bool Type::isIntorFloat()
 {
-    if (typeIndex >= 0 && typeIndex <= 12 && ptr_level == 0)
+    if (type_index >= 0 && type_index <= 12 && ptr_level == 0)
         return true;
     else
         return false;
@@ -145,7 +145,7 @@ bool Type::isIntorFloat()
 
 bool Type::isUnsigned()
 {
-    if (typeIndex == 0 || typeIndex == 2 || typeIndex == 4 || typeIndex == 6 || typeIndex == 8)
+    if (type_index == 0 || type_index == 2 || type_index == 4 || type_index == 6 || type_index == 8)
     {
         return true;
     }
@@ -169,23 +169,23 @@ bool Type::isPointer()
 
 void Type::make_signed()
 {
-    if (typeIndex == 0 || typeIndex == 2 || typeIndex == 4 || typeIndex == 6 || typeIndex == 8)
+    if (type_index == 0 || type_index == 2 || type_index == 4 || type_index == 6 || type_index == 8)
     {
-        typeIndex += 1;
+        type_index += 1;
     }
 }
 
 void Type::make_unsigned()
 {
-    if (typeIndex == 1 || typeIndex == 3 || typeIndex == 5 || typeIndex == 7 || typeIndex == 9)
+    if (type_index == 1 || type_index == 3 || type_index == 5 || type_index == 7 || type_index == 9)
     {
-        typeIndex -= 1;
+        type_index -= 1;
     }
 }
 
 bool Type::isVoid()
 {
-    if (typeIndex == VOID_T)
+    if (type_index == VOID_T)
     {
         if (ptr_level == 0 || is_array)
         {
@@ -198,7 +198,7 @@ bool Type::isVoid()
 bool Type::is_error()
 {
 
-    if (typeIndex == -1)
+    if (type_index == -1)
     {
         return true;
     }
@@ -228,7 +228,7 @@ bool Type::is_convertible_to(Type t)
         return true;
     if (is_pointer && t.is_pointer && ptr_level == t.ptr_level)
     {
-        if (typeIndex == VOID_T || t.typeIndex == VOID_T)
+        if (type_index == VOID_T || t.type_index == VOID_T)
             return true;
     }
     return false;
@@ -236,12 +236,12 @@ bool Type::is_convertible_to(Type t)
 
 Type Type::promote_to_int(Type t)
 {
-    if (t.typeIndex >= PrimitiveTypes::U_CHAR_T && t.typeIndex <= PrimitiveTypes::SHORT_T)
+    if (t.type_index >= PrimitiveTypes::U_CHAR_T && t.type_index <= PrimitiveTypes::SHORT_T)
     {
         Type promoted(INT_T, 0, false); // or UNSIGNED_INT_T based on signedness
         if (t.isUnsigned())
         {
-            promoted.typeIndex = PrimitiveTypes::U_INT_T;
+            promoted.type_index = PrimitiveTypes::U_INT_T;
         }
         return promoted;
     }
@@ -259,7 +259,7 @@ int Type::get_size()
         }
         int size = 0;
         if (isPrimitive())
-            size = primitive_type_size[typeIndex];
+            size = primitive_type_size[type_index];
         else
         {
             if (is_defined_type && symbolTable.get_defined_type(defined_type_name) != nullptr && symbolTable.get_defined_type(defined_type_name)->type_definition != nullptr)
@@ -290,7 +290,7 @@ int Type::get_size()
         }
     }
     else
-        return primitive_type_size[typeIndex];
+        return primitive_type_size[type_index];
 }
 
 string Type::to_string() {
@@ -301,7 +301,7 @@ string Type::to_string() {
     }
     else
     {
-        switch (typeIndex)
+        switch (type_index)
         {
         case U_CHAR_T:
             ss << "unsigned_char";
@@ -354,7 +354,7 @@ string Type::to_string() {
 bool operator==(const Type& obj1, const Type& obj2)
 {
 
-    if (obj1.typeIndex != obj2.typeIndex)
+    if (obj1.type_index != obj2.type_index)
     {
         return false;
     }
@@ -454,8 +454,11 @@ TypeDefinition::TypeDefinition(TypeCategory tc)
 
 bool TypeDefinition::lookup_member(string member)
 {
-    if (members.find(member) != members.end())
-        return true;
+    for (const auto& m : members) {
+        if (m.name == member) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -464,70 +467,106 @@ int TypeDefinition::get_size()
     int size = 0;
     for (auto member : members)
     {
-        Symbol* sym = this->type_symbol_table.getSymbol(member.first);
+        if(member.kind == MEMBER_KIND_FUNCTION) {
+            continue;
+        }
         if (type_category == TYPE_CATEGORY_UNION) {
-            size = max(size, sym->type.get_size());
+            size = max(size, member.type.get_size());
         }
         else {
-            size += sym->type.get_size();
+            size += member.type.get_size();
         }
     }
     return size;
 }
 
-AccessSpecifiers TypeDefinition::get_member_access_specifier(string member)
+AccessSpecifiers TypeDefinition::get_member_access_specifier(const string& member)
 {
-    return members[member];
+    for(const auto& m : members) {
+        if (m.name == member) {
+            return m.access_specifier;
+        }
+    }
+    string error_msg = "Member " + member + " not found in type definition";
+    yyerror(error_msg.c_str());
+    symbolTable.set_error();
+    return ACCESS_SPECIFIER_PRIVATE; // Default access specifier
+}
+
+vector<MemberInfo> TypeDefinition::get_members_by_name(const string& member) {
+    vector<MemberInfo> result;
+    for (const auto& m : members) {
+        if (m.name == member) {
+            result.push_back(m);
+        }
+    }
+    return result;
 }
 
 TypeDefinition* create_type_definition(TypeDefinition* P, StructDeclarationSet* sds)
 {
-    if (sds != nullptr)
+    if (sds == nullptr) {
+        return P;
+    }
+    for (StructDeclarationListAccess* sdla : sds->struct_declaration_lists)
     {
-        for (StructDeclarationListAccess* sdla : sds->struct_declaration_lists)
+        for (int j = 0; j < sdla->struct_declaration_list->struct_declaration_list.size(); j++)
         {
-            for (int j = 0; j < sdla->struct_declaration_list->struct_declaration_list.size(); j++)
+            StructDeclaration* sd = sdla->struct_declaration_list->struct_declaration_list[j];
+            for (int i = 0; i < sd->struct_declarator_list->struct_declarator_list.size(); i++)
             {
-                StructDeclaration* sd = sdla->struct_declaration_list->struct_declaration_list[j];
-                for (int i = 0; i < sd->struct_declarator_list->struct_declarator_list.size(); i++)
+                StructDeclarator* d = sd->struct_declarator_list->struct_declarator_list[i];
+                if (d == nullptr) {
+                    // symbolTable.currAddress += d->bit_field_width;
+                    // Check if this intended, I have commented it out for now
+                    // I have just refactored the code :- DJ
+                    return P;
+                }
+
+                Identifier* id = d->declarator->direct_declarator->identifier;
+                int pointer_level = 0;
+                if (d->declarator->pointer != nullptr)
+                    pointer_level = d->declarator->pointer->pointer_level;
+                Type t = Type(sd->specifier_qualifier_list->type_index, pointer_level, sd->specifier_qualifier_list->is_const_variable);
+                if (d->declarator->direct_declarator->is_array)
                 {
-                    StructDeclarator* d = sd->struct_declarator_list->struct_declarator_list[i];
-                    if (d != nullptr)
-                    {
-                        Identifier* id = d->declarator->direct_declarator->identifier;
-                        int pointer_level = 0;
-                        if (d->declarator->pointer != nullptr)
-                            pointer_level = d->declarator->pointer->pointer_level;
-                        Type t = Type(sd->specifier_qualifier_list->type_index, pointer_level, sd->specifier_qualifier_list->is_const_variable);
-                        if (d->declarator->direct_declarator->is_array)
-                        {
-                            t.is_array = true;
-                            t.is_pointer = true;
-                            pointer_level++;
-                            t.array_dim = d->declarator->direct_declarator->array_dimensions.size();
-                            t.array_dims = d->declarator->direct_declarator->array_dimensions;
-                        }
-                        else if (d->declarator->direct_declarator->is_function)
-                        {
-                            string error_msg = "Function cannot be part of Struct/Union at line " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->line_no) + ", column " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->column_no);
-                            yyerror(error_msg.c_str());
-                            symbolTable.set_error();
-                            return P;
-                        }
-                        if (d->bit_field_width == -1)
-                            symbolTable.insert(id->value, t, t.get_size(), 0);
-                        else
-                            symbolTable.insert(id->value, t, d->bit_field_width, 0);
-                        if (sdla->access_specifier->name == "PUBLIC")
-                            P->members.insert({ id->value, ACCESS_SPECIFIER_PUBLIC });
-                        else if (sdla->access_specifier->name == "PROTECTED")
-                            P->members.insert({ id->value, ACCESS_SPECIFIER_PROTECTED });
-                        else if (sdla->access_specifier->name == "PRIVATE")
-                            P->members.insert({ id->value, ACCESS_SPECIFIER_PRIVATE });
-                        else P->members.insert({id->value, ACCESS_SPECIFIER_PUBLIC}); // default access specifier
-                    }
-                    else
-                        symbolTable.currAddress += d->bit_field_width;
+                    t.is_array = true;
+                    t.is_pointer = true;
+                    pointer_level++;
+                    t.array_dim = d->declarator->direct_declarator->array_dimensions.size();
+                    t.array_dims = d->declarator->direct_declarator->array_dimensions;
+                }
+                else if (d->declarator->direct_declarator->is_function)
+                {
+                    string error_msg = "Function cannot be part of Struct/Union at line " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->line_no) + ", column " + to_string(sd->specifier_qualifier_list->type_specifiers[0]->column_no);
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return P;
+                }
+                if (d->bit_field_width == -1)
+                    symbolTable.insert(id->value, t, t.get_size(), 0);
+                else
+                    symbolTable.insert(id->value, t, d->bit_field_width, 0);
+                MemberInfo member_info;
+                member_info.name = id->value;
+                member_info.type = t;
+                member_info.kind = MEMBER_KIND_DATA;
+
+                if (sdla->access_specifier->name == "PUBLIC") {
+                    member_info.access_specifier = ACCESS_SPECIFIER_PUBLIC;
+                    P->members.push_back(member_info);
+                }
+                else if (sdla->access_specifier->name == "PROTECTED") {
+                    member_info.access_specifier = ACCESS_SPECIFIER_PROTECTED;
+                    P->members.push_back(member_info);
+                }
+                else if (sdla->access_specifier->name == "PRIVATE") {
+                    member_info.access_specifier = ACCESS_SPECIFIER_PRIVATE;
+                    P->members.push_back(member_info);
+                }
+                else {
+                    member_info.access_specifier = ACCESS_SPECIFIER_PUBLIC; // default access specifier
+                    P->members.push_back(member_info);
                 }
             }
         }
@@ -537,235 +576,223 @@ TypeDefinition* create_type_definition(TypeDefinition* P, StructDeclarationSet* 
 
 TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* idl, ClassDeclarationList* cdl)
 {
-    if (cdl != nullptr)
+    if (cdl == nullptr)
+        return P;
+    for (ClassDeclaration* cd : cdl->class_declaration_list)
     {
-        for (ClassDeclaration* cd : cdl->class_declaration_list)
+        for (int i = 0; i < cd->translation_unit->external_declarations.size(); i++)
         {
-            for (int i = 0; i < cd->translation_unit->external_declarations.size(); i++)
-            {
-                Declaration *d = cd->translation_unit->external_declarations[i]->declaration;
-                FunctionDefinition *fd = cd->translation_unit->external_declarations[i]->function_definition;
+            Declaration* d = cd->translation_unit->external_declarations[i]->declaration;
+            FunctionDefinition* fd = cd->translation_unit->external_declarations[i]->function_definition;
 
-                if (d != nullptr) {
-                    if (d->init_declarator_list == nullptr)
-                    {
-                        string error_msg = "Struct/Union/Class cannot be part of Class";
+            if (d == nullptr && fd == nullptr) {
+                string error_msg = "Invalid external declaration";
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return P;
+            }
+
+            if (d != nullptr) {
+                if (d->init_declarator_list == nullptr)
+                {
+                    string error_msg = "Struct/Union/Class cannot be part of Class";
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return P;
+                }
+                for (int j = 0; j < d->init_declarator_list->init_declarator_list.size(); j++)
+                {
+                    Declarator* dec = d->init_declarator_list->init_declarator_list[j]->declarator;
+                    if (dec == nullptr) continue;
+
+                    DirectDeclarator* dd = dec->direct_declarator;
+                    if (dd == nullptr) {
+                        string error_msg = "Direct  Declarator is null in a class";
                         yyerror(error_msg.c_str());
                         symbolTable.set_error();
                         return P;
                     }
-                    for (int j = 0; j < d->init_declarator_list->init_declarator_list.size(); j++)
-                    {
-                        Declarator* dec = d->init_declarator_list->init_declarator_list[j]->declarator;
-                        if (dec != nullptr)
-                        {
-                            DirectDeclarator* dd = dec->direct_declarator;
-                            if(dd == nullptr){
-                                string error_msg = "Direct  Declarator is null in a class";
-                                yyerror(error_msg.c_str());
-                                symbolTable.set_error();
-                                return P;
-                            }
-                            Identifier* id = dd->identifier;
-                            if (cd->access_specifier->name == "PUBLIC")
-                                P->members.insert({ id->value, ACCESS_SPECIFIER_PUBLIC });
-                            else if (cd->access_specifier->name == "PROTECTED")
-                                P->members.insert({ id->value, ACCESS_SPECIFIER_PROTECTED });
-                            else if (cd->access_specifier->name == "PRIVATE")
-                                P->members.insert({ id->value, ACCESS_SPECIFIER_PRIVATE });
-                            else P->members.insert({ id->value, ACCESS_SPECIFIER_PRIVATE }); // default access specifier
-                        }
+                    Identifier* id = dd->identifier;
+                    int ptr_lvl = 0;
+                    if (dec->pointer) {
+                        ptr_lvl = dec->pointer->pointer_level;
                     }
-                } else if (fd != nullptr)
-                {
-                    // Not implemented yet
+
+                    Type t = Type(d->declaration_specifiers->type_index, ptr_lvl, d->declaration_specifiers->is_const_variable);
+                    if (dec->direct_declarator->is_array)
+                    {
+                        t.is_array = true;
+                        t.is_pointer = true;
+                        t.array_dim = dec->direct_declarator->array_dimensions.size();
+                        t.array_dims = dec->direct_declarator->array_dimensions;
+                    }
+
+                    MemberInfo member_info;
+                    member_info.name = id->value;
+                    member_info.type = t;
+                    member_info.kind = MEMBER_KIND_DATA;
+
+                    if (cd->access_specifier->name == "PUBLIC") {
+                        member_info.access_specifier = ACCESS_SPECIFIER_PUBLIC;
+                        P->members.push_back(member_info);
+                    }
+                    else if (cd->access_specifier->name == "PROTECTED") {
+                        member_info.access_specifier = ACCESS_SPECIFIER_PROTECTED;
+                        P->members.push_back(member_info);
+                    }
+                    else if (cd->access_specifier->name == "PRIVATE") {
+                        member_info.access_specifier = ACCESS_SPECIFIER_PRIVATE;
+                        P->members.push_back(member_info);
+                    }
+                    else {
+                        member_info.access_specifier = ACCESS_SPECIFIER_PRIVATE; // default access specifier
+                        P->members.push_back(member_info);
+                    }
+                    debug("Member: " + member_info.name + " Access: " + to_string(member_info.access_specifier), BLUE);
+
                 }
             }
-        }
-        if (idl != nullptr)
-        {
-            for (ClassDeclarator* cd : idl->class_declarator_list)
+            else if (fd != nullptr)
             {
-                DefinedTypes* dt = symbolTable.get_defined_type(cd->declarator->direct_declarator->identifier->value);
-                TypeDefinition* t = nullptr;
-                if (dt != nullptr)
-                    t = dt->type_definition;
-                if (t != nullptr)
+                Type t;
+                t.is_function = true;
+                if (fd->declaration_specifiers == nullptr) {
+                    string error_msg = "Function declaration specifiers are null";
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return P;
+                }
+                t.type_index = fd->declaration_specifiers->type_index;
+                if (fd->declarator == nullptr || fd->declarator->direct_declarator == nullptr) {
+                    string error_msg = "Function declarator is null";
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return P;
+                }
+                if (fd->declarator->direct_declarator->parameters == nullptr || fd->declarator->direct_declarator->parameters->paramater_list == nullptr) {
+                    t.num_args = 0;
+                } else {
+                    t.num_args = fd->declarator->direct_declarator->parameters->paramater_list->parameter_declarations.size();
+                }
+                for (int i = 0; i < t.num_args; i++)
+                    t.arg_types.push_back(fd->declarator->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
+
+                Identifier* id = fd->declarator->direct_declarator->identifier;
+                if (id == nullptr) {
+                    string error_msg = "Function identifier is null";
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return P;
+                }
+                MemberInfo member_info;
+                member_info.name = id->value;
+                member_info.type = t;
+                member_info.kind = MEMBER_KIND_FUNCTION;
+
+                if (cd->access_specifier->name == "PUBLIC") {
+                    member_info.access_specifier = ACCESS_SPECIFIER_PUBLIC;
+                    P->members.push_back(member_info);
+                }
+                else if (cd->access_specifier->name == "PROTECTED") {
+                    member_info.access_specifier = ACCESS_SPECIFIER_PROTECTED;
+                    P->members.push_back(member_info);
+                }
+                else if (cd->access_specifier->name == "PRIVATE") {
+                    member_info.access_specifier = ACCESS_SPECIFIER_PRIVATE;
+                    P->members.push_back(member_info);
+                }
+                else {
+                    member_info.access_specifier = ACCESS_SPECIFIER_PRIVATE; // default access specifier
+                    P->members.push_back(member_info);
+                }
+
+                debug("Member function: " + member_info.name + " Access: " + to_string(member_info.access_specifier), BLUE);
+            }
+        }
+    }
+    if (idl != nullptr)
+    {
+        for (ClassDeclarator* cd : idl->class_declarator_list)
+        {
+            std::string type_name = cd->declarator->direct_declarator->identifier->value;
+            DefinedTypes* dt = symbolTable.get_defined_type(type_name);
+            TypeDefinition* t = nullptr;
+            if (dt != nullptr)
+                t = dt->type_definition;
+
+            if (t == nullptr) {
+                string error_msg = "Type " + type_name + " not defined";
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                continue;
+            }
+
+            for (auto& member_info : t->members)
+            {
+                auto& [member_name, member_type, member_kind, access_specifier] = member_info;
+                Symbol* sym = t->type_symbol_table.getSymbol(member_name);
+                bool is_typedef = false;
+
+                if (sym == nullptr)
                 {
-                    for (auto it : t->members)
-                    {
-                        string member = it.first;
-                        SymbolTable s = P->type_symbol_table;
-                        Symbol* sym = t->type_symbol_table.getSymbol(member);
-                        AccessSpecifiers access_specifier = it.second;
-                        bool is_typedef = false;
-                        if (access_specifier == ACCESS_SPECIFIER_PUBLIC)
-                        {
-                            if (cd->access_specifier->name == "PUBLIC")
-                            {
-                                P->members.insert({ member, ACCESS_SPECIFIER_PUBLIC });
-                                if (sym == nullptr)
-                                {
-                                    sym = t->type_symbol_table.getTypedef(member);
-                                    is_typedef = true;
-                                }
-                                Symbol* sym_copy = new Symbol(*sym);
-                                sym_copy->scope = symbolTable.currentScope;
-                                if (is_typedef)
-                                {
-                                    if (!s.lookup_typedef(member))
-                                        s.typedefs[member].push_front(sym_copy);
-                                }
-                                else if (sym->type.is_function)
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                                else
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                            }
-                            else if (cd->access_specifier->name == "PROTECTED")
-                            {
-                                P->members.insert({ member, ACCESS_SPECIFIER_PROTECTED });
-                                if (sym == nullptr)
-                                {
-                                    sym = t->type_symbol_table.getTypedef(member);
-                                    is_typedef = true;
-                                }
-                                Symbol* sym_copy = new Symbol(*sym);
-                                sym_copy->scope = symbolTable.currentScope;
-                                if (is_typedef)
-                                {
-                                    if (!s.lookup_typedef(member))
-                                        s.typedefs[member].push_front(sym_copy);
-                                }
-                                else if (sym->type.is_function)
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                                else
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                            }
-                            else if (cd->access_specifier->name == "PRIVATE")
-                            {
-                                P->members.insert({ member, ACCESS_SPECIFIER_PRIVATE });
-                                if (sym == nullptr)
-                                {
-                                    sym = t->type_symbol_table.getTypedef(member);
-                                    is_typedef = true;
-                                }
-                                Symbol* sym_copy = new Symbol(*sym);
-                                sym_copy->scope = symbolTable.currentScope;
-                                if (is_typedef)
-                                {
-                                    if (!s.lookup_typedef(member))
-                                        s.typedefs[member].push_front(sym_copy);
-                                }
-                                else if (sym->type.is_function)
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                                else
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                            }
-                        }
-                        else if (access_specifier == ACCESS_SPECIFIER_PROTECTED)
-                        {
-                            if (cd->access_specifier->name == "PUBLIC")
-                            {
-                                P->members.insert({ member, ACCESS_SPECIFIER_PROTECTED });
-                                if (sym == nullptr)
-                                {
-                                    sym = t->type_symbol_table.getTypedef(member);
-                                    is_typedef = true;
-                                }
-                                Symbol* sym_copy = new Symbol(*sym);
-                                sym_copy->scope = symbolTable.currentScope;
-                                if (is_typedef)
-                                {
-                                    if (!s.lookup_typedef(member))
-                                        s.typedefs[member].push_front(sym_copy);
-                                }
-                                else if (sym->type.is_function)
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                                else
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                            }
-                            else if (cd->access_specifier->name == "PROTECTED")
-                            {
-                                P->members.insert({ member, ACCESS_SPECIFIER_PROTECTED });
-                                if (sym == nullptr)
-                                {
-                                    sym = t->type_symbol_table.getTypedef(member);
-                                    is_typedef = true;
-                                }
-                                Symbol* sym_copy = new Symbol(*sym);
-                                sym_copy->scope = symbolTable.currentScope;
-                                if (is_typedef)
-                                {
-                                    if (!s.lookup_typedef(member))
-                                        s.typedefs[member].push_front(sym_copy);
-                                }
-                                else if (sym->type.is_function)
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                                else
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                            }
-                            else if (cd->access_specifier->name == "PRIVATE")
-                            {
-                                P->members.insert({ member, ACCESS_SPECIFIER_PRIVATE });
-                                if (sym == nullptr)
-                                {
-                                    sym = t->type_symbol_table.getTypedef(member);
-                                    is_typedef = true;
-                                }
-                                Symbol* sym_copy = new Symbol(*sym);
-                                sym_copy->scope = symbolTable.currentScope;
-                                if (is_typedef)
-                                {
-                                    if (!s.lookup_typedef(member))
-                                        s.typedefs[member].push_front(sym_copy);
-                                }
-                                else if (sym->type.is_function)
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                                else
-                                {
-                                    if (!s.lookup_function(member, sym->type.arg_types))
-                                        s.table[member].push_front(sym_copy);
-                                }
-                            }
-                        }
-                    }
+                    sym = t->type_symbol_table.getTypedef(member_name);
+                    is_typedef = true;
+                }
+
+                if (sym == nullptr)
+                    continue;
+
+                AccessSpecifiers declared_access = ACCESS_SPECIFIER_PRIVATE;
+
+                if (access_specifier == ACCESS_SPECIFIER_PUBLIC)
+                {
+                    if (cd->access_specifier->name == "PUBLIC")
+                        declared_access = ACCESS_SPECIFIER_PUBLIC;
+                    else if (cd->access_specifier->name == "PROTECTED")
+                        declared_access = ACCESS_SPECIFIER_PROTECTED;
+                    else
+                        declared_access = ACCESS_SPECIFIER_PRIVATE;
+                }
+                else if (access_specifier == ACCESS_SPECIFIER_PROTECTED)
+                {
+                    if (cd->access_specifier->name == "PUBLIC" || cd->access_specifier->name == "PROTECTED")
+                        declared_access = ACCESS_SPECIFIER_PROTECTED;
+                    else
+                        declared_access = ACCESS_SPECIFIER_PRIVATE;
+                }
+                else
+                {
+                    declared_access = ACCESS_SPECIFIER_PRIVATE;
+                }
+
+                // Add member info
+                MemberInfo m_member_info;
+                m_member_info.name = member_name;
+                m_member_info.type = sym->type;
+                m_member_info.kind = sym->type.is_function ? MEMBER_KIND_FUNCTION : MEMBER_KIND_DATA;
+                m_member_info.access_specifier = declared_access;
+
+                P->members.push_back(m_member_info);
+
+                // Add to symbol table
+                Symbol* sym_copy = new Symbol(*sym);
+                sym_copy->scope = symbolTable.currentScope;
+
+                SymbolTable& s = P->type_symbol_table;
+                if (is_typedef)
+                {
+                    if (!s.lookup_typedef(member_name))
+                        s.typedefs[member_name].push_front(sym_copy);
+                }
+                else
+                {
+                    if (!s.lookup_function(member_name, sym->type.arg_types))
+                        s.table[member_name].push_front(sym_copy);
                 }
             }
         }
     }
+
     return P;
 }
 
@@ -1104,14 +1131,14 @@ void DeclarationSpecifiers::set_type()
             string name = type_specifiers[0]->struct_union_specifier->identifier->value;
             DefinedTypes* dt = symbolTable.get_defined_type(name);
             type_index = PrimitiveTypes::TYPE_ERROR_T;
-            if (dt != nullptr) type_index = dt->typeIndex;
+            if (dt != nullptr) type_index = dt->type_index;
         }
         else if (isClass)
         {
             string name = type_specifiers[0]->class_specifier->identifier->value;
             DefinedTypes* dt = symbolTable.get_defined_type(name);
             type_index = PrimitiveTypes::TYPE_ERROR_T; 
-            if(dt != nullptr) type_index = dt->typeIndex;
+            if(dt != nullptr) type_index = dt->type_index;
         }
         else if (isTypeName)
         {
@@ -2153,14 +2180,14 @@ void SpecifierQualifierList::set_type()
             string name = type_specifiers[0]->struct_union_specifier->identifier->value;
             DefinedTypes* dt = symbolTable.get_defined_type(name);
             type_index = PrimitiveTypes::TYPE_ERROR_T;
-            if (dt) type_index = dt->typeIndex;
+            if (dt) type_index = dt->type_index;
         }
         else if (isClass)
         {
             string name = type_specifiers[0]->class_specifier->identifier->value;
             DefinedTypes* dt = symbolTable.get_defined_type(name);
             type_index = PrimitiveTypes::TYPE_ERROR_T; 
-            if(dt != nullptr) type_index = dt->typeIndex;
+            if(dt != nullptr) type_index = dt->type_index;
         }
         else if (isTypeName)
         {
@@ -2505,32 +2532,32 @@ Type Constant::set_constant_type(string value)
         }
         if ((isLong == 2) && isUnsigned)
         {
-            t.typeIndex = PrimitiveTypes::U_LONG_LONG_T;
+            t.type_index = PrimitiveTypes::U_LONG_LONG_T;
         }
         else if ((isLong == 2) && !isUnsigned)
         {
-            t.typeIndex = PrimitiveTypes::LONG_LONG_T;
+            t.type_index = PrimitiveTypes::LONG_LONG_T;
         }
         else if ((isLong == 1) && isUnsigned)
         {
-            t.typeIndex = PrimitiveTypes::U_LONG_T;
+            t.type_index = PrimitiveTypes::U_LONG_T;
         }
         else if ((isLong == 1) && !isUnsigned)
         {
-            t.typeIndex = PrimitiveTypes::LONG_T;
+            t.type_index = PrimitiveTypes::LONG_T;
         }
         else if (!isLong && isUnsigned)
         {
-            t.typeIndex = PrimitiveTypes::U_SHORT_T;
+            t.type_index = PrimitiveTypes::U_SHORT_T;
         }
         else if (!isLong && !isUnsigned)
         {
-            t.typeIndex = PrimitiveTypes::SHORT_T;
+            t.type_index = PrimitiveTypes::SHORT_T;
         }
     }
     else if (name == "CHAR_CONSTANT")
     {
-        t.typeIndex = PrimitiveTypes::CHAR_T;
+        t.type_index = PrimitiveTypes::CHAR_T;
     }
     else if (name == "F_CONSTANT")
     {
@@ -2549,15 +2576,15 @@ Type Constant::set_constant_type(string value)
         }
         if (isFloat)
         {
-            t.typeIndex = PrimitiveTypes::FLOAT_T;
+            t.type_index = PrimitiveTypes::FLOAT_T;
         }
         else if (isDouble == 1)
         {
-            t.typeIndex = PrimitiveTypes::LONG_DOUBLE_T;
+            t.type_index = PrimitiveTypes::LONG_DOUBLE_T;
         }
         else
         {
-            t.typeIndex = PrimitiveTypes::DOUBLE_T;
+            t.type_index = PrimitiveTypes::DOUBLE_T;
         }
     }
     else
@@ -2940,25 +2967,38 @@ bool SymbolTable::check_member_variable(string name, string member)
         set_error();
         return false;
     }
-    if (t->type_definition->lookup_member(member) && t->type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PUBLIC)
-    {
-        return true;
+    if (t->type_definition == nullptr) {
+        string error_msg = "Undefined type " + name;
+        yyerror(error_msg.c_str());
+        set_error();
+        return false;
     }
-    else if (t->type_definition->lookup_member(member) && t->type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PRIVATE)
+
+    bool isMember = t->type_definition->lookup_member(member);
+    if (!isMember) {
+        string error_msg = "Member variable '" + member + "' not found in class '" + name + "'";
+        yyerror(error_msg.c_str());
+        set_error();
+        return false;
+    }
+
+    AccessSpecifiers access_specifier = t->type_definition->get_member_access_specifier(member);
+    if (access_specifier == ACCESS_SPECIFIER_PRIVATE)
     {
         string error_msg = "Member variable '" + member + "' is private in class '" + name;
         yyerror(error_msg.c_str());
         set_error();
         return false;
     }
-    else if (t->type_definition->lookup_member(member) && t->type_definition->get_member_access_specifier(member) == ACCESS_SPECIFIER_PROTECTED)
+    if(access_specifier == ACCESS_SPECIFIER_PROTECTED)
     {
         string error_msg = "Member variable '" + member + "' is protected in class '" + name;
         yyerror(error_msg.c_str());
         set_error();
         return false;
     }
-    return false;
+
+    return true;
 }
 
 Type SymbolTable::get_type_of_member_variable(string name, string member)
@@ -2970,6 +3010,7 @@ Type SymbolTable::get_type_of_member_variable(string name, string member)
         set_error();
         return ERROR_TYPE;
     }
+
     Symbol* sym = dt->type_definition->type_symbol_table.getSymbol(member);
     return sym->type;
 }
@@ -3151,8 +3192,8 @@ void SymbolTable::print()
         for (const auto symbol : entry.second)
         {
             cout << "| " << setw(20) << left << symbol->name
-                << "| " << setw(26) << left << symbol->type.typeIndex
-                // Aren ~ maine add kiya hai .typeIndex (isko change krna hai according to Type class)
+                << "| " << setw(26) << left << symbol->type.type_index
+                // Aren ~ maine add kiya hai .type_index (isko change krna hai according to Type class)
                 << "| " << setw(8) << left << symbol->scope
                 << "| " << setw(12) << left << symbol->offset << " |\n";
         }
@@ -3181,7 +3222,7 @@ void SymbolTable::print_typedefs()
         for (const auto symbol : entry.second)
         {
             cout << "| " << setw(20) << left << symbol->name
-                << "| " << setw(26) << left << symbol->type.typeIndex
+                << "| " << setw(26) << left << symbol->type.type_index
                 << "| " << setw(8) << left << symbol->scope
                 << "| " << setw(12) << left << symbol->offset << " |\n";
         }
@@ -3211,7 +3252,7 @@ void SymbolTable::print_defined_types()
         {
             cout << "| " << setw(20) << left << entry.first
                 << "| " << setw(12) << left
-                << (symbol.second ? to_string(symbol.second->typeIndex) : "In")
+                << (symbol.second ? to_string(symbol.second->type_index) : "In")
                 << "| " << setw(26) << left
                 << (symbol.second ? type_category_name[symbol.second->type_category] : "Unknown")
                 << "| " << setw(8) << left << symbol.first << " |\n";

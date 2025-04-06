@@ -31,11 +31,11 @@
 
 // [Passing]
 // Test 6: Struct Declaration
-// struct A {
-//     int x;
-//     int y;
-//     int z;
-// };
+struct A {
+    int x;
+    int y;
+    int z;
+};
  
 // [Passing]
 // // Test 7: Struct instantiation
@@ -105,14 +105,17 @@
 // }
 
 // Test 16: Class Declaration
-int a;
-int a();
-// class AccessTest {
-// // int x;
-//     void foo(){}
-//     //     breakpoint;
-//     //     x = 5;
-//     //     breakpoint;
-//     //     breakpoint_global;
+class AccessTest {
+    int x;
+    int y;
+    int z;
+    void foo(int a){}
+    //     breakpoint;
+    //     x = 5;
+    //     breakpoint;
+    //     breakpoint_global;
     
-// };
+};
+
+class AccessTest obj, obj2;
+// obj.foo();

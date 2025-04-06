@@ -330,7 +330,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             return P;
         }
         else {
-            P->type = symbolTable.get_type_of_member_variable(x->type.defined_type_name, id->value);
+            P->type = symbolTable.get_type_of_member_variable(x->type.defined_type_name, id->value); // Data types only
             TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name)->type_definition;
             Symbol* member = td->type_symbol_table.getSymbol(id->value);
             if (op->name == "DOT") {
@@ -543,7 +543,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type.num_args = 0;
                 P->type.arg_types.clear();
                 P->code = argument_expression_list->code; // TAC
-                if (x->type.typeIndex == PrimitiveTypes::VOID_T) P->result = new_empty_var(); // TAC
+                if (x->type.type_index == PrimitiveTypes::VOID_T) P->result = new_empty_var(); // TAC
                 else P->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CALL), P->result, x->result, new_constant(to_string(arguments.size())), 0); // TAC
                 backpatch(x->next_list, i1->label); // TAC
@@ -1007,7 +1007,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
     if (op->name == "MULTIPLY" || op->name == "DIVIDE") {
         if (lt.isFloat() || rt.isFloat()) {
             // float * float => float 
-            if (lt.typeIndex > rt.typeIndex) {
+            if (lt.type_index > rt.type_index) {
                 TACOperand* t1 = new_temp_var(); // TAC
                 M->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
@@ -1028,7 +1028,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 M->jump_code.push_back(i3); // TAC
                 M->jump_code.push_back(i4); // TAC
             }
-            else if (lt.typeIndex == rt.typeIndex) {
+            else if (lt.type_index == rt.type_index) {
                 M->type = lt;
                 M->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result, 0); // TAC
@@ -1070,7 +1070,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
         }
         else if (lt.isInt() && rt.isInt()) {
             // int * int => int
-            if (lt.typeIndex > rt.typeIndex) {
+            if (lt.type_index > rt.type_index) {
                 M->type = lt;
                 if (lt.isUnsigned() || rt.isUnsigned()) {
                     M->type.make_unsigned();
@@ -1095,7 +1095,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 M->jump_code.push_back(i3); // TAC
                 M->jump_code.push_back(i4); // TAC
             }
-            else if (lt.typeIndex == rt.typeIndex) {
+            else if (lt.type_index == rt.type_index) {
                 M->type = lt;
                 M->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result, 0); // TAC
@@ -1150,7 +1150,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             symbolTable.set_error();
             return M;
         }
-        if (lt.typeIndex > rt.typeIndex) {
+        if (lt.type_index > rt.type_index) {
             M->type = lt;
             if (lt.isUnsigned() || rt.isUnsigned()) {
                 M->type.make_unsigned();
@@ -1175,7 +1175,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             M->jump_code.push_back(i3); // TAC
             M->jump_code.push_back(i4); // TAC
         }
-        else if (lt.typeIndex == rt.typeIndex) {
+        else if (lt.type_index == rt.type_index) {
             M->type = lt;
             M->result = new_temp_var(); // TAC
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MOD), M->result, left->result, right->result, 0); // TAC
@@ -1275,7 +1275,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
     if (lt.isFloat() || rt.isFloat()) {
         // float * float => float
-        if (lt.typeIndex > rt.typeIndex) {
+        if (lt.type_index > rt.type_index) {
             TACOperand* t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
@@ -1296,7 +1296,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
         }
-        else if (lt.typeIndex == rt.typeIndex) {
+        else if (lt.type_index == rt.type_index) {
             A->type = lt;
             A->result = new_temp_var(); // TAC
             TACInstruction* i1 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result, 0); // TAC
@@ -1339,7 +1339,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
     }
     else if (lt.isInt() && rt.isInt()) {
         // int * int => int
-        if (lt.typeIndex > rt.typeIndex) {
+        if (lt.type_index > rt.type_index) {
             A->type = lt;
             if (lt.isUnsigned() || rt.isUnsigned()) {
                 A->type.make_unsigned();
@@ -1364,7 +1364,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
         }
-        else if (lt.typeIndex == rt.typeIndex) {
+        else if (lt.type_index == rt.type_index) {
             A->type = lt;
             A->result = new_temp_var(); // TAC
             TACInstruction* i1 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result, 0); // TAC
@@ -1582,7 +1582,7 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         symbolTable.set_error();
         return S;
     }
-    if (lt.typeIndex > rt.typeIndex) {
+    if (lt.type_index > rt.type_index) {
         S->type = lt;
         // Signedness: usually taken from left operand
         if (lt.isUnsigned()) {
@@ -1611,7 +1611,7 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         S->jump_code.push_back(i3); // TAC
         S->jump_code.push_back(i4); // TAC
     }
-    else if (lt.typeIndex == rt.typeIndex) {
+    else if (lt.type_index == rt.type_index) {
         S->type = lt;
         S->result = new_temp_var(); // TAC
         TACInstruction* i1 = emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, left->result, right->result, 0); // TAC
@@ -1722,7 +1722,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             symbolTable.set_error();
             return R;
         }
-        if (lt.typeIndex > rt.typeIndex) {
+        if (lt.type_index > rt.type_index) {
             TACOperand* t1 = new_temp_var(); // TAC
             R->result = new_temp_var(); // TAC
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
@@ -1761,7 +1761,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->jump_code.push_back(i7); // TAC
             R->jump_code.push_back(i8); // TAC
         }
-        else if (lt.typeIndex == rt.typeIndex) {
+        else if (lt.type_index == rt.type_index) {
             R->result = new_temp_var(); // TAC
             TACInstruction* i1 = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
                 op->name == "LE_OP" ? TAC_OPERATOR_LE :
@@ -1951,7 +1951,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             symbolTable.set_error();
             return E;
         }
-        if (lt.typeIndex > rt.typeIndex) {
+        if (lt.type_index > rt.type_index) {
             TACOperand* t1 = new_temp_var(); // TAC
             E->result = new_temp_var(); // TAC
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
@@ -1982,7 +1982,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->jump_code.push_back(i7); // TAC
             E->jump_code.push_back(i8); // TAC
         }
-        else if (lt.typeIndex == rt.typeIndex) {
+        else if (lt.type_index == rt.type_index) {
             E->result = new_temp_var(); // TAC
             TACInstruction* i1 = emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), new_empty_var(), left->result, right->result, 2); // TAC
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
@@ -2145,7 +2145,7 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
 
     if (op->name == "BITWISE_AND") {
         if (lt.isInt() && rt.isInt()) {
-            if (lt.typeIndex > rt.typeIndex) {
+            if (lt.type_index > rt.type_index) {
                 A->type = lt;
                 if (lt.isUnsigned() || rt.isUnsigned()) {
                     A->type.make_unsigned();
@@ -2173,7 +2173,7 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 A->jump_code.push_back(i3); // TAC
                 A->jump_code.push_back(i4); // TAC
             }
-            else if (lt.typeIndex == rt.typeIndex) {
+            else if (lt.type_index == rt.type_index) {
                 A->type = lt;
                 A->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, left->result, right->result, 0); // TAC
@@ -2284,7 +2284,7 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
 
     if (op->name == "BITWISE_XOR") {
         if (lt.isInt() && rt.isInt()) {
-            if (lt.typeIndex > rt.typeIndex) {
+            if (lt.type_index > rt.type_index) {
                 X->type = lt;
                 if (lt.isUnsigned() || rt.isUnsigned()) {
                     X->type.make_unsigned();
@@ -2312,7 +2312,7 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 X->jump_code.push_back(i3); // TAC
                 X->jump_code.push_back(i4); // TAC
             }
-            else if (lt.typeIndex == rt.typeIndex) {
+            else if (lt.type_index == rt.type_index) {
                 X->type = lt;
                 X->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, left->result, right->result, 0); // TAC
@@ -2423,7 +2423,7 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
 
     if (op->name == "BITWISE_OR") {
         if (lt.isInt() && rt.isInt()) {
-            if (lt.typeIndex > rt.typeIndex) {
+            if (lt.type_index > rt.type_index) {
                 O->type = lt;
                 if (lt.isUnsigned() || rt.isUnsigned()) {
                     O->type.make_unsigned();
@@ -2451,7 +2451,7 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 O->jump_code.push_back(i3); // TAC
                 O->jump_code.push_back(i4); // TAC
             }
-            else if (lt.typeIndex == rt.typeIndex) {
+            else if (lt.type_index == rt.type_index) {
                 O->type = lt;
                 O->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_BIT_OR), O->result, left->result, right->result, 0); // TAC
@@ -2572,7 +2572,7 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 symbolTable.set_error();
                 return L;
             }
-            if (lt.typeIndex > rt.typeIndex) {
+            if (lt.type_index > rt.type_index) {
                 TACOperand* t1 = new_temp_var(); // TAC
                 L->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
@@ -2607,7 +2607,7 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 L->true_list = right->true_list; // TAC
                 L->false_list = merge_lists(left->false_list, right->false_list); // TAC
             }
-            else if (lt.typeIndex == rt.typeIndex) {
+            else if (lt.type_index == rt.type_index) {
                 L->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
@@ -2746,7 +2746,7 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
                 symbolTable.set_error();
                 return L;
             }
-            if (lt.typeIndex > rt.typeIndex) {
+            if (lt.type_index > rt.type_index) {
                 TACOperand* t1 = new_temp_var(); // TAC
                 L->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
@@ -2781,7 +2781,7 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
                 L->false_list = right->false_list; // TAC
                 L->true_list = merge_lists(left->true_list, right->true_list); // TAC
             }
-            else if (lt.typeIndex == rt.typeIndex) {
+            else if (lt.type_index == rt.type_index) {
                 L->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
@@ -2951,7 +2951,7 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
     }
     else if (tt.isIntorFloat() && ft.isIntorFloat() && tt.is_convertible_to(ft)) {
         // Promote both and take the higher ranked one
-        if (tt.typeIndex > ft.typeIndex) {
+        if (tt.type_index > ft.type_index) {
             C->type = tt;
             if (tt.isUnsigned() || ft.isUnsigned()) {
                 C->type.make_unsigned();
@@ -2988,7 +2988,7 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
             C->true_list = merge_lists(true_expr->true_list, false_expr->true_list); // TAC
             C->false_list = merge_lists(true_expr->false_list, false_expr->false_list); // TAC
         }
-        else if (tt.typeIndex < ft.typeIndex) {
+        else if (tt.type_index < ft.type_index) {
             C->type = ft;
             if (tt.isUnsigned() || ft.isUnsigned()) {
                 C->type.make_unsigned();

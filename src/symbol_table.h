@@ -169,6 +169,15 @@ enum AccessSpecifiers {
     ACCESS_SPECIFIER_PUBLIC = 0,
     ACCESS_SPECIFIER_PRIVATE,
     ACCESS_SPECIFIER_PROTECTED,
+    N_ACCESS_SPECIFIERS,
+};
+
+enum MemberKind {
+    MEMBER_KIND_DATA = 0,
+    MEMBER_KIND_FUNCTION,
+    MEMBER_KIND_CONSTRUCTOR,
+    MEMBER_KIND_DESTRUCTOR,
+    N_MEMBER_KINDS,
 };
 
 // ##############################################################################
@@ -178,7 +187,7 @@ enum AccessSpecifiers {
 class Type
 {
 public:
-    int typeIndex;
+    int type_index;
 
     bool is_pointer;
     int ptr_level;
@@ -301,16 +310,27 @@ extern SymbolTable symbolTable;
 // ################################## TYPE DEFINITION ######################################
 // ##############################################################################
 
+struct MemberInfo
+{
+    string name;
+    Type type;
+    MemberKind kind;
+    AccessSpecifiers access_specifier;
+};
+
 class TypeDefinition
 {
 public:
-    TypeCategory type_category;
-    unordered_map<string, AccessSpecifiers> members;
-    bool lookup_member(string member);
-    AccessSpecifiers get_member_access_specifier(string member);
     SymbolTable type_symbol_table;
-    int get_size();
+    vector<MemberInfo> members;
+    TypeCategory type_category;
+
     TypeDefinition(TypeCategory tc);
+    
+    AccessSpecifiers get_member_access_specifier(const string& member);
+    vector<MemberInfo> get_members_by_name(const string& member);
+    bool lookup_member(string member);
+    int get_size();
 };
 
 TypeDefinition* create_type_definition(TypeDefinition* td, StructDeclarationSet* sd);
