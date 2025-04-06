@@ -1152,6 +1152,14 @@ void DeclarationSpecifiers::set_type()
         }
         else if (isTypeName)
         {
+            Symbol* sym = symbolTable.getTypedef(type_specifiers[0]->type_name);
+            if(sym == nullptr){
+                string error_msg = "Type name " + type_specifiers[0]->type_name + " not found";
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return;
+            }
+            type_index = sym->type.type_index;
             is_type_name = true;
         }
     }
@@ -2212,6 +2220,14 @@ void SpecifierQualifierList::set_type()
         }
         else if (isTypeName)
         {
+            Symbol* sym = symbolTable.getTypedef(type_specifiers[0]->type_name);
+            if(sym == nullptr){
+                string error_msg = "Type name " + type_specifiers[0]->type_name + " not found";
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return;
+            }
+            type_index = sym->type.type_index;
             is_type_name = true;
         }
     }
@@ -2221,17 +2237,6 @@ SpecifierQualifierList* create_specifier_qualifier_list(TypeSpecifier* t)
 {
     SpecifierQualifierList* P = new SpecifierQualifierList();
     P->type_specifiers.push_back(t);
-    if (t->struct_union_specifier != nullptr)
-    {
-        DefinedTypes* dt = symbolTable.get_defined_type(t->struct_union_specifier->identifier->value);
-    }
-    // P->set_type();
-    // if (P->type_index == -1)
-    // {
-    //     string error_msg = "Invalid Type " + t->name + " at line " + to_string(t->line_no) + ", column " + to_string(t->column_no);
-    //     yyerror(error_msg.c_str());
-    //     symbolTable.set_error();
-    // }
     return P;
 }
 
