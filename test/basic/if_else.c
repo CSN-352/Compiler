@@ -11,7 +11,7 @@ int main(){
     }
     breakpoint;
     {
-        // int x;
+        int x;
         a = x;
         breakpoint;
     }

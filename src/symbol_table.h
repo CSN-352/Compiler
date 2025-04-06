@@ -172,6 +172,12 @@ enum AccessSpecifiers {
     N_ACCESS_SPECIFIERS,
 };
 
+static unordered_map<int, string> access_specifier_name = {
+    {ACCESS_SPECIFIER_PUBLIC, "public"},
+    {ACCESS_SPECIFIER_PRIVATE, "private"},
+    {ACCESS_SPECIFIER_PROTECTED, "protected"}
+};
+
 enum MemberKind {
     MEMBER_KIND_DATA = 0,
     MEMBER_KIND_FUNCTION,

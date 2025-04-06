@@ -730,6 +730,11 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
             for (auto& member_info : t->members)
             {
                 auto& [member_name, member_type, member_kind, access_specifier] = member_info;
+                if(P->lookup_member(member_name)) {
+                    debug("Member: " + member_name + " already exists in type " + type_name, BLUE);
+                    continue;
+                }
+
                 Symbol* sym = t->type_symbol_table.getSymbol(member_name);
                 bool is_typedef = false;
 

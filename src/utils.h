@@ -43,3 +43,12 @@ static void debug(const T& msg, int colour = 1)
     std::cerr << color_code << msg << "\033[0m" << std::endl;
 #endif
 }
+
+static void debug_null(void* ptr, const std::string& msg)
+{
+    if(ptr == nullptr){
+        debug(msg + " is null", RED);
+    } else {
+        debug(msg + " is not null", GREEN);
+    }
+}

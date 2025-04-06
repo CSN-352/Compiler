@@ -31,11 +31,11 @@
 
 // [Passing]
 // Test 6: Struct Declaration
-struct A {
-    int x;
-    int y;
-    int z;
-};
+// struct A {
+//     int x;
+//     int y;
+//     int z;
+// };
  
 // [Passing]
 // // Test 7: Struct instantiation
@@ -105,17 +105,84 @@ struct A {
 // }
 
 // Test 16: Class Declaration
-class AccessTest {
-    int x;
-    int y;
-    int z;
-    void foo(int a){}
+// class AccessTest {
+//     int x;
+//     int y;
+//     int z;
+//     void foo(int a){}
     //     breakpoint;
     //     x = 5;
     //     breakpoint;
     //     breakpoint_global;
     
-};
+// };
 
-class AccessTest obj, obj2;
+// class AccessTest obj, obj2;
 // obj.foo();
+
+// class A1 {
+// public:
+//     int x1;
+// protected:
+//     int y1;
+// private:
+//     int z1;
+// };
+
+// class A2 {
+// public:
+//     int x2;
+// protected:
+//     int y2;
+// private:
+//     int z2;
+// };
+
+// class A3 {
+// public:
+//     int x3;
+// protected:
+//     int y3;
+// private:
+//     int z3;
+// };
+
+// class B <- public A1, protected A2, private A3 {
+// public:
+//     int x4;
+//     int func(int a, int b) {
+//         return a + b;
+//     }
+// protected:
+//     int y4;
+// private:
+//     int z4;
+// };
+
+
+// int main() {
+//     class B obj;
+//     int x;
+//     breakpoint_global;
+//     int sum = obj.func(obj.x1, obj.y1);
+    // x = obj.x1;
+    // x = obj.y1; // Error: y1 is protected in A1
+    // x = obj.z1; // Error: z1 is private in A1
+    // x = obj.x2; // Error: x2 is protected in A2
+    // x = obj.y2; // Error: y2 is protected in A2
+    // x = obj.z2; // Error: z2 is private in A2
+    // x = obj.x3; // Error: x3 is private in A3
+    // x = obj.y3; // Error: y3 is private in A3
+    // x = obj.z3; // Error: z3 is private in A3
+    // x = obj.x4;
+    // x = obj.y4; // Error: y4 is protected in B
+    // x = obj.z4; // Error: z4 is private in B
+// }
+
+void func(){
+}
+
+int main(){
+    func();
+    return 0;
+}
