@@ -161,10 +161,7 @@ Statement* create_compound_statement(DeclarationStatementList* statement)
     C->begin_label = statement->begin_label; //TAC
     C->continue_list = statement->continue_list; //TAC
     C->break_list = statement->break_list; //TAC
-    cout<<"Compound Statement with Declaration Statement List: " << endl;
-    for(TACInstruction* i : statement->code) {
-        print_TAC_instruction(i); // Print the TAC instructions
-    }
+
     return C;
 }
 
@@ -217,10 +214,7 @@ DeclarationStatementList* create_declaration_statement_list(DeclarationStatement
         declaration_statement_list->next_list = statement_list->next_list; //TAC
         declaration_statement_list->continue_list = merge_lists(statement_list->continue_list, declaration_statement_list->continue_list); //TAC
         declaration_statement_list->break_list = merge_lists(statement_list->break_list, declaration_statement_list->break_list); //TAC
-        cout<<"Declaration Statement List with Statement List: " << endl;
-        for(TACInstruction* i : statement_list->code) {
-            print_TAC_instruction(i); // Print the instruction for debugging
-        }
+
     }
     return declaration_statement_list;
 }
@@ -273,10 +267,6 @@ StatementList* create_statement_list(StatementList* statement_list, Statement* s
         statement_list->type = ERROR_TYPE;
     }
     statement_list->code.insert(statement_list->code.end(), statement->code.begin(), statement->code.end()); //TAC
-    cout<<"Statement List: " << endl;
-    for(TACInstruction* i : statement->code) {
-        print_TAC_instruction(i); // Print the instruction for debugging
-    }
     backpatch(statement_list->next_list, statement->begin_label); //TAC
     statement_list->next_list = statement->next_list; //TAC
     statement_list->continue_list = merge_lists(statement_list->continue_list, statement->continue_list); //TAC
@@ -518,10 +508,8 @@ Statement* create_iteration_statement_for(Statement* statement1, Statement* stat
     if (statement1->type == ERROR_TYPE || statement2->type == ERROR_TYPE || statement3->type == ERROR_TYPE) {
         S->type = ERROR_TYPE;
     }
-    else if (expression != nullptr) {
-        if (expression->type == ERROR_TYPE) {
+    else if (expression != nullptr && expression->type == ERROR_TYPE) {
             S->type = ERROR_TYPE;
-        }
     }
     else if (!expression->type.isIntorFloat()) {
         S->type = ERROR_TYPE;
@@ -533,10 +521,6 @@ Statement* create_iteration_statement_for(Statement* statement1, Statement* stat
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
         S->code = statement1->code; //TAC
         ExpressionStatement* exp = dynamic_cast<ExpressionStatement*>(statement2);
-        cout<<"Expression Statement: " << endl;
-        for(auto i : exp->jump_code) {
-            print_TAC_instruction(i); // Print the instruction for debugging
-        }
         S->code.insert(S->code.end(), exp->jump_code.begin(), exp->jump_code.end()); //TAC
         backpatch(statement1->next_list, exp->jump_code[0]->label); //TAC
         backpatch(exp->expression->true_list, statement3->begin_label); //TAC
@@ -561,7 +545,6 @@ Statement* create_iteration_statement_for(Statement* statement1, Statement* stat
 }
 
 Statement* create_iteration_statement_for_dec(ForIterationStruct* fis, Expression* expression, Statement* statement2) {
-    cout<<"INSIDE FOR DEC" << endl;
     Declaration* declaration = fis->declaration;
     Statement* statement1 = fis->statement1;
     IterationStatement* S = new IterationStatement();
@@ -571,13 +554,13 @@ Statement* create_iteration_statement_for_dec(ForIterationStruct* fis, Expressio
 
     if (statement1->type == ERROR_TYPE || statement2->type == ERROR_TYPE) {
         S->type = ERROR_TYPE;
+        symbolTable.set_error();
         return S;
     }
-    else if (expression != nullptr) {
-        if (expression->type == ERROR_TYPE) {
-            S->type = ERROR_TYPE;
-            return S;
-        }
+    else if (expression != nullptr && expression->type == ERROR_TYPE) {
+        S->type = ERROR_TYPE;
+        symbolTable.set_error();
+        return S;
         
     }
     else if (!expression->type.isIntorFloat()) {
@@ -593,10 +576,6 @@ Statement* create_iteration_statement_for_dec(ForIterationStruct* fis, Expressio
             if (id->initializer != nullptr) S->code.insert(S->code.end(), id->code.begin(), id->code.end()); //TAC
         }
         ExpressionStatement* exp = dynamic_cast<ExpressionStatement*>(statement1);
-        cout<<"Expression Statement: " << endl;
-        for(auto i : exp->jump_code) {
-            print_TAC_instruction(i); // Print the instruction for debugging
-        }
         S->code.insert(S->code.end(), exp->jump_code.begin(), exp->jump_code.end()); //TAC
         backpatch(exp->expression->true_list, statement2->begin_label); //TAC
         S->code.insert(S->code.end(), statement2->code.begin(), statement2->code.end()); //TAC

@@ -429,8 +429,6 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
         }
         else {
             P->type = x->type;
-            cout<<P->type.ptr_level<<endl;
-            cout<<P->type.array_dim<<endl;
             if (x->type.is_array) {
                 P->type.array_dim--;
                 P->type.array_dims.erase(P->type.array_dims.begin());
@@ -443,8 +441,6 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
             if (P->type.ptr_level == 0) P->type.is_pointer = false;
         }
     }
-    cout<<"HELLO"<<endl;
-    cout<<P->type.ptr_level<<endl;
     TACOperand* t1 = new_temp_var(); // TAC
     TACOperand* t2 = new_temp_var(); // TAC
     P->result = new_temp_var(); // TAC
