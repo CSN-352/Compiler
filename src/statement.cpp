@@ -691,6 +691,7 @@ Statement* create_jump_statement(Expression* expression) {
     else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_RETURN), new_empty_var(),expression->result, new_empty_var(), 0); //TAC
+        S->code.insert(S->code.end(), expression->code.begin(), expression->code.end()); //TAC
         S->code.push_back(i1); //TAC
         S->begin_label = i1->label; //TAC
     }
