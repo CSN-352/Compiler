@@ -781,18 +781,17 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
 
                 // Add to symbol table
                 Symbol* sym_copy = new Symbol(*sym);
-                sym_copy->scope = symbolTable.currentScope;
 
-                SymbolTable& s = P->type_symbol_table;
                 if (is_typedef)
                 {
-                    if (!s.lookup_typedef(member_name))
-                        s.typedefs[member_name].push_front(sym_copy);
+                    if (!P->type_symbol_table.lookup_typedef(member_name))
+                        P->type_symbol_table.typedefs[member_name].push_front(sym_copy);
                 }
                 else
                 {
-                    if (!s.lookup_function(member_name, sym->type.arg_types))
-                        s.table[member_name].push_front(sym_copy);
+                    if (!P->type_symbol_table.lookup_function(member_name, sym->type.arg_types)){
+                        P->type_symbol_table.table[member_name].push_front(sym_copy);
+                    }
                 }
             }
         }
@@ -3066,6 +3065,12 @@ Type SymbolTable::get_type_of_member_variable(string name, string member)
     }
 
     Symbol* sym = dt->type_definition->type_symbol_table.getSymbol(member);
+    if(sym == nullptr) {
+        string error_msg = "Member variable '" + member + "' not found in class '" + name + "'";
+        yyerror(error_msg.c_str());
+        set_error();
+        return ERROR_TYPE;
+    }
     return sym->type;
 }
 

@@ -294,7 +294,6 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
 
     if (op->name == "PTR_OP") P->name = "POSTFIX EXPRESSION PTR_OP";
     else P->name = "POSTFIX EXPRESSION DOT";
-
     if (op->name == "PTR_OP") {
         if (!(x->type.ptr_level == 1) && !(x->type.is_defined_type)) {
             P->type = ERROR_TYPE;
@@ -314,78 +313,78 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             return P;
         }
     }
-    
-        if (!symbolTable.lookup_defined_type(x->type.defined_type_name)) {
-            P->type = ERROR_TYPE;
-            string error_msg = "Defined_Type not found in Symbol Table " + to_string(op->line_no) + ", column " + to_string(op->column_no);
-            yyerror(error_msg.c_str());
-            symbolTable.set_error();
-            return P;
-        }
-        else if (!symbolTable.check_member_variable(x->type.defined_type_name, id->value)) {
-            P->type = ERROR_TYPE;
-            string error_msg = "Defined_Type does not have member_variable with name " + id->value + to_string(op->line_no) + ", column " + to_string(op->column_no);
-            yyerror(error_msg.c_str());
-            symbolTable.set_error();
-            return P;
-        }
-        else {
-            P->type = symbolTable.get_type_of_member_variable(x->type.defined_type_name, id->value); // Data types only
-            if(P->type.is_function) P->type.defined_type_name = x->type.defined_type_name; // For function pointers, we need to keep the defined type name for the function pointer
-            TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name)->type_definition;
-            Symbol* member = td->type_symbol_table.getSymbol(id->value);
-            P->member_name = id;
-            if (op->name == "DOT") {
-                TACOperand* t1 = new_temp_var(); // TAC
-                TACOperand* t2 = new_temp_var(); // TAC
-                TACOperand* t3 = new_temp_var(); // TAC
-                P->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), t1, x->result, new_empty_var(), 0); // TAC
-                backpatch(x->next_list, i1->label); // TAC
-                backpatch(x->jump_next_list, i1->label); // TAC
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), t2, t1, new_constant(to_string(member->offset)), 0); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, new_empty_var(), 0); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, new_empty_var(), 0); // TAC
-                P->code.push_back(i1); // TAC
-                P->code.push_back(i2); // TAC
-                P->code.push_back(i3); // TAC
-                P->code.push_back(i4); // TAC
 
-                TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
-                TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                P->true_list.insert(i5); // TAC
-                P->false_list.insert(i6); // TAC
-                P->jump_code.push_back(i1); // TAC
-                P->jump_code.push_back(i2); // TAC
-                P->jump_code.push_back(i3); // TAC
-                P->jump_code.push_back(i4); // TAC
-                P->jump_code.push_back(i5); // TAC
-                P->jump_code.push_back(i6); // TAC
-            }
-            else if (op->name == "PTR_OP") {
-                TACOperand* t1 = new_temp_var(); // TAC
-                TACOperand* t2 = new_temp_var(); // TAC
-                P->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_ADD), t1, x->result, new_constant(to_string(member->offset)), 0); // TAC
-                backpatch(x->next_list, i1->label); // TAC
-                backpatch(x->jump_next_list, i1->label); // TAC
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_DEREF), t2, t1, new_empty_var(), 0); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t2, new_empty_var(), 0); // TAC
-                P->code.push_back(i1); // TAC   
-                P->code.push_back(i2); // TAC
-                P->code.push_back(i3); // TAC
+    if (!symbolTable.lookup_defined_type(x->type.defined_type_name)) {
+        P->type = ERROR_TYPE;
+        string error_msg = "Defined_Type not found in Symbol Table " + to_string(op->line_no) + ", column " + to_string(op->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return P;
+    }
+    else if (!symbolTable.check_member_variable(x->type.defined_type_name, id->value)) {
+        P->type = ERROR_TYPE;
+        string error_msg = "Defined_Type does not have member_variable with name " + id->value + to_string(op->line_no) + ", column " + to_string(op->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
+        return P;
+    }
+    else {
+        P->type = symbolTable.get_type_of_member_variable(x->type.defined_type_name, id->value); // Data types only
+        if (P->type.is_function) P->type.defined_type_name = x->type.defined_type_name; // For function pointers, we need to keep the defined type name for the function pointer
+        TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name)->type_definition;
+        Symbol* member = td->type_symbol_table.getSymbol(id->value);
+        P->member_name = id;
+        if (op->name == "DOT") {
+            TACOperand* t1 = new_temp_var(); // TAC
+            TACOperand* t2 = new_temp_var(); // TAC
+            TACOperand* t3 = new_temp_var(); // TAC
+            P->result = new_temp_var(); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), t1, x->result, new_empty_var(), 0); // TAC
+            backpatch(x->next_list, i1->label); // TAC
+            backpatch(x->jump_next_list, i1->label); // TAC
+            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), t2, t1, new_constant(to_string(member->offset)), 0); // TAC
+            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, new_empty_var(), 0); // TAC
+            TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, new_empty_var(), 0); // TAC
+            P->code.push_back(i1); // TAC
+            P->code.push_back(i2); // TAC
+            P->code.push_back(i3); // TAC
+            P->code.push_back(i4); // TAC
 
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
-                TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                P->true_list.insert(i4); // TAC
-                P->false_list.insert(i5); // TAC
-                P->jump_code.push_back(i1); // TAC
-                P->jump_code.push_back(i2); // TAC
-                P->jump_code.push_back(i3); // TAC
-                P->jump_code.push_back(i4); // TAC
-                P->jump_code.push_back(i5); // TAC
-            }
+            TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+            TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            P->true_list.insert(i5); // TAC
+            P->false_list.insert(i6); // TAC
+            P->jump_code.push_back(i1); // TAC
+            P->jump_code.push_back(i2); // TAC
+            P->jump_code.push_back(i3); // TAC
+            P->jump_code.push_back(i4); // TAC
+            P->jump_code.push_back(i5); // TAC
+            P->jump_code.push_back(i6); // TAC
         }
+        else if (op->name == "PTR_OP") {
+            TACOperand* t1 = new_temp_var(); // TAC
+            TACOperand* t2 = new_temp_var(); // TAC
+            P->result = new_temp_var(); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_ADD), t1, x->result, new_constant(to_string(member->offset)), 0); // TAC
+            backpatch(x->next_list, i1->label); // TAC
+            backpatch(x->jump_next_list, i1->label); // TAC
+            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_DEREF), t2, t1, new_empty_var(), 0); // TAC
+            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t2, new_empty_var(), 0); // TAC
+            P->code.push_back(i1); // TAC   
+            P->code.push_back(i2); // TAC
+            P->code.push_back(i3); // TAC
+
+            TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+            TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            P->true_list.insert(i4); // TAC
+            P->false_list.insert(i5); // TAC
+            P->jump_code.push_back(i1); // TAC
+            P->jump_code.push_back(i2); // TAC
+            P->jump_code.push_back(i3); // TAC
+            P->jump_code.push_back(i4); // TAC
+            P->jump_code.push_back(i5); // TAC
+        }
+    }
 
     P->type.is_const_literal = false;
     return P;
