@@ -657,13 +657,13 @@ Statement* create_jump_statement(Terminal* op) {
     return S;
 }
 
-Statement* create_jump_statement(Identifier* identifier) {
+Statement* create_jump_statement_goto(Identifier* identifier) {
     JumpStatement* S = new JumpStatement();
     S->line_no = identifier->line_no;
     S->column_no = identifier->column_no;
     S->name = "JUMP STATEMENT GOTO";
     S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
-    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 0); //TAC
+    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
     if(labels.find(identifier->name) != labels.end()) {
         i1->result = labels[identifier->name]; //TAC
     }

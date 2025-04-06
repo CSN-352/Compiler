@@ -690,7 +690,7 @@ for_iterartion_statement:
 
 // DONE
 jump_statement:
-    GOTO IDENTIFIER SEMICOLON {$$ = create_jump_statement($2);}
+    GOTO IDENTIFIER SEMICOLON {$$ = create_jump_statement_goto($2);}
 	| CONTINUE SEMICOLON {$$ = create_jump_statement($1);}
 	| BREAK SEMICOLON {$$ = create_jump_statement($1);}
 	| RETURN SEMICOLON {$$ = create_jump_statement($1);}

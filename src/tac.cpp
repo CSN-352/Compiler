@@ -55,6 +55,13 @@ TACOperand* new_type(string value) {
     return t; // Return a pointer to the type
 }
 
+
+TACOperand* new_string(string value) {
+    TACOperand* t = new TACOperand(TAC_OPERAND_STRING, value);
+    return t; // Return a pointer to the string literal
+}
+
+
 //##############################################################################
 //################################## TACOperator ######################################
 //##############################################################################
@@ -132,6 +139,9 @@ string get_operand_string(const TACOperand& operand) {
     else if (operand.type == TAC_OPERAND_TYPE) {
         return operand.value;
     }
+    else if(operand.type == TAC_OPERAND_STRING) {
+        return operand.value;  // String literal
+    }
     return ""; // Default case
 }
 
@@ -161,7 +171,6 @@ string get_operator_string(TACOperatorType op) {
     case TAC_OPERATOR_BIT_NOT: return "~";
     case TAC_OPERATOR_ASSIGN: return "=";
     case TAC_OPERATOR_ADDR_OF: return "&"; // Address of operator
-    case TAC_OPERATOR_CAST: return "cast"; // Type casting operator
     default: return ""; // Default case
     }
 }

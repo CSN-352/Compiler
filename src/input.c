@@ -29,17 +29,40 @@
 //     return 1;
 // }
 
+int main(){
+    int x = 1;
+    goto L1;
+    x=3;
+    L1 : x = 2;
+    return 0;
+}
+
 // int main(){
-//     int x = 1;
-//     goto L1;
-//     x=3;
-//     L1 : x = 2;
+//     int a[5];
+//     int b[1][2];
+//     int x = a[0];
+//     int y = b[0][1];
+// }
+
+// class A{
+// public:
+//     int x;
+//     int func(){
+//         x=1;
+//         return 0;
+//     }
+// };
+
+// int main(){
+//     class A a;
+//     a.x = 1;
+//     a.func();
 //     return 0;
 // }
 
-int main(){
-    int a[5];
-    // int b[1][2];
-    int x = a[0];
-    // int y = b[0][1];
-}
+// int main(){
+//     int x=1;
+//     int y=2;
+//     int z=x+y;
+//     z++;
+// }

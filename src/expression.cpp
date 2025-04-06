@@ -60,6 +60,7 @@ Expression* create_primary_expression(Identifier* i) {
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->true_list.insert(i1);
     P->false_list.insert(i2);
+    P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     return P;
@@ -73,10 +74,7 @@ Expression* create_primary_expression(Constant* x) {
     P->constant = x;
     P->type = x->get_constant_type();
     P->type.is_const_literal = true;
-    P->result = new_temp_var(); // TAC
-    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, new_constant(x->value), new_empty_var(),0); // TAC
-    P->code.push_back(i0); // TAC
-
+    P->result = new_constant(x->value); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->true_list.insert(i1);
@@ -93,11 +91,14 @@ Expression* create_primary_expression(StringLiteral* x) {
     P->column_no = x->column_no;
     P->string_literal = x;
     P->type = Type(CHAR_T, 1, true);
-    P->result = new_constant(x->value); // TAC
+    P->result = new_temp_var(); // TAC
+    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), P->result, new_string(x->value), new_empty_var(), 0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->true_list.insert(i1);
     P->false_list.insert(i2);
+    P->code.push_back(i0); // TAC
+    P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     return P;
@@ -214,7 +215,7 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, new_empty_var(), 0); // TAC
         backpatch(x->next_list, i1->label); // TAC
         backpatch(x->jump_next_list, i1->label); // TAC
-        TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1"), 0); // TAC
+        TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*x->code.rbegin())->arg1, x->result, new_constant("1"), 0); // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
@@ -331,8 +332,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
         }
         else {
             P->type = symbolTable.get_type_of_member_variable(x->type.defined_type_name, id->value); // Data types only
+            if(P->type.is_function) P->type.defined_type_name = x->type.defined_type_name; // For function pointers, we need to keep the defined type name for the function pointer
             TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name)->type_definition;
             Symbol* member = td->type_symbol_table.getSymbol(id->value);
+            P->member_name = id;
             if (op->name == "DOT") {
                 TACOperand* t1 = new_temp_var(); // TAC
                 TACOperand* t2 = new_temp_var(); // TAC
@@ -513,7 +516,8 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
         return P;
     }
     else {
-        if (!symbolTable.lookup_function(P->primary_expression->identifier->value, arguments)) {
+        PostfixExpression* p = dynamic_cast<PostfixExpression*>(x);
+        if (!symbolTable.lookup_function(P->primary_expression->identifier->value, arguments) && (p->member_name==nullptr || !symbolTable.check_member_variable(p->type.defined_type_name, p->member_name->value))) {
             P->type = ERROR_TYPE;
             string error_msg = "No matching function declaration found " + to_string(x->line_no) + ", column " + to_string(x->column_no);
             yyerror(error_msg.c_str());
@@ -521,7 +525,21 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
             return P;
         }
         else {
-            Symbol* sym = symbolTable.getSymbol(P->primary_expression->identifier->value);
+            Symbol* sym;
+            if(p->member_name != nullptr){
+                if(p->type.defined_type_name != ""){
+                    auto dt = symbolTable.get_defined_type(p->type.defined_type_name);
+                    if(dt == nullptr){
+                        P->type = ERROR_TYPE;
+                        string error_msg = "Defined_Type not found in Symbol Table " + to_string(x->line_no) + ", column " + to_string(x->column_no);
+                        yyerror(error_msg.c_str());
+                        symbolTable.set_error();
+                        return P;
+                    }
+                    sym = dt->type_definition->type_symbol_table.getSymbol(p->member_name->value);
+                }
+            }
+            else sym = symbolTable.getSymbol(P->primary_expression->identifier->value);
             if (sym == nullptr) {
                 P->type = ERROR_TYPE;
                 string error_msg = "Function " + P->primary_expression->identifier->value + " not found";
@@ -532,7 +550,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
             FunctionDefinition* fd = sym->function_definition;
             if (fd == nullptr) {
                 P->type = ERROR_TYPE;
-                string error_msg = "Function " + P->primary_expression->identifier->value + " is declared but not defined at line " + to_string(x->line_no) + ", column " + to_string(x->column_no);
+                string error_msg = "Function " + sym->name + " is declared but not defined at line " + to_string(x->line_no) + ", column " + to_string(x->column_no);
                 yyerror(error_msg.c_str());
                 symbolTable.set_error();
                 return P;
@@ -542,7 +560,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type.is_function = false;
                 P->type.num_args = 0;
                 P->type.arg_types.clear();
-                P->code = argument_expression_list->code; // TAC
+                if(argument_expression_list != nullptr)P->code = argument_expression_list->code; // TAC
                 if (x->type.type_index == PrimitiveTypes::VOID_T) P->result = new_empty_var(); // TAC
                 else P->result = new_temp_var(); // TAC
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CALL), P->result, x->result, new_constant(to_string(arguments.size())), 0); // TAC

@@ -161,5 +161,6 @@ public:
 };
 
 Statement* create_jump_statement(Terminal* op);
+Statement* create_jump_statement_goto(Identifier* identifier);
 Statement* create_jump_statement(Expression* expression);
 #endif

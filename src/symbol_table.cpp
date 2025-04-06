@@ -1932,11 +1932,22 @@ InitDeclarator* create_init_declarator(Declarator* d, Initializer* i)
     P->initializer = i;
     if (i != nullptr) {
         TACOperand* id = new_identifier(d->direct_declarator->identifier->value); // TAC
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
-        backpatch(i->assignment_expression->next_list, i1->label); // TAC
-        backpatch(i->assignment_expression->jump_next_list, i1->label); // TAC
-        P->code.insert(P->code.begin(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
-        P->code.push_back(i1); // TAC
+        P->code.insert(P->code.end(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
+        if(i->assignment_expression->result->type != TAC_OPERAND_TEMP_VAR){
+            TACOperand* t1 = new_temp_var(); // TAC
+            TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_NOP),t1, i->assignment_expression->result, new_empty_var(), 0); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+            P->code.push_back(i0); // TAC
+            P->code.push_back(i1); // TAC
+            backpatch(i->assignment_expression->next_list, i0->label); // TAC
+            backpatch(i->assignment_expression->jump_next_list, i0->label); // TAC
+        }
+        else{
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
+            backpatch(i->assignment_expression->next_list, i1->label); // TAC
+            backpatch(i->assignment_expression->jump_next_list, i1->label); // TAC
+            P->code.push_back(i1); // TAC
+        }
     }
     return P;
 }
@@ -2412,8 +2423,8 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers* ds, Declar
         {
             if (sym->function_definition == nullptr)
             {
+                symbolTable.add_function_definition(sym,P);
                 symbolTable.enterScope(type, function_name);
-                sym->function_definition = P;
                 if (d->direct_declarator->parameters != nullptr)
                 {
                     for (int i = 0; i < d->direct_declarator->parameters->paramater_list->parameter_declarations.size(); i++)
@@ -2435,7 +2446,7 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers* ds, Declar
         {
             symbolTable.insert(function_name, type, type.get_size(), 1);
             Symbol* sym = symbolTable.getSymbol(function_name);
-            sym->function_definition = P;
+            symbolTable.add_function_definition(sym,P);
             symbolTable.enterScope(type, function_name);
             if (d->direct_declarator->parameters != nullptr)
             {
@@ -2803,6 +2814,39 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
     }
     else {
         this->currAddress += size;
+    }
+}
+
+void SymbolTable :: add_function_definition(Symbol* sym, FunctionDefinition* fd){
+    sym->function_definition = fd;
+    pair<int, pair<Type, string>> top = { 0, {Type(), ""} };
+    if (!scope_stack.empty())
+    {
+        top = scope_stack.top();
+    }
+    if (top.second.first.is_function)
+    {
+        FunctionDefinition* func = getFunction(top.second.second, top.second.first.arg_types)->function_definition;
+        if (func == nullptr) {
+            string error_msg = "Function " + top.second.second + " not defined";
+            yyerror(error_msg.c_str());
+            set_error();
+            return;
+        }
+        Symbol* sym_f = func->function_symbol_table.getSymbol(sym->name);
+        sym_f->function_definition = fd;
+    }
+    else if (top.second.first.is_defined_type)
+    {
+        DefinedTypes* dt = get_defined_type(top.second.second);
+        if (dt == nullptr || dt->type_definition == nullptr) {
+            string error_msg = "Undefined type " + top.second.second;
+            yyerror(error_msg.c_str());
+            set_error();
+            return;
+        }
+        Symbol* sym_c = dt->type_definition->type_symbol_table.getSymbol(sym->name);
+        sym_c->function_definition = fd;   
     }
 }
 

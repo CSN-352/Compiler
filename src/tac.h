@@ -25,7 +25,8 @@ enum TACOperandType {
     TAC_OPERAND_LABEL,            // Jump targets (e.g., L1, L2)
     TAC_OPERAND_POINTER,          // Pointer (e.g., int*)
     TAC_OPERAND_TYPE,            // Type (e.g., int, float)
-    TAC_OPERAND_EMPTY           // Empty operand (used for NOP or no operation)
+    TAC_OPERAND_EMPTY,           // Empty operand (used for NOP or no operation)
+    TAC_OPERAND_STRING,          // String literal (e.g., "Hello")
 };
 class TACOperand {
 public:
@@ -51,7 +52,7 @@ TACOperand* new_identifier(string value);
 
 TACOperand* new_type(string value);
 
-//TACOperand new_type(Type* t);
+TACOperand* new_string(string value);
 
 //##############################################################################
 //################################## TACOperator ######################################

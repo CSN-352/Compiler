@@ -289,6 +289,8 @@ public:
     bool lookup_defined_type(string name);
     bool lookup_typedef(string name);
     bool check_member_variable(string name, string member);
+    void add_function_definition(Symbol* sym, FunctionDefinition* fd);
+    void add_member_variable(string name, string member, Type type, MemberKind kind, AccessSpecifiers access_specifier);
     Type get_type_of_member_variable(string name, string member);
     Type get_type_of_member_variable(string name, string member, vector<Type> arg_types);
     Symbol* getSymbol(std::string name);
