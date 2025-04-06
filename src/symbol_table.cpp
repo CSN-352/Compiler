@@ -33,7 +33,7 @@ SymbolTable symbolTable;
 Type::Type()
 {
     type_index = -1;
-    ptr_level = -1;
+    ptr_level = 0;
     is_const_variable = false;
     is_const_literal = false;
 
@@ -222,14 +222,17 @@ bool Type::is_ea()
 
 bool Type::is_convertible_to(Type t)
 { // CHECK
-    if (*this == t)
+    if (*this == t){
         return true;
-    if (isPrimitive() && !is_pointer)
+    }
+    if (isPrimitive() && !is_pointer){
         return true;
+    }
     if (is_pointer && t.is_pointer && ptr_level == t.ptr_level)
     {
-        if (type_index == VOID_T || t.type_index == VOID_T)
+        if (type_index == VOID_T || t.type_index == VOID_T){
             return true;
+    }
     }
     return false;
 }
@@ -2977,11 +2980,11 @@ bool SymbolTable::lookup_function(std::string name, vector<Type> arg_types)
                     return false;
                 }
             }
-            for (int i = sym->type.arg_types.size();i < arg_types.size();i++) {
-                if (arg_types[i].is_convertible_to(sym->type.arg_types[sym->type.arg_types.size() - 1]) == false) {
-                    return false;
-                }
-            }
+            // for (int i = sym->type.arg_types.size();i < arg_types.size();i++) {
+            //     if (arg_types[i].is_convertible_to(sym->type.arg_types[sym->type.arg_types.size() - 1]) == false) {
+            //         return false;
+            //     }
+            // }
             return true;
         }
     }

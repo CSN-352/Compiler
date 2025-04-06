@@ -206,12 +206,12 @@ void print_TAC_instruction(TACInstruction* instruction) {
     }
     else if (instruction->op.type == TAC_OPERATOR_CALL) {
         if (instruction->result->type == TAC_OPERAND_EMPTY) {
-            cout << "call " << get_operand_string(instruction->arg1) << ", "
+            cout << "call " << get_operand_string(instruction->result) << ", "
                 << get_operand_string(instruction->arg2);
         }
         else {
-            cout << get_operand_string(instruction->result) << " = call "
-                << get_operand_string(instruction->arg1) << ", "
+            cout << get_operand_string(instruction->arg1) << " = call "
+                << get_operand_string(instruction->result) << ", "
                 << get_operand_string(instruction->arg2);
         }
     }
