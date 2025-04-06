@@ -442,19 +442,27 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     cout<<P->type.ptr_level<<endl;
     TACOperand* t1 = new_temp_var(); // TAC
     TACOperand* t2 = new_temp_var(); // TAC
-    TACOperand* t3 = new_temp_var(); // TAC
     P->result = new_temp_var(); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MUL), t1, index_expression->result, new_constant(to_string(P->type.get_size())), 0); // TAC
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
     backpatch(index_expression->next_list, i1->label); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), t2, x->result, t1, 0); // TAC
-    TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, new_empty_var(), 0); // TAC
-    TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, new_empty_var(), 0); // TAC
     P->code.push_back(i1); // TAC
     P->code.push_back(i2); // TAC
-    P->code.push_back(i3); // TAC
-    P->code.push_back(i4); // TAC
+    TACInstruction* i3;
+    TACInstruction* i4; // TAC
+    if(P->type.ptr_level == 0){
+        TACOperand* t3 = new_temp_var(); // TAC
+        i3 = emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, new_empty_var(), 0); // TAC
+        i4 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, new_empty_var(), 0); // TAC
+        P->code.push_back(i3); // TAC
+        P->code.push_back(i4); // TAC
+    }
+    else{
+        TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t2, new_empty_var(), 0); // TAC
+        P->code.push_back(i3); // TAC
+    }
 
     TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
@@ -463,7 +471,7 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     P->jump_code.push_back(i3); // TAC
-    P->jump_code.push_back(i4); // TAC
+    if(P->type.ptr_level == 0)P->jump_code.push_back(i4); // TAC
     P->jump_code.push_back(i5); // TAC
     P->jump_code.push_back(i6); // TAC
     P->type.is_const_literal = false;
