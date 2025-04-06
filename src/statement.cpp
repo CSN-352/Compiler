@@ -87,7 +87,7 @@ Statement* create_labeled_statement_case(Expression* expression, Statement* stat
         L->code.push_back(i1); //TAC
         L->code.push_back(i2); //TAC
         L->code.insert(L->code.end(), statement->code.begin(), statement->code.end()); //TAC
-        L->begin_label = &i1->label; //TAC
+        L->begin_label = i1->label; //TAC
         L->next_list = statement->next_list; //TAC
         L->next_list.insert(i2); //TAC
         L->continue_list = statement->continue_list; //TAC
@@ -161,6 +161,10 @@ Statement* create_compound_statement(DeclarationStatementList* statement)
     C->begin_label = statement->begin_label; //TAC
     C->continue_list = statement->continue_list; //TAC
     C->break_list = statement->break_list; //TAC
+    cout<<"Compound Statement with Declaration Statement List: " << endl;
+    for(TACInstruction* i : statement->code) {
+        print_TAC_instruction(i); // Print the TAC instructions
+    }
     return C;
 }
 
@@ -181,7 +185,7 @@ DeclarationStatementList* create_declaration_statement_list(DeclarationList* dec
         }
     }
     if (!D->code.empty()) {
-        D->begin_label = &D->code[0]->label; //TAC
+        D->begin_label = D->code[0]->label; //TAC
     }
     else {
         D->begin_label = new TACOperand(TAC_OPERAND_EMPTY, ""); //TAC
@@ -213,6 +217,10 @@ DeclarationStatementList* create_declaration_statement_list(DeclarationStatement
         declaration_statement_list->next_list = statement_list->next_list; //TAC
         declaration_statement_list->continue_list = merge_lists(statement_list->continue_list, declaration_statement_list->continue_list); //TAC
         declaration_statement_list->break_list = merge_lists(statement_list->break_list, declaration_statement_list->break_list); //TAC
+        cout<<"Declaration Statement List with Statement List: " << endl;
+        for(TACInstruction* i : statement_list->code) {
+            print_TAC_instruction(i); // Print the instruction for debugging
+        }
     }
     return declaration_statement_list;
 }
@@ -225,7 +233,7 @@ DeclarationStatementList* create_declaration_statement_list(DeclarationStatement
         }
     }
     if(!declaration_statement_list->code.empty()) {
-        backpatch(declaration_statement_list->next_list, &declaration_statement_list->code[0]->label); //TAC
+        backpatch(declaration_statement_list->next_list, declaration_statement_list->code[0]->label); //TAC
     }
     return declaration_statement_list;
 }
@@ -251,7 +259,7 @@ StatementList* create_statement_list(Statement* statement) {
         S->next_list = statement->next_list; //TAC
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
         S->continue_list = statement->continue_list; //TAC
-         S->break_list = statement->break_list; //TAC
+        S->break_list = statement->break_list; //TAC
     }
     return S;
 }
@@ -263,6 +271,10 @@ StatementList* create_statement_list(StatementList* statement_list, Statement* s
         statement_list->type = ERROR_TYPE;
     }
     statement_list->code.insert(statement_list->code.end(), statement->code.begin(), statement->code.end()); //TAC
+    cout<<"Statement List: " << endl;
+    for(TACInstruction* i : statement->code) {
+        print_TAC_instruction(i); // Print the instruction for debugging
+    }
     backpatch(statement_list->next_list, statement->begin_label); //TAC
     statement_list->next_list = statement->next_list; //TAC
     statement_list->continue_list = merge_lists(statement_list->continue_list, statement->continue_list); //TAC
@@ -299,8 +311,11 @@ Statement* create_expression_statement(Expression* x) {
         S->code = x->code; //TAC
         S->jump_code = x->jump_code; //TAC
         S->next_list = x->next_list; //TAC
+        for(TACInstruction* i : x->jump_code) {
+            print_TAC_instruction(i); // Print the instruction for debugging
+        }
         if (!x->code.empty()) {
-            S->begin_label = &x->code[0]->label; //TAC
+            S->begin_label = x->code[0]->label; //TAC
         }
         else {
             S->begin_label = new TACOperand(TAC_OPERAND_EMPTY, ""); //TAC
@@ -346,7 +361,7 @@ Statement* create_selection_statement_if(Expression* expression, Statement* stat
         S->code = expression->jump_code; //TAC
         backpatch(expression->true_list, statement->begin_label); //TAC
         S->next_list = merge_lists(statement->next_list, expression->false_list); //TAC
-        S->begin_label = &expression->jump_code[0]->label; //TAC
+        S->begin_label = expression->jump_code[0]->label; //TAC
         S->continue_list = statement->continue_list; //TAC
          S->break_list = statement->break_list; //TAC
     }
@@ -381,10 +396,10 @@ Statement* create_selection_statement_if_else(Expression* expression, Statement*
         S->code.insert(S->code.end(), else_statement->code.begin(), else_statement->code.end()); //TAC
         backpatch(expression->true_list, statement->begin_label); //TAC
         backpatch(expression->false_list, else_statement->begin_label); //TAC
-        backpatch(statement->next_list, &i1->label); //TAC
+        backpatch(statement->next_list, i1->label); //TAC
         S->next_list = else_statement->next_list; //TAC
         S->next_list.insert(i1); //TAC
-        S->begin_label = &expression->jump_code[0]->label; //TAC
+        S->begin_label = expression->jump_code[0]->label; //TAC
         S->continue_list = merge_lists(statement->continue_list,else_statement->continue_list); //TAC
         S->break_list = merge_lists(statement->break_list,else_statement->break_list); //TAC
     }
@@ -448,12 +463,12 @@ Statement* create_iteration_statement_while(Expression* expression, Statement* s
         S->code = expression->jump_code; //TAC
         backpatch(expression->true_list, statement->begin_label); //TAC
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
-        i1->result = &expression->jump_code[0]->label; //TAC
+        i1->result = expression->jump_code[0]->label; //TAC
         S->code.push_back(i1); //TAC
-        backpatch(statement->next_list, &i1->label); //TAC
+        backpatch(statement->next_list, i1->label); //TAC
         S->next_list = expression->false_list; //TAC
-        S->begin_label = &S->code[0]->label; //TAC
-        backpatch(statement->continue_list, &S->code[0]->label); //TAC
+        S->begin_label = S->code[0]->label; //TAC
+        backpatch(statement->continue_list, S->code[0]->label); //TAC
         S->next_list = merge_lists(statement->break_list, S->next_list); //TAC
     }
     return S;
@@ -481,11 +496,11 @@ Statement* create_iteration_statement_do_while(Expression* expression, Statement
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
         S->code = statement->code; //TAC
         S->code.insert(S->code.end(), expression->jump_code.begin(), expression->jump_code.end()); //TAC
-        backpatch(statement->next_list, &expression->jump_code[0]->label); //TAC
+        backpatch(statement->next_list, expression->jump_code[0]->label); //TAC
         backpatch(expression->true_list, statement->begin_label); //TAC
         S->next_list = expression->false_list; //TAC
-        S->begin_label = &S->code[0]->label; //TAC
-        backpatch(statement->continue_list, &expression->jump_code[0]->label); //TAC
+        S->begin_label = S->code[0]->label; //TAC
+        backpatch(statement->continue_list, expression->jump_code[0]->label); //TAC
         S->next_list = merge_lists(statement->break_list, S->next_list); //TAC
     }
     return S;
@@ -515,23 +530,23 @@ Statement* create_iteration_statement_for(Statement* statement1, Statement* stat
         S->code = statement1->code; //TAC
         ExpressionStatement* exp = dynamic_cast<ExpressionStatement*>(statement2);
         S->code.insert(S->code.end(), exp->jump_code.begin(), exp->jump_code.end()); //TAC
-        backpatch(statement1->next_list, &exp->jump_code[0]->label); //TAC
+        backpatch(statement1->next_list, exp->jump_code[0]->label); //TAC
         backpatch(exp->expression->true_list, statement3->begin_label); //TAC
         S->code.insert(S->code.end(), statement3->code.begin(), statement3->code.end()); //TAC
         if (expression != nullptr) {
             S->code.insert(S->code.end(), expression->code.begin(), expression->code.end()); //TAC
             if (!expression->code.empty()) {
-                backpatch(statement3->next_list, &expression->code[0]->label); //TAC
-                backpatch(statement3->continue_list, &expression->code[0]->label); //TAC
+                backpatch(statement3->next_list, expression->code[0]->label); //TAC
+                backpatch(statement3->continue_list, expression->code[0]->label); //TAC
             }
         }
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
         i1->result = statement2->begin_label; //TAC
-        backpatch(statement3->next_list, &i1->label); //TAC
-        backpatch(statement3->continue_list, &i1->label); //TAC
+        backpatch(statement3->next_list, i1->label); //TAC
+        backpatch(statement3->continue_list, i1->label); //TAC
         S->code.push_back(i1); //TAC
         S->next_list = exp->expression->false_list; //TAC
-        S->begin_label = &S->code[0]->label; //TAC
+        S->begin_label = S->code[0]->label; //TAC
         S->next_list = merge_lists(statement3->break_list, S->next_list); //TAC
     }
     return S;
@@ -571,17 +586,17 @@ Statement* create_iteration_statement_for_dec(ForIterationStruct* fis, Expressio
         if (expression != nullptr) {
             S->code.insert(S->code.end(), expression->code.begin(), expression->code.end()); //TAC
             if (!expression->code.empty()) {
-                backpatch(statement2->next_list, &expression->code[0]->label); //TAC
-                backpatch(statement2->continue_list, &expression->code[0]->label); //TAC
+                backpatch(statement2->next_list, expression->code[0]->label); //TAC
+                backpatch(statement2->continue_list, expression->code[0]->label); //TAC
             }
         }
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
         i1->result = statement1->begin_label; //TAC
-        backpatch(statement2->next_list, &i1->label); //TAC
-        backpatch(statement2->continue_list, &i1->label); //TAC
+        backpatch(statement2->next_list, i1->label); //TAC
+        backpatch(statement2->continue_list, i1->label); //TAC
         S->code.push_back(i1); //TAC
         S->next_list = exp->expression->false_list; //TAC
-        S->begin_label = &S->code[0]->label; //TAC
+        S->begin_label = S->code[0]->label; //TAC
         S->next_list = merge_lists(statement2->break_list, S->next_list); //TAC
     }
     return S;
@@ -608,11 +623,11 @@ Statement* create_iteration_statement_until(Expression* expression, Statement* s
         S->code.insert(S->code.end(), statement->code.begin(), statement->code.end()); //TAC
         backpatch(expression->false_list, statement->begin_label); //TAC
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
-        i1->result = &expression->jump_code[0]->label; //TAC
-        backpatch(statement->next_list, &i1->label); //TAC
+        i1->result = expression->jump_code[0]->label; //TAC
+        backpatch(statement->next_list, i1->label); //TAC
         S->code.push_back(i1); //TAC
         S->next_list = expression->true_list; //TAC
-        S->begin_label = &expression->jump_code[0]->label; //TAC
+        S->begin_label = expression->jump_code[0]->label; //TAC
         backpatch(statement->continue_list, S->begin_label); //TAC
         S->next_list = merge_lists(statement->break_list, S->next_list); //TAC
     }
@@ -637,6 +652,9 @@ Statement* create_jump_statement(Terminal* op) {
     }
     else if (op->name == "RETURN") {
         S->return_type.push_back(Type(PrimitiveTypes::VOID_T, 0, false));
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_RETURN), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        S->code.push_back(i1); //TAC
+        S->begin_label = i1->label; //TAC
         S->name = "JUMP STATEMENT RETURN";
     }
     S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
@@ -649,7 +667,7 @@ Statement* create_jump_statement(Identifier* identifier) {
     S->column_no = identifier->column_no;
     S->name = "JUMP STATEMENT GOTO";
     S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
-    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 0); //TAC
     if(labels.find(identifier->name) != labels.end()) {
         i1->result = labels[identifier->name]; //TAC
     }
@@ -657,7 +675,7 @@ Statement* create_jump_statement(Identifier* identifier) {
         labels_list[identifier->name].insert(i1); //TAC
     }
     S->code.push_back(i1); //TAC
-    S->begin_label = &i1->label; //TAC
+    S->begin_label = i1->label; //TAC
     return S;
 }
 
@@ -672,6 +690,9 @@ Statement* create_jump_statement(Expression* expression) {
     }
     else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_RETURN), new_empty_var(),expression->result, new_empty_var(), 0); //TAC
+        S->code.push_back(i1); //TAC
+        S->begin_label = i1->label; //TAC
     }
     return S;
 }

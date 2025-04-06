@@ -1,11 +1,11 @@
-int foo(int x){
-    int a = 0;
-    int b = 1;
-    return 0;
-}
+// int main(){
+//     int x;
+//     if(1){
+//         x++;
+//     }
+// }
 
 int main(){
-    int x = 0;
-    foo(1);
-    return 0;
+    int arr[10][2];
+    int x = arr[2][0];
 }

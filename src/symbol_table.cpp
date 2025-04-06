@@ -503,6 +503,7 @@ TypeDefinition* create_type_definition(TypeDefinition* P, StructDeclarationSet* 
                         {
                             t.is_array = true;
                             t.is_pointer = true;
+                            pointer_level++;
                             t.array_dim = d->declarator->direct_declarator->array_dimensions.size();
                             t.array_dims = d->declarator->direct_declarator->array_dimensions;
                         }
@@ -843,6 +844,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
             {
                 t.is_array = true;
                 t.is_pointer = true;
+                t.ptr_level++;
                 t.array_dim = variable->direct_declarator->array_dimensions.size();
                 t.array_dims = variable->direct_declarator->array_dimensions;
             }
@@ -1293,6 +1295,8 @@ ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, Ab
     int pointer_level = 0;
     if (ad->pointer != nullptr)
         pointer_level = ad->pointer->pointer_level;
+    if(ad->direct_abstract_declarator->is_array)
+        pointer_level++;
     P->type = Type(ds->type_index, pointer_level, ds->is_const_variable);
     return P;
 }
@@ -1305,6 +1309,8 @@ ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, De
     int pointer_level = 0;
     if (d->pointer != nullptr)
         pointer_level = d->pointer->pointer_level;
+    if(d->direct_declarator->is_array)
+        pointer_level++;
     P->type = Type(ds->type_index, pointer_level, ds->is_const_variable);
     return P;
 }
@@ -1900,8 +1906,8 @@ InitDeclarator* create_init_declarator(Declarator* d, Initializer* i)
     if (i != nullptr) {
         TACOperand* id = new_identifier(d->direct_declarator->identifier->value); // TAC
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
-        backpatch(i->assignment_expression->next_list, &i1->label); // TAC
-        backpatch(i->assignment_expression->jump_next_list, &i1->label); // TAC
+        backpatch(i->assignment_expression->next_list, i1->label); // TAC
+        backpatch(i->assignment_expression->jump_next_list, i1->label); // TAC
         P->code.insert(P->code.begin(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
         P->code.push_back(i1); // TAC
     }
@@ -2247,6 +2253,7 @@ TypeName* create_type_name(SpecifierQualifierList* sql, AbstractDeclarator* ad)
             if (dad->is_array)
             {
                 P->type.is_array = true;
+                P->type.ptr_level++;
                 P->type.array_dim = dad->array_dimensions.size();
                 P->type.array_dims.insert(P->type.array_dims.begin(), dad->array_dimensions.begin(), dad->array_dimensions.end());
             }
@@ -2442,7 +2449,7 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     }
     
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_empty_var(), new_empty_var(), new_empty_var(), 0); // TAC
-    backpatch(cs_cast->next_list, &i2->label); // TAC
+    backpatch(cs_cast->next_list, i2->label); // TAC
     fd->code.insert(fd->code.end(), cs_cast->code.begin(), cs_cast->code.end()); // TAC
     fd->code.push_back(i2); // TAC
 

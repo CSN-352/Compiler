@@ -145,7 +145,7 @@ public:
 
 class TACInstruction {
 public:
-    TACOperand label; // Unique instruction label (instruction number)
+    TACOperand* label; // Unique instruction label (instruction number)
     int flag; // if 0, then it is a normal instruction, if 1 then it is a goto instruction, if 2 then it is an if goto instruction
     TACOperator op; // Operator (e.g., ADD, SUB)
     TACOperand* arg1; // First operand (e.g., t1, a, 5)
@@ -153,6 +153,7 @@ public:
     TACOperand* result; // Result operand (e.g., t3, c)
 
     // Default constructor
+    TACInstruction() : label(nullptr), flag(0), op(TACOperator()), arg1(nullptr), arg2(nullptr), result(nullptr) {}
     TACInstruction(TACOperator op, TACOperand* result, TACOperand* arg1, TACOperand* arg2, int flag);
 };
 
@@ -170,4 +171,4 @@ void print_TAC_instruction(TACInstruction* instruction);
 
 void print_TAC();
 
-#endif 
+#endif

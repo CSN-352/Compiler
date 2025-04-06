@@ -67,7 +67,7 @@ TACOperator::TACOperator(TACOperatorType type) : type(type) {}
 //##############################################################################
 
 TACInstruction::TACInstruction(TACOperator op, TACOperand* result, TACOperand* arg1, TACOperand* arg2, int flag) {
-    this->label = *new_label(); // Default flag value
+    this->label = new_label(); // Default flag value
     this->flag = flag;
     this->op = op;
     this->result = result;
@@ -140,6 +140,7 @@ string get_operator_string(TACOperatorType op) {
     case TAC_OPERATOR_DIV: return "/";
     case TAC_OPERATOR_MOD: return "%";
     case TAC_OPERATOR_UMINUS: return "-"; // Unary minus
+    case TAC_OPERATOR_DEREF: return "*"; // Dereference operator
     case TAC_OPERATOR_EQ: return "==";
     case TAC_OPERATOR_NE: return "!=";
     case TAC_OPERATOR_GT: return ">";
@@ -163,9 +164,8 @@ string get_operator_string(TACOperatorType op) {
 
 void print_TAC_instruction(TACInstruction* instruction) {
     if (!instruction) return;
-
+    cout<<instruction->label->value << ": "; // Print the label of the instruction
     // **Jump Instructions**
-    cout<< instruction->label.value << ": "; // Print the label of the instruction
     if (instruction->flag == 1) {
         cout << "goto " << get_operand_string(*instruction->result); // may need to change depending on emit call
     }
@@ -220,6 +220,7 @@ void print_TAC_instruction(TACInstruction* instruction) {
     else if (is_assignment(instruction)) {
         if (instruction->arg2->type != TAC_OPERAND_EMPTY) {
             // Binary operation: `x = y op z`
+            if (instruction->op.type == TAC_OPERATOR_MUL)
             cout << get_operand_string(*instruction->result) << " = "
                 << get_operand_string(*instruction->arg1) << " "
                 << get_operator_string(instruction->op.type) << " "
@@ -245,7 +246,8 @@ void print_TAC() {
     cout << "===== Three-Address Code (TAC) =====" << endl;
     for (int i = 0; i < TAC_CODE.size(); ++i) {
          // Stop when we reach uninitialized entries
-        print_TAC_instruction(TAC_CODE[i]);
+        TACInstruction* instruction = TAC_CODE[i];
+        print_TAC_instruction(instruction); // Print each instruction
     }
     cout << "====================================" << endl;
 }
