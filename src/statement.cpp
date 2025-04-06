@@ -13,7 +13,8 @@ extern void yyerror(const char* msg);
 
 unordered_map<string, TACOperand*> labels; // Map to store labels and their corresponding TAC operands
 unordered_map<string, unordered_set<TACInstruction*>> labels_list; // Map to store labels and their corresponding goto instructions
-//unordered_set<TACInstruction*> switch_case; // Map to store switch case labels
+vector<TACInstruction*> switch_case; // Map to store switch case labels
+vector<TACInstruction*> cases; 
 
 // ##############################################################################
 // ################################## STATEMENT ######################################
@@ -92,6 +93,11 @@ Statement* create_labeled_statement_case(Expression* expression, Statement* stat
         L->next_list.insert(i2); //TAC
         L->continue_list = statement->continue_list; //TAC
         L->break_list = statement->break_list; //TAC
+        if(!cases.empty()){
+            (*cases.rbegin())->result = i1->label;
+        }
+        switch_case.push_back(i1);
+        cases.push_back(i2);
     }
     return L;
 }
@@ -420,6 +426,18 @@ Statement* create_selection_statement_switch(Expression* expression, Statement* 
     }
     else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
+        if(!switch_case.empty()){
+            S->code.insert(S->code.end(), expression->code.begin(), expression->code.end());
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP),(*switch_case.begin())->label , new_empty_var(), new_empty_var(),1);
+            for(auto instr: switch_case){
+                instr->arg1 = expression->result;
+            }
+            S->code.push_back(i1);
+            S->code.insert(S->code.end(), statement->code.begin(), statement->code.end());
+            S->begin_label = S->code[0]->label;
+            S->next_list = statement->next_list;
+            S->break_list = statement->break_list;
+        }
     }
     return S;
 }
@@ -642,13 +660,21 @@ Statement* create_jump_statement(Terminal* op) {
     JumpStatement* S = new JumpStatement();
     if (op->name == "CONTINUE") {
         S->name = "JUMP STATEMENT CONTINUE";
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        S->continue_list.insert(i1);
+        S->code.push_back(i1); //TAC
+        S->begin_label = i1->label;
     }
     else if (op->name == "BREAK") {
         S->name = "JUMP STATEMENT BREAK";
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        S->break_list.insert(i1);
+        S->code.push_back(i1); //TAC
+        S->begin_label = i1->label; //TAC
     }
     else if (op->name == "RETURN") {
         S->return_type.push_back(Type(PrimitiveTypes::VOID_T, 0, false));
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_RETURN), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_RETURN), new_empty_var(), new_empty_var(), new_empty_var(), 0); //TAC
         S->code.push_back(i1); //TAC
         S->begin_label = i1->label; //TAC
         S->name = "JUMP STATEMENT RETURN";

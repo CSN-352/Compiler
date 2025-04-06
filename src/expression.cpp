@@ -116,7 +116,6 @@ Expression* create_primary_expression(Expression* x) {
     P->jump_next_list = x->jump_next_list; // TAC
     P->code = x->code; // TAC
     P->jump_code = x->jump_code; // TAC
-
     return x;
 }
 
@@ -447,37 +446,31 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
         }
     }
     TACOperand* t1 = new_temp_var(); // TAC
-    TACOperand* t2 = new_temp_var(); // TAC
     P->result = new_temp_var(); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MUL), t1, index_expression->result, new_constant(to_string(P->type.get_size())), 0); // TAC
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
     backpatch(index_expression->next_list, i1->label); // TAC
-    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), t2, x->result, t1, 0); // TAC
     P->code.push_back(i1); // TAC
-    P->code.push_back(i2); // TAC
-    TACInstruction* i3;
-    TACInstruction* i4; // TAC
+    P->jump_code.push_back(i1); // TAC
     if(P->type.ptr_level == 0){
-        TACOperand* t3 = new_temp_var(); // TAC
-        i3 = emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, new_empty_var(), 0); // TAC
-        i4 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, new_empty_var(), 0); // TAC
+        TACOperand* t2 = new_temp_var(); // TAC
+        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), t2, x->result, t1, 0); // TAC
+        TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_DEREF), P->result, t2, new_empty_var(), 0); // TAC
+        P->code.push_back(i2); // TAC
+        P->jump_code.push_back(i2); // TAC
         P->code.push_back(i3); // TAC
-        P->code.push_back(i4); // TAC
+        P->jump_code.push_back(i3); // TAC
     }
-    else{
-        TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t2, new_empty_var(), 0); // TAC
-        P->code.push_back(i3); // TAC
+    else {
+        TACInstruction* i2 = emit(TAC_OPERATOR_ADD, P->result, x->result, t1, 0); // TAC
+        P->code.push_back(i2); // TAC
+        P->jump_code.push_back(i2); // TAC
     }
-
     TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->true_list.insert(i5); // TAC
     P->false_list.insert(i6); // TAC
-    P->jump_code.push_back(i1); // TAC
-    P->jump_code.push_back(i2); // TAC
-    P->jump_code.push_back(i3); // TAC
-    if(P->type.ptr_level == 0)P->jump_code.push_back(i4); // TAC
     P->jump_code.push_back(i5); // TAC
     P->jump_code.push_back(i6); // TAC
     P->type.is_const_literal = false;
@@ -1533,8 +1526,6 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         return A;
     }
     A->type.is_const_literal = false;
-    debug("printing expression in additive expression class");
-    print_code_vector(A->code);
 
     return A;
 }
@@ -3445,5 +3436,7 @@ ExpressionList* create_expression_list(ExpressionList* expression_list, Expressi
         expression_list->type = ERROR_TYPE;
         return expression_list;
     }
+    debug("expression: ");
+    print_code_vector(expression_list->code); // TAC
     return expression_list;
 }

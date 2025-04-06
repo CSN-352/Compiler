@@ -2,6 +2,8 @@
 #include "symbol_table.h"
 #include <stdio.h>
 #include <iostream>
+#include <map>
+#include <string>
 using namespace std;
 
 void yyerror(const char *msg);
@@ -128,9 +130,11 @@ string get_operand_string(TACOperand* operand) {
     if(operand == nullptr) return ""; // Handle null operand case
     if (operand->type == TAC_OPERAND_TEMP_VAR ||
         operand->type == TAC_OPERAND_IDENTIFIER ||
-        operand->type == TAC_OPERAND_CONSTANT ||
-        operand->type == TAC_OPERAND_LABEL) {
+        operand->type == TAC_OPERAND_CONSTANT) {
         return operand->value;  // Directly return the operand value
+    }
+    else if(operand->type == TAC_OPERAND_LABEL){
+        return "I" + operand->value;
     }
     else if (operand->type == TAC_OPERAND_POINTER) {
         return "*" + operand->value;  // Pointer notation (e->g->, *x)
@@ -179,7 +183,7 @@ string get_operator_string(TACOperatorType op) {
 
 void print_TAC_instruction(TACInstruction* instruction) {
     if (!instruction) return;
-    cout<<instruction->label->value << ": "; // Print the label of the instruction
+    if(instruction->label->type == TAC_OPERAND_LABEL) cout<<instruction->label->value << ": "; // Print the label of the instruction
     // **Jump Instructions**
     if (instruction->flag == 1) {
         cout << "goto " << get_operand_string(instruction->result); // may need to change depending on emit call
@@ -193,7 +197,7 @@ void print_TAC_instruction(TACInstruction* instruction) {
     // **Function Instructions**
     else if(instruction->op.type == TAC_OPERATOR_CAST) {
         cout << get_operand_string(instruction->result) << " = "
-        << get_operator_string(instruction->op.type) << " "
+        << get_operator_string(instruction->op.type) 
                 << "(" << get_operand_string(instruction->arg1) << ")"
                 << get_operand_string(instruction->arg2) ;
     }
@@ -282,4 +286,60 @@ void print_code_vector(vector<TACInstruction*>& code) {
         print_TAC_instruction(instruction); // Print each instruction
     }
     cout << "====================================" << endl;
+}
+
+void fix_labels_temps(){
+    map<string,int> labels;
+    int label_ct = 1;
+
+    for(int i=0;i<TAC_CODE.size();i++){
+        if(TAC_CODE[i]->label->type == TAC_OPERAND_LABEL && TAC_CODE[i]->label->value != ""){
+            if(labels.find(TAC_CODE[i]->label->value) == labels.end()){
+                labels[TAC_CODE[i]->label->value] = label_ct;
+                label_ct++;
+            }
+        }
+    }
+
+    map<string,int> temps;
+    int temp_ct = 1;
+    for(int i=0;i<TAC_CODE.size();i++){
+        // if(TAC_CODE[i]->result->type == TAC_OPERAND_TEMP_VAR && TAC_CODE[i]->result->value != ""){
+        //     if(temps.find(TAC_CODE[i]->result->value) == temps.end()){
+        //         temps[TAC_CODE[i]->result->value] = temp_ct;
+        //         temp_ct++;
+        //     }
+        // }
+        // if(TAC_CODE[i]->arg1->type == TAC_OPERAND_TEMP_VAR && TAC_CODE[i]->arg1->value != ""){
+        //     if(temps.find(TAC_CODE[i]->arg1->value) == temps.end()){
+        //         temps[TAC_CODE[i]->arg1->value] = temp_ct;
+        //         temp_ct++;
+        //     }
+        // }
+        // if(TAC_CODE[i]->arg2->type == TAC_OPERAND_TEMP_VAR && TAC_CODE[i]->arg2->value != ""){
+        //     if(temps.find(TAC_CODE[i]->arg2->value) == temps.end()){
+        //         temps[TAC_CODE[i]->arg2->value] = temp_ct;
+        //         temp_ct++;
+        //     }
+        // }
+    }
+
+    for(int i=0;i<TAC_CODE.size();i++){
+        if(TAC_CODE[i]->label->type == TAC_OPERAND_LABEL && TAC_CODE[i]->label->value != ""){
+            TAC_CODE[i]->label->value = to_string(labels[TAC_CODE[i]->label->value]);
+        }
+        // if(TAC_CODE[i]->result->type == TAC_OPERAND_LABEL && TAC_CODE[i]->result->value != ""){
+        //     TAC_CODE[i]->result->value = to_string(labels[TAC_CODE[i]->result->value]);
+        // }
+        // if(TAC_CODE[i]->result->type == TAC_OPERAND_TEMP_VAR && TAC_CODE[i]->result->value != ""){
+        //     TAC_CODE[i]->result->value = "t" + to_string(temps[TAC_CODE[i]->result->value]);
+        // }
+        // if(TAC_CODE[i]->arg1->type == TAC_OPERAND_TEMP_VAR && TAC_CODE[i]->arg1->value != ""){
+        //     TAC_CODE[i]->arg1->value = "t" + to_string(temps[TAC_CODE[i]->arg1->value]);
+        // }
+        // if(TAC_CODE[i]->arg2->type == TAC_OPERAND_TEMP_VAR && TAC_CODE[i]->arg2->value != ""){
+        //     TAC_CODE[i]->arg2->value = "t" + to_string(temps[TAC_CODE[i]->arg2->value]);
+        // }
+    }
+    // cout<<labels["22"]<<endl;
 }

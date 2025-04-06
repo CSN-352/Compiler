@@ -12,6 +12,7 @@
 // External declarations 
 extern "C" int yylex();
 extern int yyparse();
+extern void fix_labels_temps();
 extern void print_TAC();
 extern int yylineno;
 extern YYSTYPE yylval;
@@ -767,6 +768,7 @@ int main(int argc, char **argv) {
     symbolTable.print_defined_types();
     symbolTable.print_typedefs();
     symbolTable.print();
+    fix_labels_temps();
     print_TAC();
     // if(!has_error)printParseSymbolTable();
     printf("Parsing completed successfully.\n");

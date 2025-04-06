@@ -172,4 +172,6 @@ void print_TAC_instruction(TACInstruction* instruction);
 
 void print_TAC();
 
+void fix_labels_temps();
+
 #endif

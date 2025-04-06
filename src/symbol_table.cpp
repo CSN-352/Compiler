@@ -2499,6 +2499,7 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_empty_var(), new_empty_var(), new_empty_var(), 0); // TAC
     backpatch(cs_cast->next_list, i2->label); // TAC
+    backpatch(cs_cast->break_list, i2->label);
     fd->code.insert(fd->code.end(), cs_cast->code.begin(), cs_cast->code.end()); // TAC
     fd->code.push_back(i2); // TAC
 
