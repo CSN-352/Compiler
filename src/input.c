@@ -7,5 +7,5 @@
 
 int main(){
     int arr[10][2];
-    int x = arr[2][0];
+    int* x = arr[2][1];
 }
