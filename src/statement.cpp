@@ -309,9 +309,9 @@ Statement* create_expression_statement(Expression* x) {
         S->code = x->code; //TAC
         S->jump_code = x->jump_code; //TAC
         S->next_list = x->next_list; //TAC
-        for(TACInstruction* i : S->jump_code) {
-            print_TAC_instruction(i); // Print the instruction for debugging
-        }
+        // for(TACInstruction* i : S->jump_code) {
+        //     print_TAC_instruction(i); // Print the instruction for debugging
+        // }
         if (!x->code.empty()) {
             S->begin_label = x->code[0]->label; //TAC
         }
