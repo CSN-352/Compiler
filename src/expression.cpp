@@ -13,7 +13,8 @@
 #include <iterator>
 #include <string.h>
 extern void yyerror(const char* msg);
-
+// extern void print_code_vector(vector<TACInstruction*>& v);
+extern void print_code_vector(vector<TACInstruction*>& v);
 using namespace std;
 Type ERROR_TYPE;
 
@@ -1503,6 +1504,9 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         return A;
     }
     A->type.is_const_literal = false;
+    debug("printing expression in additive expression class");
+    print_code_vector(A->code);
+
     return A;
 }
 

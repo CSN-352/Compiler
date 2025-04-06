@@ -220,7 +220,6 @@ void print_TAC_instruction(TACInstruction* instruction) {
     else if (is_assignment(instruction)) {
         if (instruction->arg2->type != TAC_OPERAND_EMPTY) {
             // Binary operation: `x = y op z`
-            if (instruction->op.type == TAC_OPERATOR_MUL)
             cout << get_operand_string(*instruction->result) << " = "
                 << get_operand_string(*instruction->arg1) << " "
                 << get_operator_string(instruction->op.type) << " "
@@ -252,3 +251,13 @@ void print_TAC() {
     cout << "====================================" << endl;
 }
 
+
+void print_code_vector(vector<TACInstruction*>& code) {
+    cout << "===== Three-Address Code (TAC) intermediate =====" << endl;
+    for (int i = 0; i < code.size(); ++i) {
+         // Stop when we reach uninitialized entries
+        TACInstruction* instruction = code[i];
+        print_TAC_instruction(instruction); // Print each instruction
+    }
+    cout << "====================================" << endl;
+}
