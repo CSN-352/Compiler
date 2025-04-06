@@ -851,71 +851,72 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
     P->declaration_specifiers = declaration_specifiers;
     P->init_declarator_list = init_declarator_list;
 
-    if (init_declarator_list != nullptr)
+    if (init_declarator_list == nullptr)
     {
-        for (int index = 0; index < init_declarator_list->init_declarator_list.size(); index++)
+        return P;
+    }
+    for (int index = 0; index < init_declarator_list->init_declarator_list.size(); index++)
+    {
+        Declarator* variable = init_declarator_list->init_declarator_list[index]->declarator;
+        int ptr_level = 0;
+        int overloaded = 0;
+        if (variable->pointer != nullptr)
+            ptr_level = variable->pointer->pointer_level;
+        Type t;
+        if (declaration_specifiers->is_type_name)
         {
-            Declarator* variable = init_declarator_list->init_declarator_list[index]->declarator;
-            int ptr_level = 0;
-            int overloaded = 0;
-            if (variable->pointer != nullptr)
-                ptr_level = variable->pointer->pointer_level;
-            Type t;
-            if (declaration_specifiers->is_type_name)
-            {
-                t = symbolTable.getTypedef(declaration_specifiers->type_specifiers[0]->type_name)->type;
-                t.ptr_level += ptr_level;
-                if (t.ptr_level > 0)
-                    t.is_pointer = true;
-                if (P->declaration_specifiers->is_const_variable)
-                    t.is_const_variable = true;
-            }
-            else
-                t = Type(P->declaration_specifiers->type_index, ptr_level, P->declaration_specifiers->is_const_variable);
-            if (variable->direct_declarator->is_array)
-            {
-                t.is_array = true;
+            t = symbolTable.getTypedef(declaration_specifiers->type_specifiers[0]->type_name)->type;
+            t.ptr_level += ptr_level;
+            if (t.ptr_level > 0)
                 t.is_pointer = true;
-                t.ptr_level++;
-                t.array_dim = variable->direct_declarator->array_dimensions.size();
-                t.array_dims = variable->direct_declarator->array_dimensions;
-            }
-            else if (variable->direct_declarator->is_function)
+            if (P->declaration_specifiers->is_const_variable)
+                t.is_const_variable = true;
+        }
+        else
+            t = Type(P->declaration_specifiers->type_index, ptr_level, P->declaration_specifiers->is_const_variable);
+        if (variable->direct_declarator->is_array)
+        {
+            t.is_array = true;
+            t.is_pointer = true;
+            t.ptr_level++;
+            t.array_dim = variable->direct_declarator->array_dimensions.size();
+            t.array_dims = variable->direct_declarator->array_dimensions;
+        }
+        else if (variable->direct_declarator->is_function)
+        {
+            t.is_function = true;
+            t.num_args = variable->direct_declarator->parameters->paramater_list->parameter_declarations.size();
+            for (int i = 0; i < t.num_args; i++)
+                t.arg_types.push_back(variable->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
+            overloaded = 1;
+        }
+        else if (!t.isPrimitive()) {
+            t.is_defined_type = true;
+            if (declaration_specifiers->type_specifiers[0]->struct_union_specifier != nullptr)t.defined_type_name = declaration_specifiers->type_specifiers[0]->struct_union_specifier->identifier->value;
+            else if (declaration_specifiers->type_specifiers[0]->class_specifier != nullptr)t.defined_type_name = declaration_specifiers->type_specifiers[0]->class_specifier->identifier->value;
+        }
+        // if (ptr_level == 0 && declaration_specifiers->type_index == 13)
+        // {
+        //     string error_msg = "Variable of field '" + variable->direct_declarator->identifier->value + "' declared void at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
+        //     yyerror(error_msg.c_str());
+        //     symbolTable.set_error();
+        //     return P;
+        // }
+        if (init_declarator_list->init_declarator_list[index]->initializer != nullptr)
+        {
+            bool compatible = init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.is_convertible_to(t);
+            if (!compatible)
             {
-                t.is_function = true;
-                t.num_args = variable->direct_declarator->parameters->paramater_list->parameter_declarations.size();
-                for (int i = 0; i < t.num_args; i++)
-                    t.arg_types.push_back(variable->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
-                overloaded = 1;
+                string error_msg = "Incompatible types while initializing variable '" + variable->direct_declarator->identifier->value + "' at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return P;
             }
-            else if (!t.isPrimitive()) {
-                t.is_defined_type = true;
-                if (declaration_specifiers->type_specifiers[0]->struct_union_specifier != nullptr)t.defined_type_name = declaration_specifiers->type_specifiers[0]->struct_union_specifier->identifier->value;
-                else if (declaration_specifiers->type_specifiers[0]->class_specifier != nullptr)t.defined_type_name = declaration_specifiers->type_specifiers[0]->class_specifier->identifier->value;
-            }
-            // if (ptr_level == 0 && declaration_specifiers->type_index == 13)
-            // {
-            //     string error_msg = "Variable of field '" + variable->direct_declarator->identifier->value + "' declared void at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
-            //     yyerror(error_msg.c_str());
-            //     symbolTable.set_error();
-            //     return P;
-            // }
-            if (init_declarator_list->init_declarator_list[index]->initializer != nullptr)
-            {
-                bool compatible = init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.is_convertible_to(t);
-                if (!compatible)
-                {
-                    string error_msg = "Incompatible types while initializing variable '" + variable->direct_declarator->identifier->value + "' at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
-                    yyerror(error_msg.c_str());
-                    symbolTable.set_error();
-                    return P;
-                }
-            }
-            if (declaration_specifiers->is_typedef)
-                symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
-            else {
-                symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
-            }
+        }
+        if (declaration_specifiers->is_typedef)
+            symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
+        else {
+            symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
         }
     }
     return P;
@@ -971,7 +972,12 @@ IdentifierList* create_identifier_list(IdentifierList* il, Identifier* i)
 // ################################## DECLARATION SPECIFIERS ######################################
 // ##############################################################################
 
-DeclarationSpecifiers::DeclarationSpecifiers() : NonTerminal("DECLARATION SPECIFIERS") {}
+DeclarationSpecifiers::DeclarationSpecifiers() : NonTerminal("DECLARATION SPECIFIERS") {
+    is_const_variable = false;
+    is_typedef = false;
+    is_type_name = false;
+    type_index = PrimitiveTypes::TYPE_ERROR_T;
+}
 
 void DeclarationSpecifiers::set_type()
 {
@@ -1317,6 +1323,7 @@ ParameterDeclaration::ParameterDeclaration() : NonTerminal("PARAMETER DECLARATIO
     declarations_specifiers = nullptr;
     abstract_declarator = nullptr;
     declarator = nullptr;
+    type = Type();
 }
 
 ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, AbstractDeclarator* ad)
@@ -2029,8 +2036,7 @@ SpecifierQualifierList::SpecifierQualifierList() : NonTerminal("SPECIFIER QUALIF
 {
     is_type_name = false;
     is_const_variable = false;
-    type_index = -1;
-    is_type_name = false;
+    type_index = PrimitiveTypes::TYPE_ERROR_T;
 }
 
 void SpecifierQualifierList::set_type()
@@ -2258,6 +2264,7 @@ TypeName::TypeName() : NonTerminal("TYPE NAME")
 {
     specifier_qualifier_list = nullptr;
     abstract_declarator = nullptr;
+    type = Type();
 }
 
 TypeName* create_type_name(SpecifierQualifierList* sql, AbstractDeclarator* ad)
@@ -2647,6 +2654,7 @@ StringLiteral::StringLiteral(string value, unsigned int line_no, unsigned int co
 SymbolTable::SymbolTable()
 {
     currentScope = 0;
+    error = false;
 }
 
 void SymbolTable::enterScope(Type type, string name)
