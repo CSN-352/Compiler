@@ -60,7 +60,6 @@ Expression* create_primary_expression(Identifier* i) {
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->true_list.insert(i1);
     P->false_list.insert(i2);
-    P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     return P;
@@ -82,7 +81,6 @@ Expression* create_primary_expression(Constant* x) {
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->true_list.insert(i1);
     P->false_list.insert(i2);
-    P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     return P;
@@ -95,14 +93,11 @@ Expression* create_primary_expression(StringLiteral* x) {
     P->column_no = x->column_no;
     P->string_literal = x;
     P->type = Type(CHAR_T, 1, true);
-    P->result = new_temp_var(); // TAC
-    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), P->result, new_constant(x->value), new_empty_var(), 0); // TAC
-    P->code.push_back(i0); // TAC
+    P->result = new_constant(x->value); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->true_list.insert(i1);
     P->false_list.insert(i2);
-    P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     return P;
