@@ -325,8 +325,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
     }
     else if (!symbolTable.check_member_variable(x->type.defined_type_name, id->value)) {
         P->type = ERROR_TYPE;
-        string error_msg = "Defined_Type does not have member_variable with name " + id->value + to_string(op->line_no) + ", column " + to_string(op->column_no);
-        yyerror(error_msg.c_str());
+        // string error_msg = "Defined_Type does not have member_variable with name " + id->value + to_string(op->line_no) + ", column " + to_string(op->column_no);
+        // yyerror(error_msg.c_str());
         symbolTable.set_error();
         return P;
     }
@@ -573,7 +573,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
         }
     }
     P->type.is_const_literal = false;
-    print_code_vector(P->code);
+    // print_code_vector(P->code);
     return P;
 }
 
@@ -3444,7 +3444,7 @@ ExpressionList* create_expression_list(ExpressionList* expression_list, Expressi
         expression_list->type = ERROR_TYPE;
         return expression_list;
     }
-    debug("expression: ");
-    print_code_vector(expression_list->code); // TAC
+    // debug("expression: ");
+    // print_code_vector(expression_list->code); // TAC
     return expression_list;
 }

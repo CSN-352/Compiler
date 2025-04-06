@@ -116,6 +116,7 @@ void handleMultilineComment(const char* text, int length) {
 }
 
 void debug_global_symbol_table() {
+#ifdef DJ
     debug("\n========================================", MAGENTA);
     debug("DEBUG: Global Symbol Table Snapshot", MAGENTA);
     debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no) + ", Scope: " + to_string(symbolTable.currentScope) , CYAN);
@@ -126,9 +127,11 @@ void debug_global_symbol_table() {
 
     debug("\n✅ End of Global Symbol Table Snapshot", MAGENTA);
     debug("========================================\n", MAGENTA);
+#endif
 }
 
 void debug_local_symbol_table() {
+#ifdef DJ
     debug("\n========================================", MAGENTA);
     debug("DEBUG: Local Symbol Table Snapshot", MAGENTA);
     debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no) + ", Scope: " + to_string(symbolTable.currentScope) , CYAN);
@@ -182,6 +185,7 @@ void debug_local_symbol_table() {
 
     debug("\n✅ End of Local Symbol Table Snapshot", MAGENTA);
     debug("========================================\n", MAGENTA);
+#endif
 }
 
 

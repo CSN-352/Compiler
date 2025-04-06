@@ -1570,7 +1570,7 @@ StructUnionSpecifier* create_struct_union_specifier(StructUnionSpecifier* sus, S
     {
         td = create_type_definition(td, sds);
         dt->type_definition = td;
-        td->type_symbol_table.print();
+        // td->type_symbol_table.print();
         // TypeDefinition *td;
         // DefinedTypes dt = DefinedTypes(sus->type_category, td);
         // dt.defined_type_name = id->value;

@@ -30,6 +30,8 @@ for test_file in $test_files; do
     output_txt="$OUTPUT_DIR/${relative_path%.c}.txt"
     output_err="$OUTPUT_DIR/${relative_path%.c}.err"
 
+    rm -f "$output_txt" "$output_err"
+
     # Ensure subdirectories exist
     mkdir -p "$(dirname "$output_txt")"
 
