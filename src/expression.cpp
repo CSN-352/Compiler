@@ -3077,7 +3077,10 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
     A->line_no = left->line_no;
     A->column_no = left->column_no;
     A->name = "ASSIGNMENT EXPRESSION";
-
+    A->code.insert(A->code.begin(), left->code.begin(), left->code.end()); // TAC
+    A->code.insert(A->code.end(), right->code.begin(), right->code.end()); // TAC
+    A->jump_code.insert(A->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
+    A->jump_code.insert(A->jump_code.end(), right->code.begin(), right->code.end()); // TAC
 
     if (left->type.is_error() || right->type.is_error()) {
         A->type = ERROR_TYPE;

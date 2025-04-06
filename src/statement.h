@@ -146,10 +146,8 @@ Statement* create_iteration_statement_until(Expression* expression, Statement* s
 struct ForIterationStruct {
     Declaration* declaration;
     Statement* statement1;
-    ForIterationStruct(Declaration* declaration, Statement* statement1) {
-        this->declaration = declaration;
-        this->statement1 = statement1;
-    }
+    ForIterationStruct(Declaration* declaration, Statement* statement1)
+        : declaration(declaration), statement1(statement1) {}
 };
 
 // ##############################################################################

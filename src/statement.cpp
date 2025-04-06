@@ -313,7 +313,7 @@ Statement* create_expression_statement(Expression* x) {
         S->code = x->code; //TAC
         S->jump_code = x->jump_code; //TAC
         S->next_list = x->next_list; //TAC
-        for(TACInstruction* i : x->jump_code) {
+        for(TACInstruction* i : S->jump_code) {
             print_TAC_instruction(i); // Print the instruction for debugging
         }
         if (!x->code.empty()) {
@@ -533,6 +533,10 @@ Statement* create_iteration_statement_for(Statement* statement1, Statement* stat
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
         S->code = statement1->code; //TAC
         ExpressionStatement* exp = dynamic_cast<ExpressionStatement*>(statement2);
+        cout<<"Expression Statement: " << endl;
+        for(auto i : exp->jump_code) {
+            print_TAC_instruction(i); // Print the instruction for debugging
+        }
         S->code.insert(S->code.end(), exp->jump_code.begin(), exp->jump_code.end()); //TAC
         backpatch(statement1->next_list, exp->jump_code[0]->label); //TAC
         backpatch(exp->expression->true_list, statement3->begin_label); //TAC
@@ -557,6 +561,7 @@ Statement* create_iteration_statement_for(Statement* statement1, Statement* stat
 }
 
 Statement* create_iteration_statement_for_dec(ForIterationStruct* fis, Expression* expression, Statement* statement2) {
+    cout<<"INSIDE FOR DEC" << endl;
     Declaration* declaration = fis->declaration;
     Statement* statement1 = fis->statement1;
     IterationStatement* S = new IterationStatement();
@@ -566,17 +571,21 @@ Statement* create_iteration_statement_for_dec(ForIterationStruct* fis, Expressio
 
     if (statement1->type == ERROR_TYPE || statement2->type == ERROR_TYPE) {
         S->type = ERROR_TYPE;
+        return S;
     }
     else if (expression != nullptr) {
         if (expression->type == ERROR_TYPE) {
             S->type = ERROR_TYPE;
+            return S;
         }
+        
     }
     else if (!expression->type.isIntorFloat()) {
         S->type = ERROR_TYPE;
         string error_msg = "Condition of for statement must be an integerorfloat at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
+        return S;
     }
     else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
@@ -584,6 +593,10 @@ Statement* create_iteration_statement_for_dec(ForIterationStruct* fis, Expressio
             if (id->initializer != nullptr) S->code.insert(S->code.end(), id->code.begin(), id->code.end()); //TAC
         }
         ExpressionStatement* exp = dynamic_cast<ExpressionStatement*>(statement1);
+        cout<<"Expression Statement: " << endl;
+        for(auto i : exp->jump_code) {
+            print_TAC_instruction(i); // Print the instruction for debugging
+        }
         S->code.insert(S->code.end(), exp->jump_code.begin(), exp->jump_code.end()); //TAC
         backpatch(exp->expression->true_list, statement2->begin_label); //TAC
         S->code.insert(S->code.end(), statement2->code.begin(), statement2->code.end()); //TAC
