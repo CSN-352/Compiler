@@ -1890,6 +1890,24 @@ EnumeratorList::EnumeratorList() : NonTerminal("ENUMERATOR LIST") {}
 EnumeratorList* create_enumerator_list(Enumerator* e)
 {
     EnumeratorList* P = new EnumeratorList();
+    TACOperand* id = new_identifier(e->identifier->value); // TAC
+    TACOperand* t1 = new_temp_var();
+    if(e->initializer_expression == nullptr){
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant("0"), new_empty_var(), 0); // TAC
+        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+        P->last_constant_value = "0"; // TAC
+        P->code.push_back(i1); // TAC
+        P->code.push_back(i2); // TAC
+    }
+    else{
+        string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(value), new_empty_var(), 0); // TAC
+        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+        P->last_constant_value = value; // TAC
+        P->code.push_back(i1); // TAC
+        P->code.push_back(i2); // TAC
+        backpatch(e->initializer_expression->next_list, i1->label); // TAC
+    }
     P->enumerator_list.push_back(e);
     return P;
 }
@@ -1897,6 +1915,24 @@ EnumeratorList* create_enumerator_list(Enumerator* e)
 EnumeratorList* create_enumerator_list(EnumeratorList* el, Enumerator* e)
 {
     el->enumerator_list.push_back(e);
+    TACOperand* id = new_identifier(e->identifier->value); // TAC
+    TACOperand* t1 = new_temp_var();
+    if(e->initializer_expression == nullptr){
+        el->last_constant_value = to_string(stoi(el->last_constant_value)+1); // TAC
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(el->last_constant_value), new_empty_var(), 0); // TAC
+        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+        el->code.push_back(i1); // TAC
+        el->code.push_back(i2); // TAC
+    }
+    else{
+        string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(value), new_empty_var(), 0); // TAC
+        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+        el->last_constant_value = value; // TAC
+        el->code.push_back(i1); // TAC
+        el->code.push_back(i2); // TAC
+        backpatch(e->initializer_expression->next_list, i1->label); // TAC
+    }
     return el;
 }
 
@@ -2387,8 +2423,14 @@ ExternalDeclaration* create_external_declaration(Declaration* d)
     ExternalDeclaration* P = new ExternalDeclaration();
     P->declaration = d;
     if(d->init_declarator_list != nullptr){
-    for (auto id : d->init_declarator_list->init_declarator_list) {
-        if (id->initializer != nullptr) TAC_CODE.insert(TAC_CODE.end(), id->code.begin(), id->code.end()); //TAC
+        for (auto id : d->init_declarator_list->init_declarator_list) {
+            if (id->initializer != nullptr) TAC_CODE.insert(TAC_CODE.end(), id->code.begin(), id->code.end()); //TAC
+            }
+    }
+    else{
+        if(d->declaration_specifiers->type_specifiers[0]->enum_specifier != nullptr){
+            auto el = d->declaration_specifiers->type_specifiers[0]->enum_specifier->enumerators;
+            TAC_CODE.insert(TAC_CODE.end(), el->code.begin(), el->code.end()); //TAC
         }
     }
     return P;

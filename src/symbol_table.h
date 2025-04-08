@@ -812,6 +812,8 @@ class EnumeratorList : public NonTerminal
     // Fully Implemented
 public:
     vector<Enumerator*> enumerator_list;
+    vector<TACInstruction*> code;
+    string last_constant_value;
     EnumeratorList();
 };
 EnumeratorList* create_enumerator_list(Enumerator* e);
