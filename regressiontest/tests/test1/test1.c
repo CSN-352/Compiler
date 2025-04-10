@@ -1,0 +1,149 @@
+// int func(int x){
+//     int y = 1;
+    
+//     return 0;
+// }
+
+
+// int main(){
+//     int x = 1;
+//     int y = 2;
+//     func(x);
+//     return 2;
+// }
+
+// int func(int x){
+//     int a = 1+2;
+//     return a+2;
+// }
+
+// struct A {
+//     int x;
+//     int y;
+// };
+
+// int main(){
+//     struct A a;
+//     a.x = 10;
+//     a.y = 5;
+//     return 1;
+// }
+
+// int main(){
+//     int x = 1;
+//     goto L1;
+//     x=3;
+//     L1 : x = 2;
+//     return 0;
+// }
+
+// int main(){
+//     int x = 1;
+//     int y = 2;
+//     int z = x + y++;
+// }
+
+// int main(){
+//     int a[5];
+//     int b[1][2];
+//     int x = a[0];
+//     int y = b[0][1];
+// }
+
+// class A{
+// public:
+//     int x;
+//     int func(){
+//         x=1;
+//         return 0;
+//     }
+// };
+
+// int main(){
+//     class A a;
+//     a.x = 1;
+//     a.func();
+//     return 0;
+// }
+
+// int main(){
+//     int x=1;
+//     int y=2;
+//     int z=x+y;
+//     z++;
+// }
+
+// int main(int argc, char *argv[5])
+// {
+//     for (int i = 1; i < argc; i++)
+//     {
+//         //printf("Argument %d: %s\n", i, argv[i]);
+//         for (int j = 0; argv[i][j] != '\0'; j++)
+//         {
+//             i++;
+//         }
+//     }
+//     return 0;
+// }
+
+// char c = 'a';
+// char d = '_';
+// char e = '\r';
+
+// int arr[10];
+// int x = arr[5];
+
+// int arr1[10][20];
+// int y = arr1[5][10];
+
+// double main() {
+//     int a = 10, b = 5;
+//     int sum = (a + b);
+//     int diff = a - b;
+//     int prod = a * b;
+//     int quot = a / b;
+//     int mod = a % b;
+//     int result = (((a > b) && (b < 15)) || !(a == b));
+//     int complea = (a + b) * (a - b) / 2;
+//     int logic = (a > b) && (b != 0) || (a < 50);
+//     float c = 5.5, d = 2.2;
+//     float f_prod = c * d;
+//     float f_quot = c / d;
+//     char ch = 'A';
+//     char next_ch = ch + 1;
+    // breakpoint;
+    // breakpoint_global;
+//}
+
+// // Passing
+// int x;
+
+// double main() {
+//     int a = 10, b = 5;
+//     int sum = (a + b);
+//     int diff = a - b;
+//     int prod = a * b;
+//     int quot = a / b;
+//     int mod = a % b;
+//     int result = (((a > b) && (b < 15)) || !(a == b));
+//     int complea = (a + b) * (a - b) / 2;
+//     int logic = (a > b) && (b != 0) || (a < 50);
+//     float c = 5.5, d = 2.2;
+//     float f_prod = c * d;
+//     float f_quot = c / d;
+//     char ch = 'A';
+//     char next_ch = ch + 1;
+//     // breakpoint;
+//     // breakpoint_global;
+// }
+
+// int y;
+
+int main(){
+    int a = 10;
+    int b = 5;
+    int c = 0;
+    if((a<b)||(a<c)){
+        a++;
+    }
+}
