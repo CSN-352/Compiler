@@ -262,9 +262,10 @@ public:
     Type type;
     int scope;
     int offset;
+    string mangled_name;
     FunctionDefinition* function_definition;
 
-    Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o) {
+    Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o), mangled_name(n){
         function_definition = nullptr;
     }
 };

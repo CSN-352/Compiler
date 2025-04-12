@@ -115,10 +115,39 @@
     // breakpoint_global;
 //}
 
-int main() {
-    // Write C code here
-    int x=1;
-    int y=2;
-    int z=(x + y++)*x;
-    return 0;
+// int main() {
+//     // Write C code here
+//     int x=1;
+//     int y=2;
+//     int z=(x + y++)*x;
+//     return 0;
+// }
+
+// int add(int a, int b) {
+//     breakpoint_global;
+//     return a + b;
+// }
+
+// int add(int a, int b, int c) {
+//     return a + b + c;
+// }
+
+// int add(float a, float b){
+//     breakpoint;
+//     return a + b;
+// }
+
+int main(){
+    int x;
+    label1:
+    for (int i = 0; i < 5; i++) {
+        // if (i == 2) continue;
+        if (i == 4) break;
+        //printf("%d ", i);
+    }
+    goto label;
+    label: x = 1;
+    //printf("Jumped here\n");
+    // goto label1;
 }
+

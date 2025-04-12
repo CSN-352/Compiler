@@ -5,7 +5,7 @@
 #include "symbol_table.h"
 #include "ast.h"
 #include "tac.h"
-using namespace std;
+using namespace std; 
 
 class Expression;
 class PrimaryExpression;
@@ -32,6 +32,8 @@ public:
     unordered_set<TACInstruction*> true_list; // List of true instructions (for conditional jumps)
     unordered_set<TACInstruction*> false_list; // List of false instructions (for conditional jumps)
     unordered_set<TACInstruction*> next_list; // List of next instructions (for jumps) (conditional expressions)
+    unordered_set<TACInstruction*> jump_true_list; // List of true instructions (for conditional jumps) (conditional expressions)
+    unordered_set<TACInstruction*> jump_false_list; // List of false instructions (for conditional jumps) (conditional expressions)
     unordered_set<TACInstruction*> jump_next_list; // List of break instructions (for loops)
     vector<TACInstruction*> code; // List of instructions for the expression
     vector<TACInstruction*> jump_code; // List of instructions for the expression if it is part of a jump/selection/iteration statement

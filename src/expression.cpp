@@ -1,7 +1,7 @@
 #include "symbol_table.h"
 #include "ast.h"
 #include "expression.h"
-#include "tac.h"
+#include "tac.h" 
 #include <algorithm>
 #include <assert.h>
 #include <iostream>
@@ -54,12 +54,12 @@ Expression* create_primary_expression(Identifier* i) {
         return P;
     }
     P->result = new_temp_var(); // TAC
-    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_NOP),P->result,new_identifier(i->value), new_empty_var(), 0); // TAC
+    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_NOP),P->result,new_identifier(sym->mangled_name), new_empty_var(), 0); // TAC
     P->code.push_back(i0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-    P->true_list.insert(i1);
-    P->false_list.insert(i2);
+    P->jump_true_list.insert(i1);
+    P->jump_false_list.insert(i2);
     P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
@@ -77,8 +77,8 @@ Expression* create_primary_expression(Constant* x) {
     P->result = new_constant(x->value); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-    P->true_list.insert(i1);
-    P->false_list.insert(i2);
+    P->jump_true_list.insert(i1);
+    P->jump_false_list.insert(i2);
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     return P;
@@ -95,8 +95,8 @@ Expression* create_primary_expression(StringLiteral* x) {
     TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), P->result, new_string(x->value), new_empty_var(), 0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-    P->true_list.insert(i1);
-    P->false_list.insert(i2);
+    P->jump_true_list.insert(i1);
+    P->jump_false_list.insert(i2);
     P->code.push_back(i0); // TAC
     P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
@@ -112,6 +112,8 @@ Expression* create_primary_expression(Expression* x) {
     P->result = x->result; // TAC
     P->true_list = x->true_list; // TAC
     P->false_list = x->false_list; // TAC
+    P->jump_false_list = x->jump_false_list; // TAC
+    P->jump_true_list = x->jump_true_list; // TAC
     P->next_list = x->next_list; // TAC
     P->jump_next_list = x->jump_next_list; // TAC
     P->code = x->code; // TAC
@@ -137,6 +139,10 @@ ArgumentExpressionList* create_argument_expression_list(Expression* x) {
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_PARAM), new_empty_var(), x->result, new_empty_var(), 0); // TAC
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
+    backpatch(x->true_list, i1->label); // TAC
+    backpatch(x->false_list, i1->label); // TAC
+    backpatch(x->jump_true_list, i1->label); // TAC
+    backpatch(x->jump_false_list, i1->label); // TAC
     P->type.is_const_literal = false;
     P->code.insert(P->code.end(), x->code.begin(), x->code.end());
     P->code.push_back(i1); // TAC
@@ -151,6 +157,10 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_PARAM), new_empty_var(), x->result, new_empty_var(), 0); // TAC
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
+    backpatch(x->true_list, i1->label); // TAC
+    backpatch(x->false_list, i1->label); // TAC
+    backpatch(x->jump_true_list, i1->label); // TAC
+    backpatch(x->jump_false_list, i1->label); // TAC
     args_expr_list->code.insert(args_expr_list->code.end(), x->code.begin(), x->code.end());
     args_expr_list->code.push_back(i1); // TAC
     return args_expr_list;
@@ -179,6 +189,8 @@ Expression* create_postfix_expression(Expression* x) {
     P->result = x->result; // TAC
     P->true_list = x->true_list; // TAC
     P->false_list = x->false_list; // TAC
+    P->jump_false_list = x->jump_false_list; // TAC
+    P->jump_true_list = x->jump_true_list; // TAC
     P->code = x->code; // TAC
     P->jump_code = x->jump_code; // TAC
     P->next_list = x->next_list; // TAC
@@ -216,6 +228,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, new_empty_var(), 0); // TAC
         backpatch(x->next_list, i1->label); // TAC
         backpatch(x->jump_next_list, i1->label); // TAC
+        backpatch(x->true_list, i1->label); // TAC
+        backpatch(x->false_list, i1->label); // TAC
+        backpatch(x->jump_true_list, i1->label); // TAC
+        backpatch(x->jump_false_list, i1->label); // TAC
         TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*x->code.rbegin())->arg1, x->result, new_constant("1"), 0); // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i2); // TAC
@@ -223,6 +239,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         P->true_list.insert(i3); // TAC
         P->false_list.insert(i4); // TAC
+        P->jump_true_list.insert(i3); // TAC
+        P->jump_false_list.insert(i4); // TAC
         P->jump_code.push_back(i1); // TAC
         P->jump_code.push_back(i2); // TAC
         P->jump_code.push_back(i3); // TAC
@@ -234,6 +252,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, new_empty_var(), 0); // TAC
         backpatch(x->next_list, i1->label); // TAC
         backpatch(x->jump_next_list, i1->label); // TAC
+        backpatch(x->true_list, i1->label); // TAC
+        backpatch(x->false_list, i1->label); // TAC
+        backpatch(x->jump_true_list, i1->label); // TAC
+        backpatch(x->jump_false_list, i1->label); // TAC
         TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*x->code.rbegin())->arg1, x->result, new_constant("1"), 0); // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i2); // TAC
@@ -242,6 +264,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         P->true_list.insert(i3); // TAC
         P->false_list.insert(i4); // TAC
+        P->jump_true_list.insert(i3); // TAC
+        P->jump_false_list.insert(i4); // TAC
         P->jump_code.push_back(i1); // TAC
         P->jump_code.push_back(i2); // TAC
         P->jump_code.push_back(i3); // TAC
@@ -254,6 +278,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, x->result, new_empty_var(), 0); // TAC
         backpatch(x->next_list, i1->label); // TAC
         backpatch(x->jump_next_list, i1->label); // TAC
+        backpatch(x->true_list, i1->label); // TAC
+        backpatch(x->false_list, i1->label); // TAC
+        backpatch(x->jump_true_list, i1->label); // TAC
+        backpatch(x->jump_false_list, i1->label); // TAC
         TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*x->code.rbegin())->arg1, x->result, new_constant(to_string(x->type.get_size())), 0); // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i2); // TAC
@@ -262,6 +290,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         P->true_list.insert(i3); // TAC
         P->false_list.insert(i4); // TAC
+        P->jump_true_list.insert(i3); // TAC
+        P->jump_false_list.insert(i4); // TAC
         P->jump_code.push_back(i1); // TAC
         P->jump_code.push_back(i2); // TAC
         P->jump_code.push_back(i3); // TAC
@@ -332,7 +362,6 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
     }
     else {
         P->type = symbolTable.get_type_of_member_variable(x->type.defined_type_name, id->value); // Data types only
-        if (P->type.is_function) P->type.defined_type_name = x->type.defined_type_name; // For function pointers, we need to keep the defined type name for the function pointer
         TypeDefinition* td = symbolTable.get_defined_type(x->type.defined_type_name)->type_definition;
         Symbol* member = td->type_symbol_table.getSymbol(id->value);
         P->member_name = id;
@@ -344,6 +373,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), t1, x->result, new_empty_var(), 0); // TAC
             backpatch(x->next_list, i1->label); // TAC
             backpatch(x->jump_next_list, i1->label); // TAC
+            backpatch(x->true_list, i1->label); // TAC
+            backpatch(x->false_list, i1->label); // TAC
+            backpatch(x->jump_true_list, i1->label); // TAC
+            backpatch(x->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), t2, t1, new_constant(to_string(member->offset)), 0); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, new_empty_var(), 0); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, new_empty_var(), 0); // TAC
@@ -356,6 +389,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             P->true_list.insert(i5); // TAC
             P->false_list.insert(i6); // TAC
+            P->jump_true_list.insert(i5); // TAC
+            P->jump_false_list.insert(i6); // TAC
             P->jump_code.push_back(i1); // TAC
             P->jump_code.push_back(i2); // TAC
             P->jump_code.push_back(i3); // TAC
@@ -370,6 +405,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_ADD), t1, x->result, new_constant(to_string(member->offset)), 0); // TAC
             backpatch(x->next_list, i1->label); // TAC
             backpatch(x->jump_next_list, i1->label); // TAC
+            backpatch(x->true_list, i1->label); // TAC
+            backpatch(x->false_list, i1->label); // TAC
+            backpatch(x->jump_true_list, i1->label); // TAC
+            backpatch(x->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_DEREF), t2, t1, new_empty_var(), 0); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t2, new_empty_var(), 0); // TAC
             P->code.push_back(i1); // TAC   
@@ -380,6 +419,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             P->true_list.insert(i4); // TAC
             P->false_list.insert(i5); // TAC
+            P->jump_true_list.insert(i4); // TAC
+            P->jump_false_list.insert(i5); // TAC
             P->jump_code.push_back(i1); // TAC
             P->jump_code.push_back(i2); // TAC
             P->jump_code.push_back(i3); // TAC
@@ -452,6 +493,15 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
     backpatch(index_expression->next_list, i1->label); // TAC
+    backpatch(index_expression->jump_next_list, i1->label); // TAC
+    backpatch(x->true_list, i1->label); // TAC
+    backpatch(x->false_list, i1->label); // TAC
+    backpatch(x->jump_true_list, i1->label); // TAC
+    backpatch(x->jump_false_list, i1->label); // TAC
+    backpatch(index_expression->true_list, i1->label); // TAC
+    backpatch(index_expression->false_list, i1->label); // TAC
+    backpatch(index_expression->jump_true_list, i1->label); // TAC
+    backpatch(index_expression->jump_false_list, i1->label); // TAC
     P->code.push_back(i1); // TAC
     P->jump_code.push_back(i1); // TAC
     if(P->type.ptr_level == 0){
@@ -472,6 +522,8 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->true_list.insert(i5); // TAC
     P->false_list.insert(i6); // TAC
+    P->jump_true_list.insert(i5); // TAC
+    P->jump_false_list.insert(i6); // TAC
     P->jump_code.push_back(i5); // TAC
     P->jump_code.push_back(i6); // TAC
     P->type.is_const_literal = false;
@@ -510,8 +562,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
         return P;
     }
     else {
-        PostfixExpression* p = dynamic_cast<PostfixExpression*>(x);
-        if (!symbolTable.lookup_function(P->primary_expression->identifier->value, arguments) && (p->member_name==nullptr || !symbolTable.check_member_variable(p->type.defined_type_name, p->member_name->value))) {
+        if (!symbolTable.lookup_function(P->primary_expression->identifier->value, arguments) && (P->base_expression->member_name==nullptr || !symbolTable.check_member_variable(P->base_expression->base_expression->type.defined_type_name, P->base_expression->member_name->value))) {
             P->type = ERROR_TYPE;
             string error_msg = "No matching function declaration found " + to_string(x->line_no) + ", column " + to_string(x->column_no);
             yyerror(error_msg.c_str());
@@ -520,9 +571,9 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
         }
         else {
             Symbol* sym;
-            if(p->member_name != nullptr){
-                if(p->type.defined_type_name != ""){
-                    auto dt = symbolTable.get_defined_type(p->type.defined_type_name);
+            if(P->base_expression->member_name != nullptr){
+                if(P->base_expression->base_expression->type.defined_type_name != ""){
+                    auto dt = symbolTable.get_defined_type(P->base_expression->base_expression->type.defined_type_name);
                     if(dt == nullptr){
                         P->type = ERROR_TYPE;
                         string error_msg = "Defined_Type not found in Symbol Table " + to_string(x->line_no) + ", column " + to_string(x->column_no);
@@ -530,7 +581,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                         symbolTable.set_error();
                         return P;
                     }
-                    sym = dt->type_definition->type_symbol_table.getSymbol(p->member_name->value);
+                    sym = dt->type_definition->type_symbol_table.getSymbol(P->base_expression->member_name->value);
                 }
             }
             else sym = symbolTable.getSymbol(P->primary_expression->identifier->value);
@@ -554,23 +605,30 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type.is_function = false;
                 P->type.num_args = 0;
                 P->type.arg_types.clear();
+                P->result = new_temp_var(); // TAC
                 TACInstruction* i1;
                 if(argument_expression_list != nullptr)P->code = argument_expression_list->code; // TAC
                 if (x->type.type_index == PrimitiveTypes::VOID_T){
-                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_empty_var(), x->result, new_constant(to_string(arguments.size())), 0); // TAC
+                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_empty_var(), new_identifier(sym->name), new_constant(to_string(arguments.size())), 0); // TAC
                 }
                 else{
-                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), (*x->code.rbegin())->arg1, x->result, new_constant(to_string(arguments.size())), 0); // TAC
+                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), P->result, new_identifier(sym->name), new_constant(to_string(arguments.size())), 0); // TAC
                 }
                 
                 backpatch(x->next_list, i1->label); // TAC
                 backpatch(x->jump_next_list, i1->label); // TAC
+                backpatch(x->true_list, i1->label); // TAC
+                backpatch(x->false_list, i1->label); // TAC
+                backpatch(x->jump_true_list, i1->label); // TAC
+                backpatch(x->jump_false_list, i1->label); // TAC
                 P->code.push_back(i1); // TAC
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 P->true_list.insert(i2); // TAC
                 P->false_list.insert(i3); // TAC
+                P->jump_true_list.insert(i2); // TAC
+                P->jump_false_list.insert(i3); // TAC
                 P->jump_code.push_back(i1); // TAC
                 P->jump_code.push_back(i2); // TAC
                 P->jump_code.push_back(i3); // TAC
@@ -604,6 +662,8 @@ Expression* create_unary_expression(Expression* x) {
     U->result = x->result; // TAC
     U->true_list = x->true_list; // TAC 
     U->false_list = x->false_list; // TAC
+    U->jump_false_list = x->jump_false_list; // TAC
+    U->jump_true_list = x->jump_true_list; // TAC
     U->code = x->code; // TAC
     U->jump_code = x->jump_code; // TAC
     U->next_list = x->next_list; // TAC
@@ -657,6 +717,10 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
             }
             backpatch(x->next_list, i1->label); // TAC
             backpatch(x->jump_next_list, i1->label); // TAC
+            backpatch(x->true_list, i1->label); // TAC
+            backpatch(x->false_list, i1->label); // TAC
+            backpatch(x->jump_true_list, i1->label); // TAC
+            backpatch(x->jump_false_list, i1->label); // TAC
             U->code.push_back(i1); // TAC
             U->code.push_back(i2); // TAC
 
@@ -664,6 +728,8 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             U->true_list.insert(i3); // TAC
             U->false_list.insert(i4); // TAC
+            U->jump_true_list.insert(i3); // TAC
+            U->jump_false_list.insert(i4); // TAC
             U->jump_code.push_back(i1); // TAC
             U->jump_code.push_back(i2); // TAC
             U->jump_code.push_back(i3); // TAC
@@ -686,12 +752,18 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), U->result, new_constant(to_string(x->type.get_size())), new_empty_var(), 0); // TAC
         backpatch(x->next_list, i1->label); // TAC
         backpatch(x->jump_next_list, i1->label); // TAC
+        backpatch(x->true_list, i1->label); // TAC
+        backpatch(x->false_list, i1->label); // TAC
+        backpatch(x->jump_true_list, i1->label); // TAC
+        backpatch(x->jump_false_list, i1->label); // TAC
         U->code.push_back(i1); // TAC
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         U->true_list.insert(i2); // TAC
         U->false_list.insert(i3); // TAC
+        U->jump_true_list.insert(i2); // TAC
+        U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
@@ -741,12 +813,18 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         TACInstruction* i1 = emit(TAC_OPERATOR_ADDR_OF, U->result, x->result, new_empty_var(), 0); // TAC
         backpatch(x->next_list, i1->label); // TAC
         backpatch(x->jump_next_list, i1->label); // TAC
+        backpatch(x->true_list, i1->label); // TAC
+        backpatch(x->false_list, i1->label); // TAC
+        backpatch(x->jump_true_list, i1->label); // TAC
+        backpatch(x->jump_false_list, i1->label); // TAC
         U->code.push_back(i1); // TAC
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         U->true_list.insert(i2); // TAC
         U->false_list.insert(i3); // TAC
+        U->jump_true_list.insert(i2); // TAC
+        U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
@@ -771,12 +849,18 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_DEREF), U->result, x->result, new_empty_var(), 0); // TAC
         backpatch(x->next_list, i1->label); // TAC
         backpatch(x->jump_next_list, i1->label); // TAC
+        backpatch(x->true_list, i1->label); // TAC
+        backpatch(x->false_list, i1->label); // TAC
+        backpatch(x->jump_true_list, i1->label); // TAC
+        backpatch(x->jump_false_list, i1->label); // TAC
         U->code.push_back(i1); // TAC
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         U->true_list.insert(i2); // TAC
         U->false_list.insert(i3); // TAC
+        U->jump_true_list.insert(i2); // TAC
+        U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
@@ -799,12 +883,18 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         TACInstruction* i1 = emit(TACOperator(op->name == "MINUS" ? TAC_OPERATOR_UMINUS : TAC_OPERATOR_ADD), U->result, x->result, new_empty_var(), 0); // TAC
         backpatch(x->next_list, i1->label); // TAC
         backpatch(x->jump_next_list, i1->label); // TAC
+        backpatch(x->true_list, i1->label); // TAC
+        backpatch(x->false_list, i1->label); // TAC
+        backpatch(x->jump_true_list, i1->label); // TAC
+        backpatch(x->jump_false_list, i1->label); // TAC
         U->code.push_back(i1); // TAC
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         U->true_list.insert(i2); // TAC
         U->false_list.insert(i3); // TAC
+        U->jump_true_list.insert(i2); // TAC
+        U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
@@ -833,6 +923,9 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         i1->result = i3->label; // TAC
         i2->result = i5->label; // TAC
         backpatch(x->next_list, i1->label); // TAC
+        backpatch(x->true_list, i1->label); // TAC
+        backpatch(x->false_list, i1->label); // TAC
+        U->code = x->jump_code; // TAC
         U->code.push_back(i1); // TAC
         U->code.push_back(i2); // TAC
         U->code.push_back(i3); // TAC
@@ -841,8 +934,8 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
 
         U->jump_code = x->jump_code; // TAC
         U->jump_next_list = x->jump_next_list; // TAC
-        U->true_list = x->false_list; // TAC
-        U->false_list = x->true_list; // TAC
+        U->jump_true_list = x->jump_true_list; // TAC
+        U->jump_false_list = x->jump_false_list; // TAC
     }
     else if (op->name == "BITWISE_NOT") {
         if (!x->type.isInt())
@@ -860,12 +953,18 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_BIT_NOT), U->result, x->result, new_empty_var(), 0); // TAC
         backpatch(x->next_list, i1->label); // TAC
         backpatch(x->jump_next_list, i1->label); // TAC
+        backpatch(x->true_list, i1->label); // TAC
+        backpatch(x->false_list, i1->label); // TAC
+        backpatch(x->jump_true_list, i1->label); // TAC
+        backpatch(x->jump_false_list, i1->label); // TAC
         U->code.push_back(i1); // TAC
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         U->true_list.insert(i2); // TAC
         U->false_list.insert(i3); // TAC
+        U->jump_true_list.insert(i2); // TAC
+        U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
@@ -891,6 +990,8 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn) {
     TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     U->true_list.insert(i2); // TAC
     U->false_list.insert(i3); // TAC
+    U->jump_true_list.insert(i2); // TAC
+    U->jump_false_list.insert(i3); // TAC
     U->jump_code.push_back(i1); // TAC
     U->jump_code.push_back(i2); // TAC
     U->jump_code.push_back(i3); // TAC
@@ -917,6 +1018,8 @@ Expression* create_cast_expression(Expression* x) {
     C->result = x->result; // TAC
     C->true_list = x->true_list; // TAC
     C->false_list = x->false_list; // TAC
+    C->jump_true_list = x->jump_true_list; // TAC
+    C->jump_false_list = x->jump_false_list; // TAC
     C->code = x->code; // TAC
     C->jump_code = x->jump_code; // TAC
     C->next_list = x->next_list; // TAC
@@ -951,12 +1054,18 @@ Expression* create_cast_expression(TypeName* tn, Expression* x) {
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), C->result, new_type(tn->type.to_string()), x->result, 0); // TAC
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
+    backpatch(x->true_list, i1->label); // TAC
+    backpatch(x->false_list, i1->label); // TAC
+    backpatch(x->jump_true_list, i1->label); // TAC
+    backpatch(x->jump_false_list, i1->label); // TAC
     C->code.push_back(i1); // TAC
 
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), C->result, new_empty_var(), 2); // TAC
     TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     C->true_list.insert(i2); // TAC
     C->false_list.insert(i3); // TAC
+    C->jump_true_list.insert(i2); // TAC
+    C->jump_false_list.insert(i3); // TAC
     C->jump_code.push_back(i1); // TAC
     C->jump_code.push_back(i2); // TAC
     C->jump_code.push_back(i3); // TAC
@@ -985,6 +1094,8 @@ Expression* create_multiplicative_expression(Expression* x) {
     M->result = x->result; // TAC
     M->true_list = x->true_list; // TAC
     M->false_list = x->false_list; // TAC
+    M->jump_true_list = x->jump_true_list; // TAC
+    M->jump_false_list = x->jump_false_list; // TAC
     M->code = x->code; // TAC
     M->jump_code = x->jump_code; // TAC
     M->next_list = x->next_list; // TAC
@@ -1033,6 +1144,14 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1, 0); // TAC
                 M->code.push_back(i1); // TAC
                 M->code.push_back(i2); // TAC
@@ -1041,6 +1160,8 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 M->true_list.insert(i3); // TAC
                 M->false_list.insert(i4); // TAC
+                M->jump_true_list.insert(i3); // TAC
+                M->jump_false_list.insert(i4); // TAC
                 M->jump_code.push_back(i1); // TAC  
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
@@ -1054,12 +1175,22 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 M->code.push_back(i1); // TAC
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 M->true_list.insert(i2); // TAC
                 M->false_list.insert(i3); // TAC
+                M->jump_true_list.insert(i2); // TAC
+                M->jump_false_list.insert(i3); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
@@ -1073,6 +1204,14 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result, 0); // TAC
                 M->code.push_back(i1); // TAC
 
@@ -1080,6 +1219,8 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 M->true_list.insert(i3); // TAC
                 M->false_list.insert(i4); // TAC
+                M->jump_true_list.insert(i3); // TAC
+                M->jump_false_list.insert(i4); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
@@ -1100,6 +1241,14 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1, 0); // TAC
                 M->code.push_back(i1); // TAC
                 M->code.push_back(i2); // TAC
@@ -1108,6 +1257,8 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 M->true_list.insert(i3); // TAC
                 M->false_list.insert(i4); // TAC
+                M->jump_true_list.insert(i3); // TAC
+                M->jump_false_list.insert(i4); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
@@ -1121,12 +1272,22 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 M->code.push_back(i1); // TAC
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 M->true_list.insert(i2); // TAC
                 M->false_list.insert(i3); // TAC
+                M->jump_true_list.insert(i2); // TAC
+                M->jump_false_list.insert(i3); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
@@ -1143,6 +1304,14 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result, 0); // TAC
                 M->code.push_back(i1); // TAC
                 M->code.push_back(i2); // TAC
@@ -1151,6 +1320,8 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 M->true_list.insert(i3); // TAC
                 M->false_list.insert(i4); // TAC
+                M->jump_true_list.insert(i3); // TAC
+                M->jump_false_list.insert(i4); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
@@ -1180,6 +1351,14 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_MOD), M->result, left->result, t1, 0); // TAC
             M->code.push_back(i1); // TAC
             M->code.push_back(i2); // TAC
@@ -1188,6 +1367,8 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             M->true_list.insert(i3); // TAC
             M->false_list.insert(i4); // TAC
+            M->jump_true_list.insert(i3); // TAC
+            M->jump_false_list.insert(i4); // TAC
             M->jump_code.push_back(i1); // TAC
             M->jump_code.push_back(i2); // TAC
             M->jump_code.push_back(i3); // TAC
@@ -1201,12 +1382,22 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             M->code.push_back(i1); // TAC
 
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             M->true_list.insert(i2); // TAC
             M->false_list.insert(i3); // TAC
+            M->jump_true_list.insert(i2); // TAC
+            M->jump_false_list.insert(i3); // TAC
             M->jump_code.push_back(i1); // TAC
             M->jump_code.push_back(i2); // TAC
             M->jump_code.push_back(i3); // TAC
@@ -1223,6 +1414,14 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_MOD), M->result, t1, right->result, 0); // TAC
             M->code.push_back(i1); // TAC
             M->code.push_back(i2); // TAC
@@ -1231,6 +1430,8 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             M->true_list.insert(i3); // TAC
             M->false_list.insert(i4); // TAC
+            M->jump_true_list.insert(i3); // TAC
+            M->jump_false_list.insert(i4); // TAC
             M->jump_code.push_back(i1); // TAC
             M->jump_code.push_back(i2); // TAC
             M->jump_code.push_back(i3); // TAC
@@ -1263,6 +1464,8 @@ Expression* create_additive_expression(Expression* x) {
     M->result = x->result; // TAC
     M->true_list = x->true_list; // TAC
     M->false_list = x->false_list; // TAC
+    M->jump_true_list = x->jump_true_list; // TAC
+    M->jump_false_list = x->jump_false_list; // TAC
     M->code = x->code; // TAC
     M->jump_code = x->jump_code; // TAC
     M->next_list = x->next_list; // TAC
@@ -1301,6 +1504,14 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
@@ -1309,6 +1520,8 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
@@ -1322,12 +1535,22 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             A->code.push_back(i1); // TAC
 
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i2); // TAC
             A->false_list.insert(i3); // TAC
+            A->jump_true_list.insert(i2); // TAC
+            A->jump_false_list.insert(i3); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
@@ -1341,6 +1564,14 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result, 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
@@ -1349,6 +1580,8 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
@@ -1369,6 +1602,14 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
@@ -1377,6 +1618,8 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
@@ -1390,12 +1633,22 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             A->code.push_back(i1); // TAC
 
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i2); // TAC
             A->false_list.insert(i3); // TAC
+            A->jump_true_list.insert(i2); // TAC
+            A->jump_false_list.insert(i3); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
@@ -1412,6 +1665,14 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result, 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
@@ -1420,6 +1681,8 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
@@ -1435,6 +1698,14 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         backpatch(right->next_list, i1->label); // TAC
         backpatch(left->jump_next_list, i1->label); // TAC
         backpatch(right->jump_next_list, i1->label); // TAC
+        backpatch(left->true_list, i1->label); // TAC
+        backpatch(right->true_list, i1->label); // TAC
+        backpatch(left->false_list, i1->label); // TAC
+        backpatch(right->false_list, i1->label); // TAC
+        backpatch(left->jump_true_list, i1->label); // TAC
+        backpatch(right->jump_true_list, i1->label); // TAC
+        backpatch(left->jump_false_list, i1->label); // TAC
+        backpatch(right->jump_false_list, i1->label); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), A->result, left->result, t1, 0); // TAC
         A->code.push_back(i1); // TAC
         A->code.push_back(i2); // TAC
@@ -1443,6 +1714,8 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         A->true_list.insert(i3); // TAC
         A->false_list.insert(i4); // TAC
+        A->jump_true_list.insert(i3); // TAC
+        A->jump_false_list.insert(i4); // TAC
         A->jump_code.push_back(i1); // TAC
         A->jump_code.push_back(i2); // TAC
         A->jump_code.push_back(i3); // TAC
@@ -1457,6 +1730,14 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         backpatch(right->next_list, i1->label); // TAC
         backpatch(left->jump_next_list, i1->label); // TAC
         backpatch(right->jump_next_list, i1->label); // TAC
+        backpatch(left->true_list, i1->label); // TAC
+        backpatch(right->true_list, i1->label); // TAC
+        backpatch(left->false_list, i1->label); // TAC
+        backpatch(right->false_list, i1->label); // TAC
+        backpatch(left->jump_true_list, i1->label); // TAC
+        backpatch(right->jump_true_list, i1->label); // TAC
+        backpatch(left->jump_false_list, i1->label); // TAC
+        backpatch(right->jump_false_list, i1->label); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), A->result, right->result, t1, 0); // TAC
         A->code.push_back(i1); // TAC
         A->code.push_back(i2); // TAC
@@ -1465,6 +1746,8 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         A->true_list.insert(i3); // TAC
         A->false_list.insert(i4); // TAC
+        A->jump_true_list.insert(i3); // TAC
+        A->jump_false_list.insert(i4); // TAC
         A->jump_code.push_back(i1); // TAC
         A->jump_code.push_back(i2); // TAC
         A->jump_code.push_back(i3); // TAC
@@ -1479,6 +1762,14 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         backpatch(right->next_list, i1->label); // TAC
         backpatch(left->jump_next_list, i1->label); // TAC
         backpatch(right->jump_next_list, i1->label); // TAC
+        backpatch(left->true_list, i1->label); // TAC
+        backpatch(right->true_list, i1->label); // TAC
+        backpatch(left->false_list, i1->label); // TAC
+        backpatch(right->false_list, i1->label); // TAC
+        backpatch(left->jump_true_list, i1->label); // TAC
+        backpatch(right->jump_true_list, i1->label); // TAC
+        backpatch(left->jump_false_list, i1->label); // TAC
+        backpatch(right->jump_false_list, i1->label); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
         A->code.push_back(i1); // TAC
         A->code.push_back(i2); // TAC
@@ -1487,6 +1778,8 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         A->true_list.insert(i3); // TAC
         A->false_list.insert(i4); // TAC
+        A->jump_true_list.insert(i3); // TAC
+        A->jump_false_list.insert(i4); // TAC
         A->jump_code.push_back(i1); // TAC
         A->jump_code.push_back(i2); // TAC
         A->jump_code.push_back(i3); // TAC
@@ -1502,6 +1795,14 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_DIV), A->result, t1, new_constant(to_string(lt.get_size())), 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
@@ -1510,6 +1811,8 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
@@ -1557,6 +1860,8 @@ Expression* create_shift_expression(Expression* x) {
     M->result = x->result; // TAC
     M->true_list = x->true_list; // TAC
     M->false_list = x->false_list; // TAC
+    M->jump_true_list = x->jump_true_list; // TAC
+    M->jump_false_list = x->jump_false_list; // TAC
     M->code = x->code; // TAC
     M->jump_code = x->jump_code; // TAC
     M->next_list = x->next_list; // TAC
@@ -1614,6 +1919,15 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         backpatch(right->next_list, i1->label); // TAC
         backpatch(left->jump_next_list, i1->label); // TAC
         backpatch(right->jump_next_list, i1->label); // TAC
+        backpatch(left->true_list, i1->label); // TAC
+        backpatch(right->true_list, i1->label); // TAC
+        backpatch(left->false_list, i1->label); // TAC
+        backpatch(right->false_list, i1->label); // TAC
+        backpatch(left->jump_true_list, i1->label); // TAC
+        backpatch(right->jump_true_list, i1->label); // TAC
+        backpatch(left->jump_false_list, i1->label); // TAC
+        backpatch(right->jump_false_list, i1->label); // TAC
+
         TACInstruction* i2 = emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, left->result, t1, 0); // TAC
         S->code.push_back(i1); // TAC
         S->code.push_back(i2); // TAC
@@ -1622,6 +1936,8 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         S->true_list.insert(i3); // TAC
         S->false_list.insert(i4); // TAC
+        S->jump_true_list.insert(i3); // TAC
+        S->jump_false_list.insert(i4); // TAC
         S->jump_code.push_back(i1); // TAC
         S->jump_code.push_back(i2); // TAC
         S->jump_code.push_back(i3); // TAC
@@ -1635,12 +1951,22 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         backpatch(right->next_list, i1->label); // TAC
         backpatch(left->jump_next_list, i1->label); // TAC
         backpatch(right->jump_next_list, i1->label); // TAC
+        backpatch(left->true_list, i1->label); // TAC
+        backpatch(right->true_list, i1->label); // TAC
+        backpatch(left->false_list, i1->label); // TAC
+        backpatch(right->false_list, i1->label); // TAC
+        backpatch(left->jump_true_list, i1->label); // TAC
+        backpatch(right->jump_true_list, i1->label); // TAC
+        backpatch(left->jump_false_list, i1->label); // TAC
+        backpatch(right->jump_false_list, i1->label); // TAC
         S->code.push_back(i1); // TAC
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), S->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         S->true_list.insert(i2); // TAC
         S->false_list.insert(i3); // TAC
+        S->jump_true_list.insert(i2); // TAC
+        S->jump_false_list.insert(i3); // TAC
         S->jump_code.push_back(i1); // TAC
         S->jump_code.push_back(i2); // TAC
         S->jump_code.push_back(i3); // TAC
@@ -1661,6 +1987,14 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         backpatch(right->next_list, i1->label); // TAC
         backpatch(left->jump_next_list, i1->label); // TAC
         backpatch(right->jump_next_list, i1->label); // TAC
+        backpatch(left->true_list, i1->label); // TAC
+        backpatch(right->true_list, i1->label); // TAC
+        backpatch(left->false_list, i1->label); // TAC
+        backpatch(right->false_list, i1->label); // TAC
+        backpatch(left->jump_true_list, i1->label); // TAC
+        backpatch(right->jump_true_list, i1->label); // TAC
+        backpatch(left->jump_false_list, i1->label); // TAC
+        backpatch(right->jump_false_list, i1->label); // TAC
         TACInstruction* i2 = emit(TACOperator(op->name == "LEFT_OP" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), S->result, t1, right->result, 0); // TAC
         S->code.push_back(i1); // TAC
         S->code.push_back(i2); // TAC
@@ -1669,6 +2003,8 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         S->true_list.insert(i3); // TAC
         S->false_list.insert(i4); // TAC
+        S->jump_true_list.insert(i3); // TAC
+        S->jump_false_list.insert(i4); // TAC
         S->jump_code.push_back(i1); // TAC
         S->jump_code.push_back(i2); // TAC
         S->jump_code.push_back(i3); // TAC
@@ -1699,6 +2035,8 @@ Expression* create_relational_expression(Expression* x) {
     M->result = x->result; // TAC
     M->true_list = x->true_list; // TAC
     M->false_list = x->false_list; // TAC
+    M->jump_true_list = x->jump_true_list; // TAC
+    M->jump_false_list = x->jump_false_list; // TAC
     M->code = x->code; // TAC
     M->jump_code = x->jump_code; // TAC
     M->next_list = x->next_list; // TAC
@@ -1744,6 +2082,16 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
+            backpatch(left->jump_next_list, i1->label); // TAC
+            backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
                 op->name == "LE_OP" ? TAC_OPERATOR_LE :
                 op->name == "GREATER" ? TAC_OPERATOR_GT :
@@ -1755,10 +2103,6 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             i2->result = i4->label; // TAC
             i3->result = i6->label; // TAC
             R->next_list.insert(i5); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC 
             R->code.push_back(i1); // TAC
             R->code.push_back(i2); // TAC
             R->code.push_back(i3); // TAC
@@ -1773,6 +2117,8 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             R->true_list.insert(i7); // TAC
             R->false_list.insert(i8); // TAC
+            R->jump_true_list.insert(i7); // TAC
+            R->jump_false_list.insert(i8); // TAC
             R->jump_code.push_back(i1); // TAC
             R->jump_code.push_back(i7); // TAC
             R->jump_code.push_back(i8); // TAC
@@ -1792,6 +2138,10 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->next_list.insert(i4); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
             R->code.push_back(i1); // TAC
             R->code.push_back(i2); // TAC
             R->code.push_back(i3); // TAC
@@ -1805,8 +2155,14 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             backpatch(left->jump_next_list, i6->label); // TAC
             backpatch(right->jump_next_list, i6->label); // TAC
+            backpatch(left->jump_true_list, i6->label); // TAC
+            backpatch(right->jump_true_list, i6->label); // TAC
+            backpatch(left->jump_false_list, i6->label); // TAC
+            backpatch(right->jump_false_list, i6->label); // TAC
             R->true_list.insert(i6); // TAC
             R->false_list.insert(i7); // TAC 
+            R->jump_true_list.insert(i6); // TAC
+            R->jump_false_list.insert(i7); // TAC
             R->jump_code.push_back(i6); // TAC
             R->jump_code.push_back(i7); // TAC
         }
@@ -1816,6 +2172,16 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(rt.to_string()), left->result, 0); // TAC   
             backpatch(left->next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
+            backpatch(left->jump_next_list, i1->label); // TAC
+            backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i2 = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
                 op->name == "LE_OP" ? TAC_OPERATOR_LE :
                 op->name == "GREATER" ? TAC_OPERATOR_GT :
@@ -1827,10 +2193,6 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             i2->result = i4->label; // TAC
             i3->result = i6->label; // TAC
             R->next_list.insert(i5); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
             R->code.push_back(i1); // TAC
             R->code.push_back(i2); // TAC
             R->code.push_back(i3); // TAC
@@ -1845,6 +2207,8 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             R->true_list.insert(i7); // TAC
             R->false_list.insert(i8); // TAC
+            R->jump_true_list.insert(i7); // TAC
+            R->jump_false_list.insert(i8); // TAC
             R->jump_code.push_back(i1); // TAC
             R->jump_code.push_back(i7); // TAC
             R->jump_code.push_back(i8); // TAC
@@ -1868,6 +2232,10 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->next_list.insert(i4); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
             R->code.push_back(i1); // TAC
             R->code.push_back(i2); // TAC
             R->code.push_back(i3); // TAC
@@ -1881,8 +2249,16 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             backpatch(left->jump_next_list, i6->label); // TAC
             backpatch(right->jump_next_list, i6->label); // TAC
+            backpatch(left->jump_true_list, i6->label); // TAC
+            backpatch(right->jump_true_list, i6->label); // TAC
+            backpatch(left->jump_false_list, i6->label); // TAC
+            backpatch(right->jump_false_list, i6->label); // TAC
             R->true_list.insert(i6); // TAC
             R->false_list.insert(i7); // TAC
+            R->jump_true_list.insert(i6); // TAC
+            R->jump_false_list.insert(i7); // TAC
+            R->jump_code.push_back(i1); // TAC
+            R->jump_code.push_back(i2); // TAC
             R->jump_code.push_back(i6); // TAC
             R->jump_code.push_back(i7); // TAC
         }
@@ -1928,6 +2304,8 @@ Expression* create_equality_expression(Expression* x) {
     M->result = x->result; // TAC
     M->true_list = x->true_list; // TAC
     M->false_list = x->false_list; // TAC
+    M->jump_true_list = x->jump_true_list; // TAC
+    M->jump_false_list = x->jump_false_list; // TAC
     M->code = x->code; // TAC
     M->jump_code = x->jump_code; // TAC
     M->next_list = x->next_list; // TAC
@@ -1983,6 +2361,14 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             E->code.push_back(i1); // TAC
             E->code.push_back(i2); // TAC
             E->code.push_back(i3); // TAC
@@ -1994,6 +2380,8 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             E->true_list.insert(i7);
             E->false_list.insert(i8); // TAC
+            E->jump_true_list.insert(i7); // TAC
+            E->jump_false_list.insert(i8); // TAC
             E->jump_code.push_back(i1); // TAC
             E->jump_code.push_back(i7); // TAC
             E->jump_code.push_back(i8); // TAC
@@ -2010,6 +2398,10 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->next_list.insert(i4); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
             E->code.push_back(i1); // TAC
             E->code.push_back(i2); // TAC
             E->code.push_back(i3); // TAC
@@ -2020,8 +2412,14 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             backpatch(left->jump_next_list, i6->label); // TAC
             backpatch(right->jump_next_list, i6->label); // TAC
+            backpatch(left->jump_true_list, i6->label); // TAC
+            backpatch(right->jump_true_list, i6->label); // TAC
+            backpatch(left->jump_false_list, i6->label); // TAC
+            backpatch(right->jump_false_list, i6->label); // TAC
             E->true_list.insert(i6); // TAC
             E->false_list.insert(i7); // TAC
+            E->jump_true_list.insert(i6); // TAC
+            E->jump_false_list.insert(i7); // TAC
             E->jump_code.push_back(i6); // TAC
             E->jump_code.push_back(i7); // TAC
         }
@@ -2041,6 +2439,14 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC    
             E->code.push_back(i1); // TAC
             E->code.push_back(i2); // TAC
             E->code.push_back(i3); // TAC
@@ -2052,6 +2458,8 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             E->true_list.insert(i7);
             E->false_list.insert(i8); // TAC
+            E->jump_true_list.insert(i7); // TAC
+            E->jump_false_list.insert(i8); // TAC
             E->jump_code.push_back(i1); // TAC
             E->jump_code.push_back(i7); // TAC
             E->jump_code.push_back(i8); // TAC
@@ -2073,6 +2481,12 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->next_list.insert(i4); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
+            backpatch(left->jump_next_list, i1->label); // TAC
+            backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
             E->code.push_back(i1); // TAC
             E->code.push_back(i2); // TAC
             E->code.push_back(i3); // TAC
@@ -2083,8 +2497,14 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             backpatch(left->jump_next_list, i6->label); // TAC
             backpatch(right->jump_next_list, i6->label); // TAC
+            backpatch(left->jump_true_list, i6->label); // TAC
+            backpatch(right->jump_true_list, i6->label); // TAC
+            backpatch(left->jump_false_list, i6->label); // TAC
+            backpatch(right->jump_false_list, i6->label); // TAC
             E->true_list.insert(i6); // TAC
             E->false_list.insert(i7); // TAC
+            E->jump_true_list.insert(i6); // TAC
+            E->jump_false_list.insert(i7); // TAC
             E->jump_code.push_back(i6); // TAC
             E->jump_code.push_back(i7); // TAC
         }
@@ -2131,6 +2551,8 @@ Expression* create_and_expression(Expression* x) {
     M->result = x->result; // TAC
     M->true_list = x->true_list; // TAC
     M->false_list = x->false_list; // TAC
+    M->jump_true_list = x->jump_true_list; // TAC
+    M->jump_false_list = x->jump_false_list; // TAC
     M->code = x->code; // TAC
     M->jump_code = x->jump_code; // TAC
     M->next_list = x->next_list; // TAC
@@ -2176,6 +2598,14 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_BIT_AND), A->result, left->result, t1, 0); // TAC
                 A->code.push_back(i1); // TAC
                 A->code.push_back(i2); // TAC
@@ -2184,6 +2614,8 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 A->true_list.insert(i3); // TAC
                 A->false_list.insert(i4); // TAC
+                A->jump_true_list.insert(i3); // TAC
+                A->jump_false_list.insert(i4); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i2); // TAC
                 A->jump_code.push_back(i3); // TAC
@@ -2197,12 +2629,22 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 A->code.push_back(i1); // TAC
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 A->true_list.insert(i2); // TAC
                 A->false_list.insert(i3); // TAC
+                A->jump_true_list.insert(i2); // TAC
+                A->jump_false_list.insert(i3); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i2); // TAC
                 A->jump_code.push_back(i3); // TAC
@@ -2223,6 +2665,14 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 A->code.push_back(i1); // TAC
                 A->code.push_back(i2); // TAC
 
@@ -2230,6 +2680,8 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 A->true_list.insert(i3); // TAC
                 A->false_list.insert(i4); // TAC
+                A->jump_true_list.insert(i3); // TAC
+                A->jump_false_list.insert(i4); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i2); // TAC
                 A->jump_code.push_back(i3); // TAC
@@ -2270,6 +2722,8 @@ Expression* create_xor_expression(Expression* x) {
     M->result = x->result; // TAC
     M->true_list = x->true_list; // TAC
     M->false_list = x->false_list; // TAC
+    M->jump_true_list = x->jump_true_list; // TAC
+    M->jump_false_list = x->jump_false_list; // TAC
     M->code = x->code; // TAC
     M->jump_code = x->jump_code; // TAC
     M->next_list = x->next_list; // TAC
@@ -2315,6 +2769,14 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, left->result, t1, 0); // TAC
                 X->code.push_back(i1); // TAC
                 X->code.push_back(i2); // TAC
@@ -2323,6 +2785,8 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 X->true_list.insert(i3); // TAC
                 X->false_list.insert(i4); // TAC
+                X->jump_true_list.insert(i3); // TAC
+                X->jump_false_list.insert(i4); // TAC
                 X->jump_code.push_back(i1); // TAC
                 X->jump_code.push_back(i2); // TAC
                 X->jump_code.push_back(i3); // TAC
@@ -2336,12 +2800,22 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 X->code.push_back(i1); // TAC
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), X->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 X->true_list.insert(i2); // TAC
                 X->false_list.insert(i3); // TAC
+                X->jump_true_list.insert(i2); // TAC
+                X->jump_false_list.insert(i3); // TAC
                 X->jump_code.push_back(i1); // TAC
                 X->jump_code.push_back(i2); // TAC
                 X->jump_code.push_back(i3); // TAC
@@ -2361,6 +2835,14 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_BIT_XOR), X->result, t1, right->result, 0); // TAC
                 X->code.push_back(i1); // TAC
                 X->code.push_back(i2); // TAC
@@ -2369,6 +2851,8 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 X->true_list.insert(i3); // TAC
                 X->false_list.insert(i4); // TAC
+                X->jump_true_list.insert(i3); // TAC
+                X->jump_false_list.insert(i4); // TAC
                 X->jump_code.push_back(i1); // TAC
                 X->jump_code.push_back(i2); // TAC
                 X->jump_code.push_back(i3); // TAC
@@ -2409,6 +2893,8 @@ Expression* create_or_expression(Expression* x) {
     C->result = x->result; // TAC
     C->true_list = x->true_list; // TAC
     C->false_list = x->false_list; // TAC
+    C->jump_true_list = x->jump_true_list; // TAC
+    C->jump_false_list = x->jump_false_list; // TAC
     C->code = x->code; // TAC
     C->jump_code = x->jump_code; // TAC
     C->next_list = x->next_list; // TAC
@@ -2454,6 +2940,14 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_BIT_OR), O->result, left->result, t1, 0); // TAC
                 O->code.push_back(i1); // TAC
                 O->code.push_back(i2); // TAC
@@ -2462,6 +2956,8 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 O->true_list.insert(i3); // TAC
                 O->false_list.insert(i4); // TAC
+                O->jump_true_list.insert(i3); // TAC
+                O->jump_false_list.insert(i4); // TAC
                 O->jump_code.push_back(i1); // TAC
                 O->jump_code.push_back(i2); // TAC
                 O->jump_code.push_back(i3); // TAC
@@ -2475,12 +2971,22 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 O->code.push_back(i1); // TAC
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), O->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 O->true_list.insert(i2); // TAC
                 O->false_list.insert(i3); // TAC
+                O->jump_true_list.insert(i2); // TAC
+                O->jump_false_list.insert(i3); // TAC
                 O->jump_code.push_back(i1); // TAC
                 O->jump_code.push_back(i2); // TAC
                 O->jump_code.push_back(i3); // TAC
@@ -2500,6 +3006,14 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_BIT_OR), O->result, t1, right->result, 0); // TAC
                 O->code.push_back(i1); // TAC
                 O->code.push_back(i2); // TAC
@@ -2508,6 +3022,8 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 O->true_list.insert(i3); // TAC
                 O->false_list.insert(i4); // TAC
+                O->jump_true_list.insert(i3); // TAC
+                O->jump_false_list.insert(i4); // TAC
                 O->jump_code.push_back(i1); // TAC
                 O->jump_code.push_back(i2); // TAC
                 O->jump_code.push_back(i3); // TAC
@@ -2548,6 +3064,8 @@ Expression* create_logical_and_expression(Expression* x) {
     C->result = x->result; // TAC
     C->true_list = x->true_list; // TAC
     C->false_list = x->false_list; // TAC
+    C->jump_true_list = x->jump_true_list; // TAC
+    C->jump_false_list = x->jump_false_list; // TAC
     C->code = x->code; // TAC
     C->jump_code = x->jump_code; // TAC
     C->next_list = x->next_list; // TAC
@@ -2563,8 +3081,6 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
     L->line_no = left->line_no;
     L->column_no = left->column_no;
     L->name = "LOGICAL AND EXPRESSION";
-    L->code.insert(L->code.begin(), left->code.begin(), left->code.end()); // TAC
-    L->code.insert(L->code.end(), right->code.begin(), right->code.end()); // TAC
 
     if (left->type.is_error() || right->type.is_error()) {
         L->type = ERROR_TYPE;
@@ -2586,107 +3102,31 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 symbolTable.set_error();
                 return L;
             }
-            if (lt.type_index > rt.type_index) {
+            else{
                 TACOperand* t1 = new_temp_var(); // TAC
                 L->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), t1, new_empty_var(), 2); // TAC
-                TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
-                TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
-                i2->result = i4->label; // TAC
-                i4->result = i6->label; // TAC
-                i3->result = i8->label; // TAC
-                i5->result = i8->label; // TAC
-                L->next_list.insert(i7); // TAC
-                backpatch(left->next_list, right->code[0]->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, right->code[0]->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                
-                L->code.push_back(i1); // TAC
-                L->code.push_back(i2); // TAC
-                L->code.push_back(i3); // TAC
-                L->code.push_back(i4); // TAC
-                L->code.push_back(i5); // TAC
-                L->code.push_back(i6); // TAC
-                L->code.push_back(i7); // TAC
-                L->code.push_back(i8); // TAC
-
-                L->jump_code = left->jump_code; // TAC
-                backpatch(left->true_list, right->jump_code[0]->label); // TAC
-                L->jump_code.insert(L->jump_code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
-                L->true_list = right->true_list; // TAC
-                L->false_list = merge_lists(left->false_list, right->false_list); // TAC
-            }
-            else if (lt.type_index == rt.type_index) {
-                L->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+                L->code = left->jump_code; // TAC
+                L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), right->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
-                TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
-                i1->result = i3->label; // TAC
-                i3->result = i5->label; // TAC
-                i2->result = i7->label; // TAC
-                i4->result = i7->label; // TAC
-                L->next_list.insert(i6); // TAC
-                backpatch(left->next_list, right->code[0]->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
+                backpatch(left->true_list, right->jump_code[0]->label); // TAC
+                backpatch(left->false_list, i3->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(right->false_list, i3->label); // TAC
+                L->next_list.insert(i2); // TAC
+                L->jump_next_list.insert(i2); // TAC
                 L->code.push_back(i1); // TAC
                 L->code.push_back(i2); // TAC
                 L->code.push_back(i3); // TAC
-                L->code.push_back(i4); // TAC
-                L->code.push_back(i5); // TAC
-                L->code.push_back(i6); // TAC
-                L->code.push_back(i7); // TAC
 
                 L->jump_code = left->jump_code; // TAC
-                backpatch(left->true_list, right->jump_code[0]->label); // TAC
-                L->jump_code.insert(L->jump_code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
-                L->true_list = right->true_list; // TAC
-                L->false_list = merge_lists(left->false_list, right->false_list); // TAC
-                L->jump_next_list = merge_lists(left->jump_next_list, right->jump_next_list); // TAC                
-            }
-            else {
-                TACOperand* t1 = new_temp_var(); // TAC
-                L->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(rt.to_string()), left->result, 0); // TAC
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), t1, new_empty_var(), 2); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), right->result, new_empty_var(), 2); // TAC
-                TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
-                TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
-                i2->result = i4->label; // TAC
-                i4->result = i6->label; // TAC
-                i3->result = i8->label; // TAC
-                i5->result = i8->label; // TAC
-                L->next_list.insert(i7); // TAC
-                backpatch(left->next_list, right->code[0]->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, right->code[0]->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                L->code.push_back(i1); // TAC
-                L->code.push_back(i2); // TAC
-                L->code.push_back(i3); // TAC
-                L->code.push_back(i4); // TAC
-                L->code.push_back(i5); // TAC
-                L->code.push_back(i6); // TAC
-                L->code.push_back(i7); // TAC
-                L->code.push_back(i8); // TAC
-
-                L->jump_code = left->jump_code; // TAC
-                backpatch(left->true_list, right->jump_code[0]->label); // TAC
-                L->jump_code.insert(L->jump_code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
-                L->true_list = right->true_list; // TAC
-                L->false_list = merge_lists(left->false_list, right->false_list); // TAC
+                L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                backpatch(left->jump_true_list, right->jump_code[0]->label); // TAC
+                L->true_list = right->jump_true_list; // TAC
+                L->false_list = merge_lists(left->jump_false_list, right->jump_false_list); // TAC
+                L->jump_true_list = L->true_list; // TAC
+                L->jump_false_list = L->false_list; // TAC
             }
         }
         else {
@@ -2722,6 +3162,8 @@ Expression* create_logical_or_expression(Expression* x) {
     C->result = x->result; // TAC
     C->true_list = x->true_list; // TAC
     C->false_list = x->false_list; // TAC
+    C->jump_true_list = x->jump_true_list; // TAC
+    C->jump_false_list = x->jump_false_list; // TAC
     C->code = x->code; // TAC
     C->jump_code = x->jump_code; // TAC
     C->next_list = x->next_list; // TAC
@@ -2759,106 +3201,31 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
                 symbolTable.set_error();
                 return L;
             }
-            if (lt.type_index > rt.type_index) {
+            else{
                 TACOperand* t1 = new_temp_var(); // TAC
                 L->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), t1, new_empty_var(), 2); // TAC
-                TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
-                TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
-                i2->result = i6->label; // TAC
-                i3->result = i4->label; // TAC
-                i4->result = i6->label; // TAC
-                i5->result = i8->label; // TAC
-                L->next_list.insert(i7); // TAC
-                backpatch(left->next_list, i1->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                L->code.push_back(i1); // TAC
-                L->code.push_back(i2); // TAC
-                L->code.push_back(i3); // TAC
-                L->code.push_back(i4); // TAC
-                L->code.push_back(i5); // TAC
-                L->code.push_back(i6); // TAC
-                L->code.push_back(i7); // TAC
-                L->code.push_back(i8); // TAC
-
-                L->jump_code = left->jump_code; // TAC
-                backpatch(left->false_list, right->jump_code[0]->label); // TAC
-                L->jump_code.insert(L->jump_code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
-                L->false_list = right->false_list; // TAC
-                L->true_list = merge_lists(left->true_list, right->true_list); // TAC
-            }
-            else if (lt.type_index == rt.type_index) {
-                L->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+                L->code = left->jump_code; // TAC
+                L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), right->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
-                TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
-                i1->result = i5->label; // TAC
-                i2->result = i3->label; // TAC
-                i3->result = i5->label; // TAC
-                i4->result = i7->label; // TAC
-                L->next_list.insert(i6); // TAC
-                backpatch(left->next_list, i1->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(left->false_list, right->jump_code[0]->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(right->false_list, i3->label); // TAC
+                L->next_list.insert(i2); // TAC
+                L->jump_next_list.insert(i2); // TAC
                 L->code.push_back(i1); // TAC
                 L->code.push_back(i2); // TAC
                 L->code.push_back(i3); // TAC
-                L->code.push_back(i4); // TAC
-                L->code.push_back(i5); // TAC
-                L->code.push_back(i6); // TAC
-                L->code.push_back(i7); // TAC
 
                 L->jump_code = left->jump_code; // TAC
-                backpatch(left->false_list, right->jump_code[0]->label); // TAC
-                L->jump_code.insert(L->jump_code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
-                L->false_list = right->false_list; // TAC
-                L->true_list = merge_lists(left->true_list, right->true_list); // TAC
-                L->jump_next_list = merge_lists(left->jump_next_list, right->jump_next_list); // TAC
-            }
-            else {
-                TACOperand* t1 = new_temp_var(); // TAC
-                L->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(rt.to_string()), left->result, 0); // TAC   
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), t1, new_empty_var(), 2); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), right->result, new_empty_var(), 2); // TAC
-                TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
-                TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
-                i2->result = i6->label; // TAC
-                i3->result = i4->label; // TAC
-                i4->result = i6->label; // TAC
-                i5->result = i8->label; // TAC
-                L->next_list.insert(i7); // TAC
-                backpatch(left->next_list, i1->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                L->code.push_back(i1); // TAC
-                L->code.push_back(i2); // TAC
-                L->code.push_back(i3); // TAC
-                L->code.push_back(i4); // TAC
-                L->code.push_back(i5); // TAC
-                L->code.push_back(i6); // TAC
-                L->code.push_back(i7); // TAC
-                L->code.push_back(i8); // TAC
-
-                L->jump_code = left->jump_code; // TAC
-                backpatch(left->false_list, right->jump_code[0]->label); // TAC
-                L->jump_code.insert(L->jump_code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
-                L->false_list = right->false_list; // TAC
-                L->true_list = merge_lists(left->true_list, right->true_list); // TAC
+                L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                backpatch(left->jump_false_list, right->jump_code[0]->label); // TAC
+                L->false_list = right->jump_false_list; // TAC
+                L->true_list = merge_lists(left->jump_true_list, right->jump_true_list); // TAC
+                L->jump_true_list = L->true_list; // TAC
+                L->jump_false_list = L->false_list; // TAC
             }
         }
         else {
@@ -2894,6 +3261,8 @@ Expression* create_conditional_expression(Expression* x) {
     C->result = x->result; // TAC
     C->true_list = x->true_list; // TAC
     C->false_list = x->false_list; // TAC
+    C->jump_true_list = x->jump_true_list; // TAC
+    C->jump_false_list = x->jump_false_list; // TAC
     C->code = x->code; // TAC
     C->jump_code = x->jump_code; // TAC
     C->next_list = x->next_list; // TAC
@@ -2911,8 +3280,6 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
     C->name = "CONDITIONAL EXPRESSION";
     C->code.insert(C->code.begin(), condition->jump_code.begin(), condition->jump_code.end()); // TAC
     C->jump_code.insert(C->jump_code.begin(), condition->jump_code.begin(), condition->jump_code.end()); // TAC
-    // C->jump_code.insert(C->jump_code.end(), true_expr->jump_code.begin(), true_expr->jump_code.end()); // TAC 
-    // C->jump_code.insert(C->jump_code.end(), false_expr->jump_code.begin(), false_expr->jump_code.end()); // TAC
 
     if (condition->type.is_error() || true_expr->type.is_error() || false_expr->type.is_error()) {
         C->type = ERROR_TYPE;
@@ -2940,27 +3307,26 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
         C->code.push_back(i1); // TAC
         C->code.push_back(i2); // TAC
         C->code.insert(C->code.end(), false_expr->code.begin(), false_expr->code.end()); // TAC
-        TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), false_expr->result, new_empty_var(), 0); // TAC
+        TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, false_expr->result, new_empty_var(), 0); // TAC
         C->code.push_back(i3); // TAC
         backpatch(condition->true_list, true_expr->code[0]->label); // TAC
+        backpatch(condition->true_list, i1->label); // TAC
         backpatch(condition->false_list, false_expr->code[0]->label); // TAC
-        backpatch(condition->next_list, i1->label); // TAC
-        backpatch(condition->jump_next_list, i1->label); // TAC
-        backpatch(condition->next_list, i2->label); // TAC
-        backpatch(condition->jump_next_list, i2->label); // TAC
+        backpatch(condition->false_list, i3->label); // TAC
         backpatch(true_expr->next_list, i1->label); // TAC
         backpatch(false_expr->next_list, i3->label); // TAC
-        backpatch(true_expr->jump_next_list, i1->label); // TAC
-        backpatch(false_expr->jump_next_list, i3->label); // TAC
-        C->next_list.insert(i2); // 
+        C->next_list.insert(i2); // TAC
+        C->jump_next_list.insert(i2); // TA
 
+        C->jump_code = condition->jump_code; // TAC
         C->jump_code.insert(C->jump_code.end(), true_expr->jump_code.begin(), true_expr->jump_code.end()); // TAC
         C->jump_code.insert(C->jump_code.end(), false_expr->jump_code.begin(), false_expr->jump_code.end()); // TAC
-        backpatch(condition->true_list, true_expr->jump_code[0]->label); // TAC
-        backpatch(condition->false_list, false_expr->jump_code[0]->label); // TAC
-        C->jump_next_list = merge_lists(true_expr->jump_next_list, false_expr->jump_next_list); // TAC
-        C->true_list = merge_lists(true_expr->true_list, false_expr->true_list); // TAC
-        C->false_list = merge_lists(true_expr->false_list, false_expr->false_list); // TAC
+        backpatch(condition->jump_true_list, true_expr->jump_code[0]->label); // TAC
+        backpatch(condition->jump_false_list, false_expr->jump_code[0]->label); // TAC
+        C->true_list = merge_lists(true_expr->jump_true_list, false_expr->jump_true_list); // TAC
+        C->false_list = merge_lists(true_expr->jump_false_list, false_expr->jump_false_list); // TAC
+        C->jump_true_list = C->true_list; // TAC
+        C->jump_false_list = C->false_list; // TAC
     }
     else if (tt.isIntorFloat() && ft.isIntorFloat() && tt.is_convertible_to(ft)) {
         // Promote both and take the higher ranked one
@@ -2971,35 +3337,35 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
             }
             TACOperand* t1 = new_temp_var(); // TAC
             TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(C->type.to_string()), false_expr->result, 0); // TAC
+            C->result = new_temp_var(); // TAC
             C->code.insert(C->code.end(), true_expr->code.begin(), true_expr->code.end()); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, true_expr->result, new_empty_var(), 0); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, t1, new_empty_var(), 0); // TAC
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            C->code.push_back(i0); // TAC
             C->code.push_back(i1); // TAC
             C->code.push_back(i2); // TAC
-            C->code.push_back(i0); // TAC
             C->code.insert(C->code.end(), false_expr->code.begin(), false_expr->code.end()); // TAC
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), false_expr->result, new_empty_var(), 0); // TAC
+            C->code.push_back(i0); // TAC
+            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, t1, new_empty_var(), 0); // TAC
             C->code.push_back(i3); // TAC
             backpatch(condition->true_list, true_expr->code[0]->label); // TAC
-            backpatch(condition->false_list, i0->label); // TAC
-            backpatch(condition->next_list, i1->label); // TAC
-            backpatch(condition->jump_next_list, i1->label); // TAC
-            backpatch(condition->next_list, i2->label); // TAC
-            backpatch(condition->jump_next_list, i2->label); // TAC
+            backpatch(condition->true_list, i1->label); // TAC
+            backpatch(condition->false_list, false_expr->code[0]->label); // TAC
+            backpatch(condition->false_list, i3->label); // TAC
             backpatch(true_expr->next_list, i1->label); // TAC
             backpatch(false_expr->next_list, i3->label); // TAC
-            backpatch(true_expr->jump_next_list, i1->label); // TAC
-            backpatch(false_expr->jump_next_list, i3->label); // TAC
             C->next_list.insert(i2); // TAC
+            C->jump_next_list.insert(i2); // TA
 
+            C->jump_code = condition->jump_code; // TAC
             C->jump_code.insert(C->jump_code.end(), true_expr->jump_code.begin(), true_expr->jump_code.end()); // TAC
-            C->jump_code.push_back(i0); // TAC
             C->jump_code.insert(C->jump_code.end(), false_expr->jump_code.begin(), false_expr->jump_code.end()); // TAC
-            backpatch(condition->true_list, true_expr->jump_code[0]->label); // TAC
-            backpatch(condition->false_list, i0->label); // TAC
-            C->jump_next_list = merge_lists(true_expr->jump_next_list, false_expr->jump_next_list); // TAC
-            C->true_list = merge_lists(true_expr->true_list, false_expr->true_list); // TAC
-            C->false_list = merge_lists(true_expr->false_list, false_expr->false_list); // TAC
+            backpatch(condition->jump_true_list, true_expr->jump_code[0]->label); // TAC
+            backpatch(condition->jump_false_list, false_expr->jump_code[0]->label); // TAC
+            C->true_list = merge_lists(true_expr->jump_true_list, false_expr->jump_true_list); // TAC
+            C->false_list = merge_lists(true_expr->jump_false_list, false_expr->jump_false_list); // TAC
+            C->jump_true_list = C->true_list; // TAC
+            C->jump_false_list = C->false_list; // TAC
         }
         else if (tt.type_index < ft.type_index) {
             C->type = ft;
@@ -3009,34 +3375,6 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
             TACOperand* t1 = new_temp_var(); // TAC
             TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(C->type.to_string()), true_expr->result, 0); // TAC
             C->code.push_back(i0); // TAC
-            C->code.insert(C->code.end(), true_expr->code.begin(), true_expr->code.end()); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, true_expr->result, new_empty_var(), 0); // TAC
-            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            C->code.push_back(i1); // TAC
-            C->code.push_back(i2); // TAC
-            C->code.insert(C->code.end(), false_expr->code.begin(), false_expr->code.end()); // TAC
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), false_expr->result, new_empty_var(), 0); // TAC
-            C->code.push_back(i3); // TAC
-            backpatch(condition->true_list, i0->label); // TAC
-            backpatch(condition->false_list, false_expr->code[0]->label); // TAC
-            backpatch(condition->next_list, i1->label); // TAC
-            backpatch(condition->jump_next_list, i1->label); // TAC
-            backpatch(condition->next_list, i2->label); // TAC
-            backpatch(condition->jump_next_list, i2->label); // TAC
-            backpatch(true_expr->next_list, i1->label); // TAC
-            backpatch(false_expr->next_list, i3->label); // TAC
-            backpatch(true_expr->jump_next_list, i1->label); // TAC
-            backpatch(false_expr->jump_next_list, i3->label); // TAC
-            C->next_list.insert(i2); // TAC
-
-            C->jump_code.push_back(i0); // TAC
-            C->jump_code.insert(C->jump_code.end(), true_expr->jump_code.begin(), true_expr->jump_code.end()); // TAC
-            C->jump_code.insert(C->jump_code.end(), false_expr->jump_code.begin(), false_expr->jump_code.end()); // TAC
-            backpatch(condition->true_list, i0->label); // TAC
-            backpatch(condition->false_list, false_expr->jump_code[0]->label); // TAC
-            C->jump_next_list = merge_lists(true_expr->jump_next_list, false_expr->jump_next_list); // TAC
-            C->true_list = merge_lists(true_expr->true_list, false_expr->true_list); // TAC
-            C->false_list = merge_lists(true_expr->false_list, false_expr->false_list); // TAC
         }
     }
     else {
@@ -3071,6 +3409,8 @@ Expression* create_assignment_expression(Expression* x) {
     C->result = x->result; // TAC
     C->true_list = x->true_list; // TAC
     C->false_list = x->false_list; // TAC
+    C->jump_true_list = x->jump_true_list; // TAC
+    C->jump_false_list = x->jump_false_list; // TAC
     C->code = x->code; // TAC
     C->jump_code = x->jump_code; // TAC
     C->next_list = x->next_list; // TAC
@@ -3124,7 +3464,16 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), (*left->code.rbegin())->arg1, t1, new_empty_var(), 0); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
+
+            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), left->result, t1, new_empty_var(), 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
 
@@ -3132,6 +3481,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
@@ -3139,13 +3490,26 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
         }
         else {
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), (*left->code.rbegin())->arg1, right->result, new_empty_var(), 0); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), left->result, right->result, new_empty_var(), 0); // TAC
             A->code.push_back(i1); // TAC
-
+            backpatch(left->next_list, i1->label); // TAC
+            backpatch(left->jump_next_list, i1->label); // TAC
+            backpatch(right->next_list, i1->label); // TAC
+            backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
@@ -3168,7 +3532,15 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(op->name == "MUL_ASSIGN" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), (*left->code.rbegin())->arg1, left->result, t1, 0); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
+            TACInstruction* i2 = emit(TACOperator(op->name == "MUL_ASSIGN" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), left->result, left->result, t1, 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
 
@@ -3176,23 +3548,35 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
         }
         else {
-            TACInstruction* i1 = emit(TACOperator(op->name == "MUL_ASSIGN" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), (*left->code.rbegin())->arg1, left->result, right->result, 0); // TAC
+            TACInstruction* i1 = emit(TACOperator(op->name == "MUL_ASSIGN" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), left->result, left->result, right->result, 0); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             A->code.push_back(i1); // TAC
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
@@ -3215,7 +3599,15 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*left->code.rbegin())->arg1, left->result, t1, 0); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
+            TACInstruction* i2 = emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), left->result, left->result, t1, 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
 
@@ -3223,6 +3615,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
@@ -3237,7 +3631,15 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
-                TACInstruction* i2 = emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*left->code.rbegin())->arg1, left->result, t1, 0); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                TACInstruction* i2 = emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), left->result, left->result, t1, 0); // TAC
                 A->code.push_back(i1); // TAC
                 A->code.push_back(i2); // TAC
 
@@ -3245,23 +3647,35 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 A->true_list.insert(i3); // TAC
                 A->false_list.insert(i4); // TAC
+                A->jump_true_list.insert(i3); // TAC
+                A->jump_false_list.insert(i4); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i2); // TAC
                 A->jump_code.push_back(i3); // TAC
                 A->jump_code.push_back(i4); // TAC
             }
             else {
-                TACInstruction* i1 = emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*left->code.rbegin())->arg1, left->result, right->result, 0); // TAC
+                TACInstruction* i1 = emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), left->result, left->result, right->result, 0); // TAC
                 backpatch(left->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
                 A->code.push_back(i1); // TAC
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 A->true_list.insert(i3); // TAC
                 A->false_list.insert(i4); // TAC
+                A->jump_true_list.insert(i3); // TAC
+                A->jump_false_list.insert(i4); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i3); // TAC
                 A->jump_code.push_back(i4); // TAC
@@ -3285,7 +3699,15 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_MOD), (*left->code.rbegin())->arg1, left->result, t1, 0); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
+            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_MOD), left->result, left->result, t1, 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
 
@@ -3293,23 +3715,35 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
         }
         else {
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MOD), (*left->code.rbegin())->arg1, left->result, right->result, 0); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MOD), left->result, left->result, right->result, 0); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             A->code.push_back(i1); // TAC
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
@@ -3333,7 +3767,15 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(op->name == "AND_ASSIGN" ? TAC_OPERATOR_BIT_AND : op->name == "OR_ASSIGN" ? TAC_OPERATOR_BIT_OR : TAC_OPERATOR_BIT_XOR), (*left->code.rbegin())->arg1, left->result, t1, 0); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
+            TACInstruction* i2 = emit(TACOperator(op->name == "AND_ASSIGN" ? TAC_OPERATOR_BIT_AND : op->name == "OR_ASSIGN" ? TAC_OPERATOR_BIT_OR : TAC_OPERATOR_BIT_XOR), left->result, left->result, t1, 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
 
@@ -3341,23 +3783,35 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
         }
         else {
-            TACInstruction* i1 = emit(TACOperator(op->name == "AND_ASSIGN" ? TAC_OPERATOR_BIT_AND : op->name == "OR_ASSIGN" ? TAC_OPERATOR_BIT_OR : TAC_OPERATOR_BIT_XOR), (*left->code.rbegin())->arg1, left->result, right->result, 0); // TAC
+            TACInstruction* i1 = emit(TACOperator(op->name == "AND_ASSIGN" ? TAC_OPERATOR_BIT_AND : op->name == "OR_ASSIGN" ? TAC_OPERATOR_BIT_OR : TAC_OPERATOR_BIT_XOR), left->result, left->result, right->result, 0); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             A->code.push_back(i1); // TAC
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
@@ -3380,7 +3834,15 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(op->name == "LEFT_ASSIGN" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), (*left->code.rbegin())->arg1, left->result, t1, 0); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
+            TACInstruction* i2 = emit(TACOperator(op->name == "LEFT_ASSIGN" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), left->result, left->result, t1, 0); // TAC
             A->code.push_back(i1); // TAC
             A->code.push_back(i2); // TAC
 
@@ -3388,23 +3850,35 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
         }
         else {
-            TACInstruction* i1 = emit(TACOperator(op->name == "LEFT_ASSIGN" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), (*left->code.rbegin())->arg1, left->result, right->result, 0); // TAC
+            TACInstruction* i1 = emit(TACOperator(op->name == "LEFT_ASSIGN" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), left->result, left->result, right->result, 0); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(right->jump_next_list, i1->label); // TAC
+            backpatch(left->true_list, i1->label); // TAC
+            backpatch(left->false_list, i1->label); // TAC
+            backpatch(right->true_list, i1->label); // TAC
+            backpatch(right->false_list, i1->label); // TAC
+            backpatch(left->jump_true_list, i1->label); // TAC
+            backpatch(left->jump_false_list, i1->label); // TAC
+            backpatch(right->jump_true_list, i1->label); // TAC
+            backpatch(right->jump_false_list, i1->label); // TAC
             A->code.push_back(i1); // TAC
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             A->true_list.insert(i3); // TAC
             A->false_list.insert(i4); // TAC
+            A->jump_true_list.insert(i3); // TAC
+            A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
@@ -3432,6 +3906,8 @@ ExpressionList* create_expression_list(Expression* x) { // top level expression 
     E->result = x->result; // TAC
     E->true_list = x->true_list; // TAC
     E->false_list = x->false_list; // TAC
+    E->jump_true_list = x->jump_true_list; // TAC
+    E->jump_false_list = x->jump_false_list; // TAC
     E->code = x->code; // TAC
     E->jump_code = x->jump_code; // TAC
     E->next_list = x->next_list; // TAC
@@ -3443,8 +3919,15 @@ ExpressionList* create_expression_list(ExpressionList* expression_list, Expressi
     expression_list->expression_list.push_back(new_expression);
     expression_list->code.insert(expression_list->code.end(), new_expression->code.begin(), new_expression->code.end()); // TAC
     expression_list->jump_code.insert(expression_list->jump_code.begin(), new_expression->jump_code.begin(), new_expression->jump_code.end()); // TAC
-    expression_list->next_list = merge_lists(expression_list->next_list, new_expression->next_list); // TAC
-    expression_list->jump_next_list = merge_lists(expression_list->jump_next_list, new_expression->jump_next_list); // TAC
+    backpatch(expression_list->next_list, new_expression->code[0]->label); // TAC
+    backpatch(expression_list->jump_next_list, new_expression->jump_code[0]->label); // TAC
+    expression_list->next_list = new_expression->next_list; // TAC
+    expression_list->jump_next_list = new_expression->jump_next_list; // TAC
+    expression_list->true_list = new_expression->true_list; // TAC
+    expression_list->false_list = new_expression->false_list; // TAC
+    expression_list->jump_false_list = new_expression->jump_false_list; // TAC
+    expression_list->jump_true_list = new_expression->jump_true_list; // TAC
+
     if (new_expression->type.is_error()) {
         expression_list->type = ERROR_TYPE;
         return expression_list;
