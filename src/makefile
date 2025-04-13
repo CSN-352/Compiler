@@ -26,7 +26,7 @@ YFLAGS = -d -v
 DEBUG ?= 0
 DJ ?= 0
 CC = gcc
-CXX = g++ -std=c++17
+CXX = g++ -std=c++17 -g
 CFLAGS = -lfl -I$(SRC_DIR)
 ifeq ($(NAME),aaditya)
     CFLAGS = -ll -I$(SRC_DIR)

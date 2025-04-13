@@ -2,11 +2,10 @@
 
 set -e
 
-# Expected usage:
-# ./add_test.sh input.c input.txt
-
-SRC_DIR="../src"
-TESTS_DIR="./tests"
+# Get the directory where this script lives (always correct no matter where it's called from)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SRC_DIR="$SCRIPT_DIR/../src"
+TESTS_DIR="$SCRIPT_DIR/tests"
 
 C_FILE=$1
 TXT_FILE=$2
@@ -28,10 +27,12 @@ if [ ! -f "$SRC_DIR/$TXT_FILE" ]; then
 fi
 
 # Find next test number
-NEXT_NUM=1
-while [ -d "$TESTS_DIR/test$NEXT_NUM" ]; do
+NEXT_NUM=$(find "$TESTS_DIR" -maxdepth 1 -type d -name "test[0-9]*" | sed -E 's/.*test([0-9]+)/\1/' | sort -n | tail -n 1)
+if [ -z "$NEXT_NUM" ]; then
+    NEXT_NUM=1
+else
     NEXT_NUM=$((NEXT_NUM + 1))
-done
+fi
 
 # Create test directory
 NEW_TEST_DIR="$TESTS_DIR/test$NEXT_NUM"
