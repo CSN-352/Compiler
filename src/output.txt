@@ -1,0 +1,15 @@
+===== Three-Address Code (TAC) =====
+1: function main
+2: t1 = (int)5
+3: x = t1
+4: t2 = x
+5: t3 = (int)0
+6: if t2 > t3 goto I8
+7: goto I12
+8: t5 = x
+9: t6 = t5
+10: t5 = t5 - 1
+11: goto I4
+12: end function main
+====================================
+Parsing completed successfully.

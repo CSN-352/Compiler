@@ -137,17 +137,24 @@
 //     return a + b;
 // }
 
+// int main(){
+//     int x;
+//     label1:
+//     for (int i = 0; i < 5; i++) {
+//         // if (i == 2) continue;
+//         if (i == 4) break;
+//         //printf("%d ", i);
+//     }
+//     goto label;
+//     label: x = 1;
+//     //printf("Jumped here\n");
+//     // goto label1;
+// }
+
 int main(){
-    int x;
-    label1:
-    for (int i = 0; i < 5; i++) {
-        // if (i == 2) continue;
-        if (i == 4) break;
-        //printf("%d ", i);
-    }
-    goto label;
-    label: x = 1;
-    //printf("Jumped here\n");
-    // goto label1;
+    int a = 10;
+    int b = 5;
+    int c = 0;
+    int d = a<b && a<c;
 }
 

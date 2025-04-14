@@ -182,7 +182,7 @@ string get_operator_string(TACOperatorType op) {
 }
 
 void print_TAC_instruction(TACInstruction* instruction) {
-    if (!instruction) return;
+    if (!instruction||instruction->result->type == TAC_OPERAND_EMPTY) return;
     if(instruction->label->type == TAC_OPERAND_LABEL) cout<<instruction->label->value << ": "; // Print the label of the instruction
     // **Jump Instructions**
     if (instruction->flag == 1) {
@@ -197,32 +197,32 @@ void print_TAC_instruction(TACInstruction* instruction) {
     // **Function Instructions**
     else if(instruction->op.type == TAC_OPERATOR_CAST) {
         cout << get_operand_string(instruction->result) << " = "
-        << get_operator_string(instruction->op.type) 
                 << "(" << get_operand_string(instruction->arg1) << ")"
                 << get_operand_string(instruction->arg2) ;
     }
     else if (instruction->op.type == TAC_OPERATOR_PARAM) {
-        cout << "param " << get_operand_string(instruction->arg1);
+        cout << "param " << get_operand_string(instruction->result);
     }
     else if (instruction->op.type == TAC_OPERATOR_CALL) {
-        if (instruction->result->type == TAC_OPERAND_EMPTY) {
-            cout << "call " << get_operand_string(instruction->result) << ", "
+        if (instruction->result->value == "") {
+            // If the result is empty, it means it's a void function call
+            cout << "call " << get_operand_string(instruction->arg1) << ", "
                 << get_operand_string(instruction->arg2);
         }
         else {
-            cout << get_operand_string(instruction->arg1) << " = call "
-                << get_operand_string(instruction->result) << ", "
+            cout << get_operand_string(instruction->result) << " = call "
+                << get_operand_string(instruction->arg1) << ", "
                 << get_operand_string(instruction->arg2);
         }
     }
     else if (instruction->op.type == TAC_OPERATOR_RETURN) { // MAY NEED TO CHANGE
-        cout << "return " << get_operand_string(instruction->arg1);
+        cout << "return " << get_operand_string(instruction->result);
     }
     else if(instruction->op.type == TAC_OPERATOR_FUNC_BEGIN) {
-        cout << "function " << get_operand_string(instruction->arg1);
+        cout << "function " << get_operand_string(instruction->result);
     }
     else if (instruction->op.type == TAC_OPERATOR_FUNC_END) {
-        cout << "end function ";
+        cout << "end function "<< get_operand_string(instruction->result);
     }
     // **Pointer Instructions**
     // else if (instruction->op.type == TAC_OPERATOR_ASSIGN && instruction->arg1.type == TAC_OPERAND_POINTER) {
@@ -293,6 +293,7 @@ void fix_labels_temps(){
     int label_ct = 1;
 
     for(int i=0;i<TAC_CODE.size();i++){
+        if (TAC_CODE[i]->result->type == TAC_OPERAND_EMPTY ) TAC_CODE.erase(TAC_CODE.begin() + i); // Remove uninitialized entries
         if(TAC_CODE[i]->label->type == TAC_OPERAND_LABEL && TAC_CODE[i]->label->value != ""){
             if(labels.find(TAC_CODE[i]->label->value) == labels.end()){
                 labels[TAC_CODE[i]->label->value] = label_ct;

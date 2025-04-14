@@ -923,11 +923,14 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                     if(i->assignment_expression->result->type != TAC_OPERAND_TEMP_VAR){
                         TACOperand* t1 = new_temp_var(); // TAC
                         TACInstruction* i0;
-                        if(declaration_specifiers->type_index != i->assignment_expression->type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST),t1, i->assignment_expression->result, new_empty_var(), 0); // TAC
+                        if(t.type_index != i->assignment_expression->type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST),t1, new_type(t.to_string()) , i->assignment_expression->result, 0); // TAC
                         else i0 = emit(TACOperator(TAC_OPERATOR_NOP),t1, i->assignment_expression->result, new_empty_var(), 0); // TAC
                         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
                         init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
                         init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
+                        for(auto l:i->assignment_expression->jump_next_list){
+                            init_declarator_list->init_declarator_list[index]->code.erase(remove(init_declarator_list->init_declarator_list[index]->code.begin(), init_declarator_list->init_declarator_list[index]->code.end(), l), init_declarator_list->init_declarator_list[index]->code.end()); // TAC
+                        }
                         backpatch(i->assignment_expression->next_list, i0->label); // TAC
                         backpatch(i->assignment_expression->jump_next_list, i0->label); // TAC
                         backpatch(i->assignment_expression->true_list, i0->label); // TAC
@@ -937,9 +940,12 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                     }
                     else{
                         TACInstruction* i1;
-                        if(declaration_specifiers->type_index != i->assignment_expression->type.type_index)i1 = emit(TACOperator(TAC_OPERATOR_CAST), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
+                        if(t.type_index != i->assignment_expression->type.type_index)i1 = emit(TACOperator(TAC_OPERATOR_CAST), id, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
                         else i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
                         init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
+                        for(auto l:i->assignment_expression->jump_next_list){
+                            init_declarator_list->init_declarator_list[index]->code.erase(remove(init_declarator_list->init_declarator_list[index]->code.begin(), init_declarator_list->init_declarator_list[index]->code.end(), l), init_declarator_list->init_declarator_list[index]->code.end()); // TAC
+                        }
                         backpatch(i->assignment_expression->next_list, i1->label); // TAC
                         backpatch(i->assignment_expression->jump_next_list, i1->label); // TAC
                         backpatch(i->assignment_expression->true_list, i1->label); // TAC
@@ -1937,9 +1943,11 @@ EnumeratorList* create_enumerator_list(Enumerator* e)
     else{
         string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(value), new_empty_var(), 0); // TAC
+        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type("int"),new_constant(value), 0); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
         P->last_constant_value = value; // TAC
         P->code.push_back(i1); // TAC
+        P->code.push_back(i0); // TAC
         P->code.push_back(i2); // TAC
         backpatch(e->initializer_expression->next_list, i1->label); // TAC
     }
@@ -1962,9 +1970,11 @@ EnumeratorList* create_enumerator_list(EnumeratorList* el, Enumerator* e)
     else{
         string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(value), new_empty_var(), 0); // TAC
+        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type("int"),new_constant(value), 0); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
         el->last_constant_value = value; // TAC
         el->code.push_back(i1); // TAC
+        el->code.push_back(i0); // TAC
         el->code.push_back(i2); // TAC
         backpatch(e->initializer_expression->next_list, i1->label); // TAC
     }
@@ -2548,21 +2558,21 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     fd->compound_statement = cs_cast;
 
     Symbol* function = symbolTable.getSymbol(declarator->direct_declarator->identifier->value);
-    Type t1 = function->type;
+    Type t1 = Type(function->type.type_index,function->type.ptr_level,function->type.is_const_variable);
     Type t2 = Type(PrimitiveTypes::VOID_T, 0, false);
     if(!cs->return_type.empty()) t2 = cs->return_type[0];
-    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_empty_var(), new_constant(declarator->direct_declarator->identifier->value), new_empty_var(), 0); // TAC
+    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
     fd->code.push_back(i1); // TAC
     if(declarator->direct_declarator->parameters != nullptr) {
          for(auto pd:declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
              if(pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
-                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_empty_var(), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), 0); // TAC
+                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
                  fd->code.push_back(i2); // TAC
              }
          }
     }
     
-    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_empty_var(), new_empty_var(), new_empty_var(), 0); // TAC
+    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
     backpatch(cs_cast->next_list, i2->label); // TAC
     backpatch(cs_cast->break_list, i2->label); // TAC
     fd->code.insert(fd->code.end(), cs_cast->code.begin(), cs_cast->code.end()); // TAC
@@ -2785,25 +2795,25 @@ void SymbolTable::exitScope()
             ++it;
     }
 
-    for (auto it = defined_types.begin(); it != defined_types.end();)
-    {
-        for (auto symIt = it->second.begin(); symIt != it->second.end();)
-        {
-            if (symIt->first == currentScope)
-            {
-                // delete symIt->second;  // Free the allocated memory
-                symIt = it->second.erase(symIt);
-            }
-            else
-            {
-                ++symIt;
-            }
-        }
-        if (it->second.empty())
-            it = defined_types.erase(it);
-        else
-            ++it;
-    }
+    // for (auto it = defined_types.begin(); it != defined_types.end();)
+    // {
+    //     for (auto symIt = it->second.begin(); symIt != it->second.end();)
+    //     {
+    //         if (symIt->first == currentScope)
+    //         {
+    //             // delete symIt->second;  // Free the allocated memory
+    //             symIt = it->second.erase(symIt);
+    //         }
+    //         else
+    //         {
+    //             ++symIt;
+    //         }
+    //     }
+    //     if (it->second.empty())
+    //         it = defined_types.erase(it);
+    //     else
+    //         ++it;
+    // }
 
     for (auto it = typedefs.begin(); it != typedefs.end();)
     {

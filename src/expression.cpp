@@ -58,11 +58,18 @@ Expression* create_primary_expression(Identifier* i) {
     P->code.push_back(i0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+    TACInstruction* i1_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+    TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+    P->true_list.insert(i1_);
+    P->false_list.insert(i2_); // TAC
     P->jump_true_list.insert(i1);
     P->jump_false_list.insert(i2);
     P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
+    P->jump_code.push_back(i1_); // TAC
+    P->jump_code.push_back(i2_); // TAC
+
     return P;
 }
 
@@ -77,10 +84,16 @@ Expression* create_primary_expression(Constant* x) {
     P->result = new_constant(x->value); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+    TACInstruction* i1_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+    TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->jump_true_list.insert(i1);
     P->jump_false_list.insert(i2);
+    P->true_list.insert(i1_);
+    P->false_list.insert(i2_); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
+    P->jump_code.push_back(i1_); // TAC
+    P->jump_code.push_back(i2_); // TAC
     return P;
 }
 
@@ -95,12 +108,18 @@ Expression* create_primary_expression(StringLiteral* x) {
     TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), P->result, new_string(x->value), new_empty_var(), 0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+    TACInstruction* i1_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+    TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     P->jump_true_list.insert(i1);
     P->jump_false_list.insert(i2);
+    P->true_list.insert(i1_);
+    P->false_list.insert(i2_); // TAC
     P->code.push_back(i0); // TAC
     P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
+    P->jump_code.push_back(i1_); // TAC
+    P->jump_code.push_back(i2_); // TAC
     return P;
 }
 
@@ -136,7 +155,7 @@ ArgumentExpressionList* create_argument_expression_list(Expression* x) {
     P->line_no = x->line_no;
     P->column_no = x->column_no;
     P->type = x->type; // if argument expression list does not have an erronous expression, set type to the type of the first expression. Else set it as ERROR_TYPE.
-    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_PARAM), new_empty_var(), x->result, new_empty_var(), 0); // TAC
+    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_PARAM), x->result, new_empty_var(), new_empty_var(), 0); // TAC
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
     backpatch(x->true_list, i1->label); // TAC
@@ -154,7 +173,7 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
     if (x->type.is_error()) {
         args_expr_list->type = ERROR_TYPE;
     }
-    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_PARAM), new_empty_var(), x->result, new_empty_var(), 0); // TAC
+    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_PARAM), x->result, new_empty_var(), new_empty_var(), 0); // TAC
     backpatch(x->next_list, i1->label); // TAC
     backpatch(x->jump_next_list, i1->label); // TAC
     backpatch(x->true_list, i1->label); // TAC
@@ -207,6 +226,12 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
     P->column_no = x->column_no;
     P->code.insert(P->code.begin(), x->code.begin(), x->code.end()); // TAC
     P->jump_code.insert(P->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
+    for(auto i:x->jump_next_list){
+        P->code.erase(remove(P->code.begin(), P->code.end(), i), P->code.end()); // TAC
+    }
+    for(auto i:x->next_list){
+        P->jump_code.erase(remove(P->jump_code.begin(), P->jump_code.end(), i), P->jump_code.end()); // TAC
+    }
     if (op->name == "INC_OP") P->name = "POSTFIX EXPRESSION INC OP";
     else P->name = "POSTFIX EXPRESSION DEC OP";
 
@@ -232,19 +257,23 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         backpatch(x->false_list, i1->label); // TAC
         backpatch(x->jump_true_list, i1->label); // TAC
         backpatch(x->jump_false_list, i1->label); // TAC
-        TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*x->code.rbegin())->arg1, x->result, new_constant("1"), 0); // TAC
+        TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1"), 0); // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        P->true_list.insert(i3); // TAC
-        P->false_list.insert(i4); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+        TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        P->true_list.insert(i3_); // TAC
+        P->false_list.insert(i4_); // TAC
         P->jump_true_list.insert(i3); // TAC
         P->jump_false_list.insert(i4); // TAC
         P->jump_code.push_back(i1); // TAC
         P->jump_code.push_back(i2); // TAC
         P->jump_code.push_back(i3); // TAC
         P->jump_code.push_back(i4); // TAC
+        P->jump_code.push_back(i3_); // TAC
+        P->jump_code.push_back(i4_); // TAC
     }
     else if (x->type.isFloat()) {
         P->type = x->type;
@@ -256,20 +285,24 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         backpatch(x->false_list, i1->label); // TAC
         backpatch(x->jump_true_list, i1->label); // TAC
         backpatch(x->jump_false_list, i1->label); // TAC
-        TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*x->code.rbegin())->arg1, x->result, new_constant("1"), 0); // TAC
+        TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant("1"), 0); // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i2); // TAC
 
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        P->true_list.insert(i3); // TAC
-        P->false_list.insert(i4); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+        TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        P->true_list.insert(i3_); // TAC
+        P->false_list.insert(i4_); // TAC
         P->jump_true_list.insert(i3); // TAC
         P->jump_false_list.insert(i4); // TAC
         P->jump_code.push_back(i1); // TAC
         P->jump_code.push_back(i2); // TAC
         P->jump_code.push_back(i3); // TAC
         P->jump_code.push_back(i4); // TAC
+        P->jump_code.push_back(i3_); // TAC
+        P->jump_code.push_back(i4_); // TAC
     }
     else if (x->type.is_pointer) {
         P->type = x->type;
@@ -282,20 +315,24 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         backpatch(x->false_list, i1->label); // TAC
         backpatch(x->jump_true_list, i1->label); // TAC
         backpatch(x->jump_false_list, i1->label); // TAC
-        TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), (*x->code.rbegin())->arg1, x->result, new_constant(to_string(x->type.get_size())), 0); // TAC
+        TACInstruction* i2 = emit(TACOperator(op->name == "INC_OP" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), x->result, x->result, new_constant(to_string(x->type.get_size())), 0); // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i2); // TAC
 
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        P->true_list.insert(i3); // TAC
-        P->false_list.insert(i4); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+        TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        P->true_list.insert(i3_); // TAC
+        P->false_list.insert(i4_); // TAC
         P->jump_true_list.insert(i3); // TAC
         P->jump_false_list.insert(i4); // TAC
         P->jump_code.push_back(i1); // TAC
         P->jump_code.push_back(i2); // TAC
         P->jump_code.push_back(i3); // TAC
         P->jump_code.push_back(i4); // TAC
+        P->jump_code.push_back(i3_); // TAC
+        P->jump_code.push_back(i4_); // TAC
     }
     else {
         P->type = ERROR_TYPE;
@@ -318,6 +355,12 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
     P->column_no = x->column_no;
     P->code.insert(P->code.begin(), x->code.begin(), x->code.end()); // TAC
     P->jump_code.insert(P->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
+    for(auto i:x->jump_next_list){
+        P->code.erase(remove(P->code.begin(), P->code.end(), i), P->code.end()); // TAC
+    }
+    for(auto i:x->next_list){
+        P->jump_code.erase(remove(P->jump_code.begin(), P->jump_code.end(), i), P->jump_code.end()); // TAC
+    }
 
     if (x->type.is_error()) {
         P->type = ERROR_TYPE;
@@ -387,8 +430,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
 
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
             TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            P->true_list.insert(i5); // TAC
-            P->false_list.insert(i6); // TAC
+            TACInstruction* i5_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+            TACInstruction* i6_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            P->true_list.insert(i5_); // TAC
+            P->false_list.insert(i6_); // TAC
             P->jump_true_list.insert(i5); // TAC
             P->jump_false_list.insert(i6); // TAC
             P->jump_code.push_back(i1); // TAC
@@ -397,6 +442,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             P->jump_code.push_back(i4); // TAC
             P->jump_code.push_back(i5); // TAC
             P->jump_code.push_back(i6); // TAC
+            P->jump_code.push_back(i5_); // TAC
+            P->jump_code.push_back(i6_); // TAC
         }
         else if (op->name == "PTR_OP") {
             TACOperand* t1 = new_temp_var(); // TAC
@@ -417,8 +464,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
 
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            P->true_list.insert(i4); // TAC
-            P->false_list.insert(i5); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+            TACInstruction* i5_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            P->true_list.insert(i4_); // TAC
+            P->false_list.insert(i5_); // TAC
             P->jump_true_list.insert(i4); // TAC
             P->jump_false_list.insert(i5); // TAC
             P->jump_code.push_back(i1); // TAC
@@ -426,6 +475,8 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             P->jump_code.push_back(i3); // TAC
             P->jump_code.push_back(i4); // TAC
             P->jump_code.push_back(i5); // TAC
+            P->jump_code.push_back(i4_); // TAC
+            P->jump_code.push_back(i5_); // TAC
         }
     }
 
@@ -445,6 +496,18 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     P->code.insert(P->code.end(), index_expression->code.begin(), index_expression->code.end()); // TAC
     P->jump_code.insert(P->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
     P->jump_code.insert(P->jump_code.end(), index_expression->code.begin(), index_expression->code.end()); // TAC
+    for(auto i : x->jump_next_list) {
+        P->code.erase(remove(P->code.begin(), P->code.end(), i), P->code.end()); // TAC
+    }
+    for(auto i : x->next_list) {
+        P->jump_code.erase(remove(P->jump_code.begin(), P->jump_code.end(), i), P->jump_code.end()); // TAC
+    }
+    for(auto i : index_expression->jump_next_list) {
+        P->code.erase(remove(P->code.begin(), P->code.end(), i), P->code.end()); // TAC
+    }
+    for(auto i : index_expression->next_list) {
+        P->jump_code.erase(remove(P->jump_code.begin(), P->jump_code.end(), i), P->jump_code.end()); // TAC
+    }
 
     if (x->type.is_error()) {
         P->type = ERROR_TYPE;
@@ -520,12 +583,16 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     }
     TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-    P->true_list.insert(i5); // TAC
-    P->false_list.insert(i6); // TAC
+    TACInstruction* i5_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+    TACInstruction* i6_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+    P->true_list.insert(i5_); // TAC
+    P->false_list.insert(i6_); // TAC
     P->jump_true_list.insert(i5); // TAC
     P->jump_false_list.insert(i6); // TAC
     P->jump_code.push_back(i5); // TAC
     P->jump_code.push_back(i6); // TAC
+    P->jump_code.push_back(i5_); // TAC
+    P->jump_code.push_back(i6_); // TAC
     P->type.is_const_literal = false;
     return P;
 }
@@ -541,6 +608,12 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
     P->column_no = x->column_no;
     P->code.insert(P->code.begin(), x->code.begin(), x->code.end()); // TAC
     P->jump_code.insert(P->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
+    for(auto i:x->jump_next_list){
+        P->code.erase(remove(P->code.begin(), P->code.end(), i), P->code.end()); // TAC
+    }
+    for(auto i:x->next_list){
+        P->jump_code.erase(remove(P->jump_code.begin(), P->jump_code.end(), i), P->jump_code.end()); // TAC
+    }
 
     if (x->type.is_error()) {
         P->type = ERROR_TYPE;
@@ -609,7 +682,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 TACInstruction* i1;
                 if(argument_expression_list != nullptr)P->code = argument_expression_list->code; // TAC
                 if (x->type.type_index == PrimitiveTypes::VOID_T){
-                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_empty_var(), new_identifier(sym->name), new_constant(to_string(arguments.size())), 0); // TAC
+                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_constant(""), new_identifier(sym->name), new_constant(to_string(arguments.size())), 0); // TAC
                 }
                 else{
                     i1 = emit(TACOperator(TAC_OPERATOR_CALL), P->result, new_identifier(sym->name), new_constant(to_string(arguments.size())), 0); // TAC
@@ -625,18 +698,21 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                P->true_list.insert(i2); // TAC
-                P->false_list.insert(i3); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                P->true_list.insert(i2_); // TAC
+                P->false_list.insert(i3_); // TAC
                 P->jump_true_list.insert(i2); // TAC
                 P->jump_false_list.insert(i3); // TAC
                 P->jump_code.push_back(i1); // TAC
                 P->jump_code.push_back(i2); // TAC
                 P->jump_code.push_back(i3); // TAC
+                P->jump_code.push_back(i2_); // TAC
+                P->jump_code.push_back(i3_); // TAC
             }
         }
     }
     P->type.is_const_literal = false;
-    // print_code_vector(P->code);
     return P;
 }
 
@@ -680,6 +756,12 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
     U->column_no = x->column_no;
     U->code.insert(U->code.begin(), x->code.begin(), x->code.end()); // TAC
     U->jump_code.insert(U->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
+    for(auto i:x->jump_next_list){
+        U->code.erase(remove(U->code.begin(), U->code.end(), i), U->code.end()); // TAC
+    }
+    for(auto i:x->next_list){
+        U->jump_code.erase(remove(U->jump_code.begin(), U->jump_code.end(), i), U->jump_code.end()); // TAC
+    }
 
     if (x->type.is_error()) {
         U->type = ERROR_TYPE;
@@ -726,14 +808,18 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            U->true_list.insert(i3); // TAC
-            U->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            U->true_list.insert(i3_); // TAC
+            U->false_list.insert(i4_); // TAC
             U->jump_true_list.insert(i3); // TAC
             U->jump_false_list.insert(i4); // TAC
             U->jump_code.push_back(i1); // TAC
             U->jump_code.push_back(i2); // TAC
             U->jump_code.push_back(i3); // TAC
             U->jump_code.push_back(i4); // TAC
+            U->jump_code.push_back(i3_); // TAC
+            U->jump_code.push_back(i4_); // TAC
         }
         else
         {
@@ -760,13 +846,17 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        U->true_list.insert(i2); // TAC
-        U->false_list.insert(i3); // TAC
+        TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        U->true_list.insert(i2_); // TAC
+        U->false_list.insert(i3_); // TAC
         U->jump_true_list.insert(i2); // TAC
         U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
+        U->jump_code.push_back(i2_); // TAC
+        U->jump_code.push_back(i3_); // TAC
     }
     U->type.is_const_literal = false;
     return U;
@@ -783,6 +873,12 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
 
     U->code.insert(U->code.begin(), x->code.begin(), x->code.end()); // TAC
     U->jump_code.insert(U->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
+    for(auto i:x->jump_next_list){
+        U->code.erase(remove(U->code.begin(), U->code.end(), i), U->code.end()); // TAC
+    }
+    for(auto i:x->next_list){
+        U->jump_code.erase(remove(U->jump_code.begin(), U->jump_code.end(), i), U->jump_code.end()); // TAC
+    }
 
     if (x->type.is_error()) {
         U->type = ERROR_TYPE;
@@ -821,13 +917,17 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        U->true_list.insert(i2); // TAC
-        U->false_list.insert(i3); // TAC
+        TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        U->true_list.insert(i2_); // TAC
+        U->false_list.insert(i3_); // TAC
         U->jump_true_list.insert(i2); // TAC
         U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
+        U->jump_code.push_back(i2_); // TAC
+        U->jump_code.push_back(i3_); // TAC
     }
     else if (op->name == "MULTIPLY")
     {
@@ -857,13 +957,17 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        U->true_list.insert(i2); // TAC
-        U->false_list.insert(i3); // TAC
+        TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        U->true_list.insert(i2_); // TAC
+        U->false_list.insert(i3_); // TAC
         U->jump_true_list.insert(i2); // TAC
         U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
+        U->jump_code.push_back(i2_); // TAC 
+        U->jump_code.push_back(i3_); // TAC
     }
     else if (op->name == "MINUS" || op->name == "PLUS")
     {
@@ -891,13 +995,17 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        U->true_list.insert(i2); // TAC
-        U->false_list.insert(i3); // TAC
+        TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        U->true_list.insert(i2_); // TAC
+        U->false_list.insert(i3_); // TAC
         U->jump_true_list.insert(i2); // TAC
         U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
+        U->jump_code.push_back(i2_); // TAC
+        U->jump_code.push_back(i3_); // TAC
     }
     else if (op->name == "NOT")
     {
@@ -918,6 +1026,7 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), U->result, new_constant("0"), new_empty_var(), 0); // TAC
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), U->result, new_constant("1"), new_empty_var(), 0); // TAC
         U->next_list.insert(i4); // TAC
         i1->result = i3->label; // TAC
@@ -926,16 +1035,33 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         backpatch(x->true_list, i1->label); // TAC
         backpatch(x->false_list, i1->label); // TAC
         U->code = x->jump_code; // TAC
+        for(auto i:x->jump_true_list){
+            if(x->true_list.find(i)==x->true_list.end() && x->false_list.find(i)==x->false_list.end())U->code.erase(remove(U->code.begin(), U->code.end(), i), U->code.end()); // TAC
+        }
+        for(auto i:x->jump_false_list){
+            if(x->true_list.find(i)==x->true_list.end() && x->false_list.find(i)==x->false_list.end())U->code.erase(remove(U->code.begin(), U->code.end(), i), U->code.end()); // TAC
+        }
+
         U->code.push_back(i1); // TAC
         U->code.push_back(i2); // TAC
         U->code.push_back(i3); // TAC
         U->code.push_back(i4); // TAC
+        U->code.push_back(i4_); // TAC
         U->code.push_back(i5); // TAC
 
         U->jump_code = x->jump_code; // TAC
+        for(auto i:x->true_list){
+            if(x->jump_true_list.find(i)==x->jump_true_list.end() && x->jump_false_list.find(i)==x->jump_false_list.end())U->jump_code.erase(remove(U->jump_code.begin(), U->jump_code.end(), i), U->jump_code.end()); // TAC
+        }
+        for(auto i:x->false_list){
+            if(x->jump_true_list.find(i)==x->jump_true_list.end() && x->jump_false_list.find(i)==x->jump_false_list.end())U->jump_code.erase(remove(U->jump_code.begin(), U->jump_code.end(), i), U->jump_code.end()); // TAC
+        }
         U->jump_next_list = x->jump_next_list; // TAC
-        U->jump_true_list = x->jump_true_list; // TAC
-        U->jump_false_list = x->jump_false_list; // TAC
+        U->jump_next_list.insert(i4_); // TAC
+        U->jump_true_list = x->jump_false_list; // TAC
+        U->jump_false_list = x->jump_true_list; // TAC
+        U->true_list = U->jump_true_list; // TAC
+        U->false_list = U->jump_false_list; // TAC
     }
     else if (op->name == "BITWISE_NOT") {
         if (!x->type.isInt())
@@ -961,13 +1087,17 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        U->true_list.insert(i2); // TAC
-        U->false_list.insert(i3); // TAC
+        TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        U->true_list.insert(i2_); // TAC
+        U->false_list.insert(i3_); // TAC
         U->jump_true_list.insert(i2); // TAC
         U->jump_false_list.insert(i3); // TAC
         U->jump_code.push_back(i1); // TAC
         U->jump_code.push_back(i2); // TAC
         U->jump_code.push_back(i3); // TAC
+        U->jump_code.push_back(i2_); // TAC
+        U->jump_code.push_back(i3_); // TAC
     }
     U->type.is_const_literal = false;
     return U;
@@ -988,13 +1118,17 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn) {
 
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
     TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-    U->true_list.insert(i2); // TAC
-    U->false_list.insert(i3); // TAC
+    TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
+    TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+    U->true_list.insert(i2_); // TAC
+    U->false_list.insert(i3_); // TAC
     U->jump_true_list.insert(i2); // TAC
     U->jump_false_list.insert(i3); // TAC
     U->jump_code.push_back(i1); // TAC
     U->jump_code.push_back(i2); // TAC
     U->jump_code.push_back(i3); // TAC
+    U->jump_code.push_back(i2_); // TAC
+    U->jump_code.push_back(i3_); // TAC
     U->type.is_const_literal = false;
     return U;
 }
@@ -1036,6 +1170,12 @@ Expression* create_cast_expression(TypeName* tn, Expression* x) {
     C->column_no = x->column_no;
     C->code.insert(C->code.begin(), x->code.begin(), x->code.end()); // TAC
     C->jump_code.insert(C->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
+    for(auto i:x->jump_next_list){
+        C->code.erase(remove(C->code.begin(), C->code.end(), i), C->code.end()); // TAC
+    }
+    for(auto i:x->next_list){
+        C->jump_code.erase(remove(C->jump_code.begin(), C->jump_code.end(), i), C->jump_code.end()); // TAC
+    }
 
     if (x->type.is_error()) {
         C->type = ERROR_TYPE;
@@ -1062,13 +1202,17 @@ Expression* create_cast_expression(TypeName* tn, Expression* x) {
 
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), C->result, new_empty_var(), 2); // TAC
     TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-    C->true_list.insert(i2); // TAC
-    C->false_list.insert(i3); // TAC
+    TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), C->result, new_empty_var(), 2); // TAC
+    TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+    C->true_list.insert(i2_); // TAC
+    C->false_list.insert(i3_); // TAC
     C->jump_true_list.insert(i2); // TAC
     C->jump_false_list.insert(i3); // TAC
     C->jump_code.push_back(i1); // TAC
     C->jump_code.push_back(i2); // TAC
     C->jump_code.push_back(i3); // TAC
+    C->jump_code.push_back(i2_); // TAC
+    C->jump_code.push_back(i3_); // TAC
     C->type.is_const_literal = false;
     return C;
 }
@@ -1115,6 +1259,18 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
     M->code.insert(M->code.end(), right->code.begin(), right->code.end()); // TAC
     M->jump_code.insert(M->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
     M->jump_code.insert(M->jump_code.end(), right->code.begin(), right->code.end()); // TAC
+    for(auto i:left->jump_next_list){
+        M->code.erase(remove(M->code.begin(), M->code.end(), i), M->code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        M->jump_code.erase(remove(M->code.begin(), M->code.end(), i), M->code.end()); // TAC
+    }
+    for(auto i:left->next_list){
+        M->jump_code.erase(remove(M->jump_code.begin(), M->jump_code.end(), i), M->jump_code.end()); // TAC
+    }
+    for(auto i:right->next_list){
+        M->jump_code.erase(remove(M->jump_code.begin(), M->jump_code.end(), i), M->jump_code.end()); // TAC
+    }
 
     if (left->type.is_error() || right->type.is_error()) {
         M->type = ERROR_TYPE;
@@ -1158,14 +1314,18 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i3); // TAC
-                M->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                M->true_list.insert(i3_); // TAC
+                M->false_list.insert(i4_); // TAC
                 M->jump_true_list.insert(i3); // TAC
                 M->jump_false_list.insert(i4); // TAC
                 M->jump_code.push_back(i1); // TAC  
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
                 M->jump_code.push_back(i4); // TAC
+                M->jump_code.push_back(i3_); // TAC
+                M->jump_code.push_back(i4_); // TAC
             }
             else if (lt.type_index == rt.type_index) {
                 M->type = lt;
@@ -1187,13 +1347,17 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i2); // TAC
-                M->false_list.insert(i3); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                M->true_list.insert(i2_); // TAC
+                M->false_list.insert(i3_); // TAC
                 M->jump_true_list.insert(i2); // TAC
                 M->jump_false_list.insert(i3); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
+                M->jump_code.push_back(i2_); // TAC
+                M->jump_code.push_back(i3_); // TAC
             }
             else {
                 M->type = rt;
@@ -1217,14 +1381,18 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i3); // TAC
-                M->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                M->true_list.insert(i3_); // TAC
+                M->false_list.insert(i4_); // TAC
                 M->jump_true_list.insert(i3); // TAC
                 M->jump_false_list.insert(i4); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
                 M->jump_code.push_back(i4); // TAC
+                M->jump_code.push_back(i3_); // TAC
+                M->jump_code.push_back(i4_); // TAC
             }
         }
         else if (lt.isInt() && rt.isInt()) {
@@ -1255,14 +1423,18 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i3); // TAC
-                M->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                M->true_list.insert(i3_); // TAC
+                M->false_list.insert(i4_); // TAC
                 M->jump_true_list.insert(i3); // TAC
                 M->jump_false_list.insert(i4); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
                 M->jump_code.push_back(i4); // TAC
+                M->jump_code.push_back(i3_); // TAC
+                M->jump_code.push_back(i4_); // TAC
             }
             else if (lt.type_index == rt.type_index) {
                 M->type = lt;
@@ -1284,13 +1456,17 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i2); // TAC
-                M->false_list.insert(i3); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                M->true_list.insert(i2_); // TAC
+                M->false_list.insert(i3_); // TAC
                 M->jump_true_list.insert(i2); // TAC
                 M->jump_false_list.insert(i3); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
+                M->jump_code.push_back(i2_); // TAC
+                M->jump_code.push_back(i3_); // TAC
             }
             else {
                 M->type = rt;
@@ -1318,14 +1494,18 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i3); // TAC
-                M->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                M->true_list.insert(i3_); // TAC
+                M->false_list.insert(i4_); // TAC
                 M->jump_true_list.insert(i3); // TAC
                 M->jump_false_list.insert(i4); // TAC
                 M->jump_code.push_back(i1); // TAC
                 M->jump_code.push_back(i2); // TAC
                 M->jump_code.push_back(i3); // TAC
                 M->jump_code.push_back(i4); // TAC
+                M->jump_code.push_back(i3_); // TAC
+                M->jump_code.push_back(i4_); // TAC
             }
         }
     }
@@ -1365,14 +1545,18 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            M->true_list.insert(i3); // TAC
-            M->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            M->true_list.insert(i3_); // TAC
+            M->false_list.insert(i4_); // TAC
             M->jump_true_list.insert(i3); // TAC
             M->jump_false_list.insert(i4); // TAC
             M->jump_code.push_back(i1); // TAC
             M->jump_code.push_back(i2); // TAC
             M->jump_code.push_back(i3); // TAC
             M->jump_code.push_back(i4); // TAC
+            M->jump_code.push_back(i3_); // TAC
+            M->jump_code.push_back(i4_); // TAC
         }
         else if (lt.type_index == rt.type_index) {
             M->type = lt;
@@ -1394,13 +1578,17 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            M->true_list.insert(i2); // TAC
-            M->false_list.insert(i3); // TAC
+            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            M->true_list.insert(i2_); // TAC
+            M->false_list.insert(i3_); // TAC
             M->jump_true_list.insert(i2); // TAC
             M->jump_false_list.insert(i3); // TAC
             M->jump_code.push_back(i1); // TAC
             M->jump_code.push_back(i2); // TAC
             M->jump_code.push_back(i3); // TAC
+            M->jump_code.push_back(i2_); // TAC
+            M->jump_code.push_back(i3_); // TAC
         }
         else {
             M->type = rt;
@@ -1428,14 +1616,18 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            M->true_list.insert(i3); // TAC
-            M->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            M->true_list.insert(i3_); // TAC
+            M->false_list.insert(i4_); // TAC
             M->jump_true_list.insert(i3); // TAC
             M->jump_false_list.insert(i4); // TAC
             M->jump_code.push_back(i1); // TAC
             M->jump_code.push_back(i2); // TAC
             M->jump_code.push_back(i3); // TAC
             M->jump_code.push_back(i4); // TAC
+            M->jump_code.push_back(i3_); // TAC
+            M->jump_code.push_back(i4_); // TAC
         }
 
     }
@@ -1485,6 +1677,18 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
     A->code.insert(A->code.end(), right->code.begin(), right->code.end()); // TAC
     A->jump_code.insert(A->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
     A->jump_code.insert(A->jump_code.end(), right->code.begin(), right->code.end()); // TAC
+    for(auto i:left->jump_next_list){
+        A->code.erase(remove(A->code.begin(), A->code.end(), i), A->code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        A->code.erase(remove(A->code.begin(), A->code.end(), i), A->code.end()); // TAC
+    }
+    for(auto i:left->next_list){
+        A->code.erase(remove(A->jump_code.begin(), A->jump_code.end(), i), A->jump_code.end()); // TAC
+    }
+    for(auto i:right->next_list){
+        A->code.erase(remove(A->jump_code.begin(), A->jump_code.end(), i), A->jump_code.end()); // TAC
+    }
 
     if (left->type.is_error() || right->type.is_error()) {
         A->type = ERROR_TYPE;
@@ -1518,14 +1722,18 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
         else if (lt.type_index == rt.type_index) {
             A->type = lt;
@@ -1547,13 +1755,17 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i2); // TAC
-            A->false_list.insert(i3); // TAC
+            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i2_); // TAC
+            A->false_list.insert(i3_); // TAC
             A->jump_true_list.insert(i2); // TAC
             A->jump_false_list.insert(i3); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
+            A->jump_code.push_back(i2_); // TAC
+            A->jump_code.push_back(i3_); // TAC
         }
         else {
             A->type = rt;
@@ -1578,14 +1790,18 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
     }
     else if (lt.isInt() && rt.isInt()) {
@@ -1616,14 +1832,18 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
         else if (lt.type_index == rt.type_index) {
             A->type = lt;
@@ -1645,13 +1865,17 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i2); // TAC
-            A->false_list.insert(i3); // TAC
+            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i2_); // TAC
+            A->false_list.insert(i3_); // TAC
             A->jump_true_list.insert(i2); // TAC
             A->jump_false_list.insert(i3); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
+            A->jump_code.push_back(i2_); // TAC
+            A->jump_code.push_back(i3_); // TAC
         }
         else {
             A->type = rt;
@@ -1679,14 +1903,18 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
     }
     else if (op->name == "ADD" && lt.isPointer() && rt.isInt()) {
@@ -1712,14 +1940,18 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        A->true_list.insert(i3); // TAC
-        A->false_list.insert(i4); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+        TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        A->true_list.insert(i3_); // TAC
+        A->false_list.insert(i4_); // TAC
         A->jump_true_list.insert(i3); // TAC
         A->jump_false_list.insert(i4); // TAC
         A->jump_code.push_back(i1); // TAC
         A->jump_code.push_back(i2); // TAC
         A->jump_code.push_back(i3); // TAC
         A->jump_code.push_back(i4); // TAC
+        A->jump_code.push_back(i3_); // TAC
+        A->jump_code.push_back(i4_); // TAC
     }
     else if (op->name == "ADD" && lt.isInt() && rt.isPointer()) {
         A->type = rt;
@@ -1744,14 +1976,18 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        A->true_list.insert(i3); // TAC
-        A->false_list.insert(i4); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+        TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        A->true_list.insert(i3_); // TAC
+        A->false_list.insert(i4_); // TAC
         A->jump_true_list.insert(i3); // TAC
         A->jump_false_list.insert(i4); // TAC
         A->jump_code.push_back(i1); // TAC
         A->jump_code.push_back(i2); // TAC
         A->jump_code.push_back(i3); // TAC
         A->jump_code.push_back(i4); // TAC
+        A->jump_code.push_back(i3_); // TAC
+        A->jump_code.push_back(i4_); // TAC
     }
     else if (op->name == "MINUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
@@ -1776,14 +2012,18 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        A->true_list.insert(i3); // TAC
-        A->false_list.insert(i4); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+        TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        A->true_list.insert(i3_); // TAC
+        A->false_list.insert(i4_); // TAC
         A->jump_true_list.insert(i3); // TAC
         A->jump_false_list.insert(i4); // TAC
         A->jump_code.push_back(i1); // TAC
         A->jump_code.push_back(i2); // TAC
         A->jump_code.push_back(i3); // TAC
         A->jump_code.push_back(i4); // TAC
+        A->jump_code.push_back(i3_); // TAC
+        A->jump_code.push_back(i4_); // TAC
     }
     else if (op->name == "MINUS" && lt.isPointer() && rt.isPointer()) {
         if (lt == rt) {
@@ -1809,14 +2049,18 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
         else {
             A->type = ERROR_TYPE;
@@ -1886,6 +2130,18 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
     S->code.insert(S->code.end(), right->code.begin(), right->code.end()); // TAC
     S->jump_code.insert(S->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
     S->jump_code.insert(S->jump_code.end(), right->code.begin(), right->code.end()); // TAC
+    for(auto i:left->jump_next_list){
+        S->code.erase(remove(S->code.begin(), S->code.end(), i), S->code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        S->code.erase(remove(S->code.begin(), S->code.end(), i), S->code.end()); // TAC
+    }
+    for(auto i:left->next_list){
+        S->jump_code.erase(remove(S->jump_code.begin(), S->jump_code.end(), i), S->jump_code.end()); // TAC
+    }
+    for(auto i:right->next_list){
+        S->jump_code.erase(remove(S->jump_code.begin(), S->jump_code.end(), i), S->jump_code.end()); // TAC
+    }
 
     if (left->type.is_error() || right->type.is_error()) {
         S->type = ERROR_TYPE;
@@ -1934,14 +2190,18 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
 
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), S->result, new_empty_var(), 2); // TAC
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        S->true_list.insert(i3); // TAC
-        S->false_list.insert(i4); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), S->result, new_empty_var(), 2); // TAC
+        TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        S->true_list.insert(i3_); // TAC
+        S->false_list.insert(i4_); // TAC
         S->jump_true_list.insert(i3); // TAC
         S->jump_false_list.insert(i4); // TAC
         S->jump_code.push_back(i1); // TAC
         S->jump_code.push_back(i2); // TAC
         S->jump_code.push_back(i3); // TAC
         S->jump_code.push_back(i4); // TAC
+        S->jump_code.push_back(i3_); // TAC
+        S->jump_code.push_back(i4_); // TAC
     }
     else if (lt.type_index == rt.type_index) {
         S->type = lt;
@@ -1963,13 +2223,17 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
 
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), S->result, new_empty_var(), 2); // TAC
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        S->true_list.insert(i2); // TAC
-        S->false_list.insert(i3); // TAC
+        TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), S->result, new_empty_var(), 2); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        S->true_list.insert(i2_); // TAC
+        S->false_list.insert(i3_); // TAC
         S->jump_true_list.insert(i2); // TAC
         S->jump_false_list.insert(i3); // TAC
         S->jump_code.push_back(i1); // TAC
         S->jump_code.push_back(i2); // TAC
         S->jump_code.push_back(i3); // TAC
+        S->jump_code.push_back(i2_); // TAC
+        S->jump_code.push_back(i3_); // TAC
     }
     else {
         S->type = rt;
@@ -2001,14 +2265,18 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
 
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), S->result, new_empty_var(), 2); // TAC
         TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        S->true_list.insert(i3); // TAC
-        S->false_list.insert(i4); // TAC
+        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), S->result, new_empty_var(), 2); // TAC
+        TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        S->true_list.insert(i3_); // TAC
+        S->false_list.insert(i4_); // TAC
         S->jump_true_list.insert(i3); // TAC
         S->jump_false_list.insert(i4); // TAC
         S->jump_code.push_back(i1); // TAC
         S->jump_code.push_back(i2); // TAC
         S->jump_code.push_back(i3); // TAC
         S->jump_code.push_back(i4); // TAC
+        S->jump_code.push_back(i3_); // TAC
+        S->jump_code.push_back(i4_); // TAC
     }
     S->type.is_const_literal = false;
     return S;
@@ -2055,6 +2323,18 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
     R->code.insert(R->code.end(), right->code.begin(), right->code.end()); // TAC
     R->jump_code.insert(R->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
     R->jump_code.insert(R->jump_code.end(), right->code.begin(), right->code.end()); // TAC
+    for(auto i:left->jump_next_list){
+        R->code.erase(remove(R->code.begin(), R->code.end(), i), R->code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        R->code.erase(remove(R->code.begin(), R->code.end(), i), R->code.end()); // TAC
+    }
+    for(auto i:left->next_list){
+        R->jump_code.erase(remove(R->jump_code.begin(), R->jump_code.end(), i), R->jump_code.end()); // TAC
+    }
+    for(auto i:right->next_list){
+        R->jump_code.erase(remove(R->jump_code.begin(), R->jump_code.end(), i), R->jump_code.end()); // TAC
+    }
 
     if (left->type.is_error() || right->type.is_error()) {
         R->type = ERROR_TYPE;
@@ -2099,6 +2379,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), R->result, new_constant("1"), new_empty_var(), 0); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i5_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), R->result, new_constant("0"), new_empty_var(), 0); // TAC
             i2->result = i4->label; // TAC
             i3->result = i6->label; // TAC
@@ -2108,6 +2389,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->code.push_back(i3); // TAC
             R->code.push_back(i4); // TAC
             R->code.push_back(i5); // TAC
+            R->code.push_back(i5_); // TAC
             R->code.push_back(i6); // TAC
 
             TACInstruction* i7 = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
@@ -2115,13 +2397,21 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
                 op->name == "GREATER" ? TAC_OPERATOR_GT :
                 TAC_OPERATOR_GE), new_empty_var(), left->result, t1, 2); // TAC if goto
             TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
-            R->true_list.insert(i7); // TAC
-            R->false_list.insert(i8); // TAC
+            TACInstruction* i7_ = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                op->name == "GREATER" ? TAC_OPERATOR_GT :
+                TAC_OPERATOR_GE), new_empty_var(), left->result, t1, 2); // TAC if goto
+            TACInstruction* i8_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
+            R->true_list.insert(i7_); // TAC
+            R->false_list.insert(i8_); // TAC
             R->jump_true_list.insert(i7); // TAC
             R->jump_false_list.insert(i8); // TAC
+            R->jump_next_list.insert(i5_); // TAC
             R->jump_code.push_back(i1); // TAC
             R->jump_code.push_back(i7); // TAC
             R->jump_code.push_back(i8); // TAC
+            R->jump_code.push_back(i7_); // TAC
+            R->jump_code.push_back(i8_); // TAC
         }
         else if (lt.type_index == rt.type_index) {
             R->result = new_temp_var(); // TAC
@@ -2132,6 +2422,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), R->result, new_constant("1"), new_empty_var(), 0); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), R->result, new_constant("0"), new_empty_var(), 0); // TAC
             i1->result = i3->label; // TAC
             i2->result = i5->label; // TAC
@@ -2146,6 +2437,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->code.push_back(i2); // TAC
             R->code.push_back(i3); // TAC
             R->code.push_back(i4); // TAC   
+            R->code.push_back(i4_); // TAC
             R->code.push_back(i5); // TAC
 
             TACInstruction* i6 = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
@@ -2153,18 +2445,26 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
                 op->name == "GREATER" ? TAC_OPERATOR_GT :
                 TAC_OPERATOR_GE), new_empty_var(), left->result, right->result, 2); // TAC if goto
             TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
+            TACInstruction* i6_ = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                op->name == "GREATER" ? TAC_OPERATOR_GT :
+                TAC_OPERATOR_GE), new_empty_var(), left->result, right->result, 2); // TAC if goto
+            TACInstruction* i7_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             backpatch(left->jump_next_list, i6->label); // TAC
             backpatch(right->jump_next_list, i6->label); // TAC
             backpatch(left->jump_true_list, i6->label); // TAC
             backpatch(right->jump_true_list, i6->label); // TAC
             backpatch(left->jump_false_list, i6->label); // TAC
-            backpatch(right->jump_false_list, i6->label); // TAC
-            R->true_list.insert(i6); // TAC
-            R->false_list.insert(i7); // TAC 
+            backpatch(right->jump_false_list, i6->label); // TAC 
+            R->true_list.insert(i6_); // TAC
+            R->false_list.insert(i7_); // TAC
             R->jump_true_list.insert(i6); // TAC
             R->jump_false_list.insert(i7); // TAC
+            R->jump_next_list.insert(i4_); // TAC
             R->jump_code.push_back(i6); // TAC
             R->jump_code.push_back(i7); // TAC
+            R->jump_code.push_back(i6_); // TAC
+            R->jump_code.push_back(i7_); // TAC
         }
         else {
             TACOperand* t1 = new_temp_var(); // TAC
@@ -2189,6 +2489,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), R->result, new_constant("1"), new_empty_var(), 0); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i5_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), R->result, new_constant("0"), new_empty_var(), 0); // TAC
             i2->result = i4->label; // TAC
             i3->result = i6->label; // TAC
@@ -2198,6 +2499,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->code.push_back(i3); // TAC
             R->code.push_back(i4); // TAC
             R->code.push_back(i5); // TAC
+            R->code.push_back(i5_); // TAC
             R->code.push_back(i6); // TAC
 
             TACInstruction* i7 = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
@@ -2205,13 +2507,21 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
                 op->name == "GREATER" ? TAC_OPERATOR_GT :
                 TAC_OPERATOR_GE), new_empty_var(), t1, right->result, 2); // TAC if goto
             TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
-            R->true_list.insert(i7); // TAC
-            R->false_list.insert(i8); // TAC
+            TACInstruction* i7_ = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                op->name == "GREATER" ? TAC_OPERATOR_GT :
+                TAC_OPERATOR_GE), new_empty_var(), t1, right->result, 2); // TAC if goto
+            TACInstruction* i8_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
+            R->true_list.insert(i7_); // TAC
+            R->false_list.insert(i8_); // TAC
             R->jump_true_list.insert(i7); // TAC
             R->jump_false_list.insert(i8); // TAC
+            R->jump_next_list.insert(i5_); // TAC
             R->jump_code.push_back(i1); // TAC
             R->jump_code.push_back(i7); // TAC
             R->jump_code.push_back(i8); // TAC
+            R->jump_code.push_back(i7_); // TAC
+            R->jump_code.push_back(i8_); // TAC
         }
     }
     else if (lt.is_pointer && rt.is_pointer) {
@@ -2226,6 +2536,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), R->result, new_constant("1"), new_empty_var(), 0); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), R->result, new_constant("0"), new_empty_var(), 0); // TAC
             i1->result = i3->label; // TAC
             i2->result = i5->label; // TAC
@@ -2239,7 +2550,8 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->code.push_back(i1); // TAC
             R->code.push_back(i2); // TAC
             R->code.push_back(i3); // TAC
-            R->code.push_back(i4); // TAC   
+            R->code.push_back(i4); // TAC 
+            R->code.push_back(i4_); // TAC  
             R->code.push_back(i5); // TAC
 
             TACInstruction* i6 = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
@@ -2247,20 +2559,28 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
                 op->name == "GREATER" ? TAC_OPERATOR_GT :
                 TAC_OPERATOR_GE), new_empty_var(), left->result, right->result, 2); // TAC if goto
             TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
+            TACInstruction* i6_ = emit(TACOperator(op->name == "LESS" ? TAC_OPERATOR_LT :
+                op->name == "LE_OP" ? TAC_OPERATOR_LE :
+                op->name == "GREATER" ? TAC_OPERATOR_GT :
+                TAC_OPERATOR_GE), new_empty_var(), left->result, right->result, 2); // TAC if goto
+            TACInstruction* i7_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             backpatch(left->jump_next_list, i6->label); // TAC
             backpatch(right->jump_next_list, i6->label); // TAC
             backpatch(left->jump_true_list, i6->label); // TAC
             backpatch(right->jump_true_list, i6->label); // TAC
             backpatch(left->jump_false_list, i6->label); // TAC
             backpatch(right->jump_false_list, i6->label); // TAC
-            R->true_list.insert(i6); // TAC
-            R->false_list.insert(i7); // TAC
+            R->true_list.insert(i6_); // TAC
+            R->false_list.insert(i7_); // TAC
             R->jump_true_list.insert(i6); // TAC
             R->jump_false_list.insert(i7); // TAC
+            R->jump_next_list.insert(i4_); // TAC
             R->jump_code.push_back(i1); // TAC
             R->jump_code.push_back(i2); // TAC
             R->jump_code.push_back(i6); // TAC
             R->jump_code.push_back(i7); // TAC
+            R->jump_code.push_back(i6_); // TAC
+            R->jump_code.push_back(i7_); // TAC
         }
         else {
             R->type = ERROR_TYPE;
@@ -2325,6 +2645,18 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
     E->code.insert(E->code.end(), right->code.begin(), right->code.end()); // TAC
     E->jump_code.insert(E->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
     E->jump_code.insert(E->jump_code.end(), right->code.begin(), right->code.end()); // TAC
+    for(auto i:left->jump_next_list){
+        E->code.erase(remove(E->code.begin(), E->code.end(), i), E->code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        E->code.erase(remove(E->code.begin(), E->code.end(), i), E->code.end()); // TAC
+    }
+    for(auto i:left->next_list){
+        E->jump_code.erase(remove(E->jump_code.begin(), E->jump_code.end(), i), E->jump_code.end()); // TAC
+    }
+    for(auto i:right->next_list){
+        E->jump_code.erase(remove(E->jump_code.begin(), E->jump_code.end(), i), E->jump_code.end()); // TAC
+    }
 
     if (left->type.is_error() || right->type.is_error()) {
         E->type = ERROR_TYPE;
@@ -2353,6 +2685,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), E->result, new_constant("1"), new_empty_var(), 0); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i5_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), E->result, new_constant("0"), new_empty_var(), 0); // TAC
             i2->result = i4->label; // TAC
             i3->result = i6->label; // TAC
@@ -2374,17 +2707,23 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->code.push_back(i3); // TAC
             E->code.push_back(i4); // TAC
             E->code.push_back(i5); // TAC
+            E->code.push_back(i5_); // TAC
             E->code.push_back(i6); // TAC
 
             TACInstruction* i7 = emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), new_empty_var(), left->result, t1, 2); // TAC if goto
             TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
-            E->true_list.insert(i7);
-            E->false_list.insert(i8); // TAC
+            TACInstruction* i7_ = emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), new_empty_var(), left->result, t1, 2); // TAC if goto
+            TACInstruction* i8_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
+            E->true_list.insert(i7_);
+            E->false_list.insert(i8_); // TAC
             E->jump_true_list.insert(i7); // TAC
             E->jump_false_list.insert(i8); // TAC
+            E->jump_next_list.insert(i5_); // TAC
             E->jump_code.push_back(i1); // TAC
             E->jump_code.push_back(i7); // TAC
             E->jump_code.push_back(i8); // TAC
+            E->jump_code.push_back(i7_); // TAC
+            E->jump_code.push_back(i8_); // TAC
         }
         else if (lt.type_index == rt.type_index) {
             E->result = new_temp_var(); // TAC
@@ -2392,6 +2731,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), E->result, new_constant("1"), new_empty_var(), 0); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), E->result, new_constant("0"), new_empty_var(), 0); // TAC
             i1->result = i3->label; // TAC
             i2->result = i5->label; // TAC
@@ -2406,22 +2746,28 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->code.push_back(i2); // TAC
             E->code.push_back(i3); // TAC
             E->code.push_back(i4); // TAC
+            E->code.push_back(i4_); // TAC
             E->code.push_back(i5); // TAC
 
             TACInstruction* i6 = emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), new_empty_var(), left->result, right->result, 2); // TAC if goto
             TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
+            TACInstruction* i6_ = emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), new_empty_var(), left->result, right->result, 2); // TAC if goto
+            TACInstruction* i7_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             backpatch(left->jump_next_list, i6->label); // TAC
             backpatch(right->jump_next_list, i6->label); // TAC
             backpatch(left->jump_true_list, i6->label); // TAC
             backpatch(right->jump_true_list, i6->label); // TAC
             backpatch(left->jump_false_list, i6->label); // TAC
             backpatch(right->jump_false_list, i6->label); // TAC
-            E->true_list.insert(i6); // TAC
-            E->false_list.insert(i7); // TAC
+            E->true_list.insert(i6_); // TAC
+            E->false_list.insert(i7_); // TAC
             E->jump_true_list.insert(i6); // TAC
             E->jump_false_list.insert(i7); // TAC
+            E->jump_next_list.insert(i4_); // TAC
             E->jump_code.push_back(i6); // TAC
             E->jump_code.push_back(i7); // TAC
+            E->jump_code.push_back(i6_); // TAC
+            E->jump_code.push_back(i7_); // TAC
         }
         else {
             TACOperand* t1 = new_temp_var(); // TAC
@@ -2431,6 +2777,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), E->result, new_constant("1"), new_empty_var(), 0); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i5_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), E->result, new_constant("0"), new_empty_var(), 0); // TAC
             i2->result = i4->label; // TAC
             i3->result = i6->label; // TAC
@@ -2452,17 +2799,23 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->code.push_back(i3); // TAC
             E->code.push_back(i4); // TAC
             E->code.push_back(i5); // TAC
+            E->code.push_back(i5_); // TAC
             E->code.push_back(i6); // TAC
 
             TACInstruction* i7 = emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), new_empty_var(), left->result, t1, 2); // TAC if goto
             TACInstruction* i8 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
-            E->true_list.insert(i7);
-            E->false_list.insert(i8); // TAC
+            TACInstruction* i7_ = emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), new_empty_var(), left->result, t1, 2); // TAC if goto
+            TACInstruction* i8_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
+            E->true_list.insert(i7_);
+            E->false_list.insert(i8_); // TAC
             E->jump_true_list.insert(i7); // TAC
             E->jump_false_list.insert(i8); // TAC
+            E->jump_next_list.insert(i5_); // TAC
             E->jump_code.push_back(i1); // TAC
             E->jump_code.push_back(i7); // TAC
             E->jump_code.push_back(i8); // TAC
+            E->jump_code.push_back(i7_); // TAC
+            E->jump_code.push_back(i8_); // TAC
         }
 
     }
@@ -2475,6 +2828,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), E->result, new_constant("1"), new_empty_var(), 0); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), E->result, new_constant("0"), new_empty_var(), 0); // TAC
             i1->result = i3->label; // TAC
             i2->result = i5->label; // TAC
@@ -2491,22 +2845,28 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->code.push_back(i2); // TAC
             E->code.push_back(i3); // TAC
             E->code.push_back(i4); // TAC
+            E->code.push_back(i4_); // TAC
             E->code.push_back(i5); // TAC
 
             TACInstruction* i6 = emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), new_empty_var(), left->result, right->result, 2); // TAC if goto
             TACInstruction* i7 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
+            TACInstruction* i6_ = emit(TACOperator(op->name == "EQ_OP" ? TAC_OPERATOR_EQ : TAC_OPERATOR_NE), new_empty_var(), left->result, right->result, 2); // TAC if goto
+            TACInstruction* i7_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC goto
             backpatch(left->jump_next_list, i6->label); // TAC
             backpatch(right->jump_next_list, i6->label); // TAC
             backpatch(left->jump_true_list, i6->label); // TAC
             backpatch(right->jump_true_list, i6->label); // TAC
             backpatch(left->jump_false_list, i6->label); // TAC
             backpatch(right->jump_false_list, i6->label); // TAC
-            E->true_list.insert(i6); // TAC
-            E->false_list.insert(i7); // TAC
+            E->true_list.insert(i6_); // TAC
+            E->false_list.insert(i7_); // TAC
             E->jump_true_list.insert(i6); // TAC
             E->jump_false_list.insert(i7); // TAC
+            E->jump_next_list.insert(i4_); // TAC
             E->jump_code.push_back(i6); // TAC
             E->jump_code.push_back(i7); // TAC
+            E->jump_code.push_back(i6_); // TAC
+            E->jump_code.push_back(i7_); // TAC
         }
         else {
             E->type = ERROR_TYPE;
@@ -2572,6 +2932,18 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
     A->code.insert(A->code.end(), right->code.begin(), right->code.end()); // TAC
     A->jump_code.insert(A->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
     A->jump_code.insert(A->jump_code.end(), right->code.begin(), right->code.end()); // TAC
+    for(auto i:left->jump_next_list){
+        A->code.erase(remove(A->code.begin(), A->code.end(), i), A->code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        A->code.erase(remove(A->code.begin(), A->code.end(), i), A->code.end()); // TAC
+    }
+    for(auto i:left->next_list){
+        A->jump_code.erase(remove(A->jump_code.begin(), A->jump_code.end(), i), A->jump_code.end()); // TAC
+    }
+    for(auto i:right->next_list){
+        A->jump_code.erase(remove(A->jump_code.begin(), A->jump_code.end(), i), A->jump_code.end()); // TAC
+    }
 
     if (left->type.is_error() || right->type.is_error()) {
         A->type = ERROR_TYPE;
@@ -2612,14 +2984,18 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                A->true_list.insert(i3); // TAC
-                A->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i3_); // TAC
+                A->false_list.insert(i4_); // TAC
                 A->jump_true_list.insert(i3); // TAC
                 A->jump_false_list.insert(i4); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i2); // TAC
                 A->jump_code.push_back(i3); // TAC
                 A->jump_code.push_back(i4); // TAC
+                A->jump_code.push_back(i3_); // TAC
+                A->jump_code.push_back(i4_); // TAC
             }
             else if (lt.type_index == rt.type_index) {
                 A->type = lt;
@@ -2641,13 +3017,17 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                A->true_list.insert(i2); // TAC
-                A->false_list.insert(i3); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i2_); // TAC
+                A->false_list.insert(i3_); // TAC
                 A->jump_true_list.insert(i2); // TAC
                 A->jump_false_list.insert(i3); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i2); // TAC
                 A->jump_code.push_back(i3); // TAC
+                A->jump_code.push_back(i2_); // TAC
+                A->jump_code.push_back(i3_); // TAC
             }
             else {
                 A->type = rt;
@@ -2678,14 +3058,18 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                A->true_list.insert(i3); // TAC
-                A->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i3_); // TAC
+                A->false_list.insert(i4_); // TAC
                 A->jump_true_list.insert(i3); // TAC
                 A->jump_false_list.insert(i4); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i2); // TAC
                 A->jump_code.push_back(i3); // TAC
                 A->jump_code.push_back(i4); // TAC
+                A->jump_code.push_back(i3_); // TAC
+                A->jump_code.push_back(i4_); // TAC
             }
         }
         else {
@@ -2743,6 +3127,18 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
     X->code.insert(X->code.end(), right->code.begin(), right->code.end()); // TAC
     X->jump_code.insert(X->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
     X->jump_code.insert(X->jump_code.end(), right->code.begin(), right->code.end()); // TAC
+    for(auto i:left->jump_next_list){
+        X->code.erase(remove(X->code.begin(), X->code.end(), i), X->code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        X->code.erase(remove(X->code.begin(), X->code.end(), i), X->code.end()); // TAC
+    }
+    for(auto i:left->next_list){
+        X->jump_code.erase(remove(X->jump_code.begin(), X->jump_code.end(), i), X->jump_code.end()); // TAC
+    }
+    for(auto i:right->next_list){
+        X->jump_code.erase(remove(X->jump_code.begin(), X->jump_code.end(), i), X->jump_code.end()); // TAC
+    }
 
     if (left->type.is_error() || right->type.is_error()) {
         X->type = ERROR_TYPE;
@@ -2783,14 +3179,18 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), X->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                X->true_list.insert(i3); // TAC
-                X->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), X->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                X->true_list.insert(i3_); // TAC
+                X->false_list.insert(i4_); // TAC
                 X->jump_true_list.insert(i3); // TAC
                 X->jump_false_list.insert(i4); // TAC
                 X->jump_code.push_back(i1); // TAC
                 X->jump_code.push_back(i2); // TAC
                 X->jump_code.push_back(i3); // TAC
                 X->jump_code.push_back(i4); // TAC
+                X->jump_code.push_back(i3_); // TAC
+                X->jump_code.push_back(i4_); // TAC
             }
             else if (lt.type_index == rt.type_index) {
                 X->type = lt;
@@ -2812,13 +3212,17 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), X->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                X->true_list.insert(i2); // TAC
-                X->false_list.insert(i3); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), X->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                X->true_list.insert(i2_); // TAC
+                X->false_list.insert(i3_); // TAC
                 X->jump_true_list.insert(i2); // TAC
                 X->jump_false_list.insert(i3); // TAC
                 X->jump_code.push_back(i1); // TAC
                 X->jump_code.push_back(i2); // TAC
                 X->jump_code.push_back(i3); // TAC
+                X->jump_code.push_back(i2_); // TAC
+                X->jump_code.push_back(i3_); // TAC
             }
             else {
                 X->type = rt;
@@ -2849,14 +3253,18 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), X->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                X->true_list.insert(i3); // TAC
-                X->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), X->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                X->true_list.insert(i3_); // TAC
+                X->false_list.insert(i4_); // TAC
                 X->jump_true_list.insert(i3); // TAC
                 X->jump_false_list.insert(i4); // TAC
                 X->jump_code.push_back(i1); // TAC
                 X->jump_code.push_back(i2); // TAC
                 X->jump_code.push_back(i3); // TAC
                 X->jump_code.push_back(i4); // TAC
+                X->jump_code.push_back(i3_); // TAC
+                X->jump_code.push_back(i4_); // TAC
             }
         }
         else {
@@ -2914,6 +3322,18 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
     O->code.insert(O->code.end(), right->code.begin(), right->code.end()); // TAC
     O->jump_code.insert(O->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
     O->jump_code.insert(O->jump_code.end(), right->code.begin(), right->code.end()); // TAC
+    for(auto i:left->jump_next_list){
+        O->code.erase(remove(O->code.begin(), O->code.end(), i), O->code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        O->code.erase(remove(O->code.begin(), O->code.end(), i), O->code.end()); // TAC
+    }
+    for(auto i:left->next_list){
+        O->jump_code.erase(remove(O->jump_code.begin(), O->jump_code.end(), i), O->jump_code.end()); // TAC
+    }
+    for(auto i:right->next_list){
+        O->jump_code.erase(remove(O->jump_code.begin(), O->jump_code.end(), i), O->jump_code.end()); // TAC
+    }
 
     if (left->type.is_error() || right->type.is_error()) {
         O->type = ERROR_TYPE;
@@ -2954,14 +3374,18 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), O->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                O->true_list.insert(i3); // TAC
-                O->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), O->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                O->true_list.insert(i3_); // TAC
+                O->false_list.insert(i4_); // TAC
                 O->jump_true_list.insert(i3); // TAC
                 O->jump_false_list.insert(i4); // TAC
                 O->jump_code.push_back(i1); // TAC
                 O->jump_code.push_back(i2); // TAC
                 O->jump_code.push_back(i3); // TAC
                 O->jump_code.push_back(i4); // TAC
+                O->jump_code.push_back(i3_); // TAC
+                O->jump_code.push_back(i4_); // TAC
             }
             else if (lt.type_index == rt.type_index) {
                 O->type = lt;
@@ -2983,13 +3407,17 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
 
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), O->result, new_empty_var(), 2); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                O->true_list.insert(i2); // TAC
-                O->false_list.insert(i3); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), O->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                O->true_list.insert(i2_); // TAC
+                O->false_list.insert(i3_); // TAC
                 O->jump_true_list.insert(i2); // TAC
                 O->jump_false_list.insert(i3); // TAC
                 O->jump_code.push_back(i1); // TAC
                 O->jump_code.push_back(i2); // TAC
                 O->jump_code.push_back(i3); // TAC
+                O->jump_code.push_back(i2_); // TAC
+                O->jump_code.push_back(i3_); // TAC
             }
             else {
                 O->type = rt;
@@ -3020,14 +3448,18 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), O->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                O->true_list.insert(i3); // TAC
-                O->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), O->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                O->true_list.insert(i3_); // TAC
+                O->false_list.insert(i4_); // TAC
                 O->jump_true_list.insert(i3); // TAC
                 O->jump_false_list.insert(i4); // TAC
                 O->jump_code.push_back(i1); // TAC
                 O->jump_code.push_back(i2); // TAC
                 O->jump_code.push_back(i3); // TAC
                 O->jump_code.push_back(i4); // TAC
+                O->jump_code.push_back(i3_); // TAC
+                O->jump_code.push_back(i4_); // TAC
             }
         }
         else {
@@ -3107,26 +3539,53 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 L->result = new_temp_var(); // TAC
                 L->code = left->jump_code; // TAC
                 L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                for(auto i:left->jump_true_list){
+                    if(left->true_list.find(i)==left->true_list.end() && left->false_list.find(i)==left->false_list.end())L->code.erase(remove(L->code.begin(),L->code.end(),i), L->code.end()); // TAC
+                }
+                for(auto i:right->jump_true_list){
+                    if(right->true_list.find(i)==right->true_list.end() && right->false_list.find(i)==right->false_list.end())L->code.erase(remove(L->code.begin(),L->code.end(),i), L->code.end()); // TAC
+                }
+                for(auto i:left->jump_false_list){
+                    if(left->true_list.find(i)==left->true_list.end() && left->false_list.find(i)==left->false_list.end())L->code.erase(remove(L->code.begin(),L->code.end(),i), L->code.end()); // TAC
+                }
+                for(auto i:right->jump_false_list){
+                    if(right->true_list.find(i)==right->true_list.end() && right->false_list.find(i)==right->false_list.end())L->code.erase(remove(L->code.begin(),L->code.end(),i), L->code.end()); // TAC
+                }
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
                 backpatch(left->true_list, right->jump_code[0]->label); // TAC
                 backpatch(left->false_list, i3->label); // TAC
                 backpatch(right->true_list, i1->label); // TAC
                 backpatch(right->false_list, i3->label); // TAC
-                L->next_list.insert(i2); // TAC
+
+                L->next_list.insert(i2_); // TAC
                 L->jump_next_list.insert(i2); // TAC
                 L->code.push_back(i1); // TAC
                 L->code.push_back(i2); // TAC
+                L->code.push_back(i2_); // TAC
                 L->code.push_back(i3); // TAC
 
                 L->jump_code = left->jump_code; // TAC
-                L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                L->jump_code.insert(L->jump_code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                for(auto i:left->true_list){
+                    if(left->jump_true_list.find(i)==left->jump_true_list.end() && left->jump_false_list.find(i)==left->jump_false_list.end())L->jump_code.erase(remove(L->jump_code.begin(),L->jump_code.end(),i), L->jump_code.end()); // TAC
+                }
+                for(auto i:right->true_list){
+                    if(right->jump_true_list.find(i)==right->jump_true_list.end() && right->jump_false_list.find(i)==right->jump_false_list.end())L->jump_code.erase(remove(L->jump_code.begin(),L->jump_code.end(),i), L->jump_code.end()); // TAC
+                }
+                for(auto i:left->false_list){
+                    if(left->jump_true_list.find(i)==left->jump_true_list.end() && left->jump_false_list.find(i)==left->jump_false_list.end())L->jump_code.erase(remove(L->jump_code.begin(),L->jump_code.end(),i), L->jump_code.end()); // TAC
+                }
+                for(auto i:right->false_list){
+                    if(right->jump_true_list.find(i)==right->jump_true_list.end() && right->jump_false_list.find(i)==right->jump_false_list.end())L->jump_code.erase(remove(L->jump_code.begin(),L->jump_code.end(),i), L->jump_code.end()); // TAC
+                }
                 backpatch(left->jump_true_list, right->jump_code[0]->label); // TAC
-                L->true_list = right->jump_true_list; // TAC
-                L->false_list = merge_lists(left->jump_false_list, right->jump_false_list); // TAC
-                L->jump_true_list = L->true_list; // TAC
-                L->jump_false_list = L->false_list; // TAC
+                L->jump_true_list = right->jump_true_list; // TAC
+                L->jump_false_list = merge_lists(left->jump_false_list, right->jump_false_list); // TAC
+                L->true_list = L->jump_true_list; // TAC
+                L->false_list = L->jump_false_list; // TAC
             }
         }
         else {
@@ -3178,8 +3637,6 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
     L->op = op;
     L->line_no = left->line_no;
     L->column_no = left->column_no;
-    L->code.insert(L->code.begin(), left->code.begin(), left->code.end()); // TAC
-    L->code.insert(L->code.end(), right->code.begin(), right->code.end()); // TAC
 
     if (left->type.is_error() || right->type.is_error()) {
         L->type = ERROR_TYPE;
@@ -3206,21 +3663,47 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
                 L->result = new_temp_var(); // TAC
                 L->code = left->jump_code; // TAC
                 L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                for(auto i:left->jump_true_list){
+                    if(left->true_list.find(i)==left->true_list.end() && left->false_list.find(i)==left->false_list.end())L->code.erase(remove(L->code.begin(),L->code.end(),i), L->code.end()); // TAC
+                }
+                for(auto i:right->jump_true_list){
+                    if(right->true_list.find(i)==right->true_list.end() && right->false_list.find(i)==right->false_list.end())L->code.erase(remove(L->code.begin(),L->code.end(),i), L->code.end()); // TAC
+                }
+                for(auto i:left->jump_false_list){
+                    if(left->true_list.find(i)==left->true_list.end() && left->false_list.find(i)==left->false_list.end())L->code.erase(remove(L->code.begin(),L->code.end(),i), L->code.end()); // TAC
+                }
+                for(auto i:right->jump_false_list){
+                    if(right->true_list.find(i)==right->true_list.end() && right->false_list.find(i)==right->false_list.end())L->code.erase(remove(L->code.begin(),L->code.end(),i), L->code.end()); // TAC
+                }
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("1"), new_empty_var(), 0); // TAC
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), L->result, new_constant("0"), new_empty_var(), 0); // TAC
                 backpatch(left->true_list, i1->label); // TAC
                 backpatch(left->false_list, right->jump_code[0]->label); // TAC
                 backpatch(right->true_list, i1->label); // TAC
                 backpatch(right->false_list, i3->label); // TAC
-                L->next_list.insert(i2); // TAC
+                L->next_list.insert(i2_); // TAC
                 L->jump_next_list.insert(i2); // TAC
                 L->code.push_back(i1); // TAC
                 L->code.push_back(i2); // TAC
+                L->code.push_back(i2_); // TAC
                 L->code.push_back(i3); // TAC
 
                 L->jump_code = left->jump_code; // TAC
-                L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                L->jump_code.insert(L->jump_code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
+                for(auto i:left->true_list){
+                    if(left->jump_true_list.find(i)==left->jump_true_list.end() && left->jump_false_list.find(i)==left->jump_false_list.end())L->jump_code.erase(remove(L->jump_code.begin(),L->jump_code.end(),i), L->jump_code.end()); // TAC
+                }
+                for(auto i:right->true_list){
+                    if(right->jump_true_list.find(i)==right->jump_true_list.end() && right->jump_false_list.find(i)==right->jump_false_list.end())L->jump_code.erase(remove(L->jump_code.begin(),L->jump_code.end(),i), L->jump_code.end()); // TAC
+                }
+                for(auto i:left->false_list){
+                    if(left->jump_true_list.find(i)==left->jump_true_list.end() && left->jump_false_list.find(i)==left->jump_false_list.end())L->jump_code.erase(remove(L->jump_code.begin(),L->jump_code.end(),i), L->jump_code.end()); // TAC
+                }
+                for(auto i:right->false_list){
+                    if(right->jump_true_list.find(i)==right->jump_true_list.end() && right->jump_false_list.find(i)==right->jump_false_list.end())L->jump_code.erase(remove(L->jump_code.begin(),L->jump_code.end(),i), L->jump_code.end()); // TAC
+                }
                 backpatch(left->jump_false_list, right->jump_code[0]->label); // TAC
                 L->false_list = right->jump_false_list; // TAC
                 L->true_list = merge_lists(left->jump_true_list, right->jump_true_list); // TAC
@@ -3302,11 +3785,19 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
         C->type = tt;
         C->result = new_temp_var(); // TAC
         C->code.insert(C->code.end(), true_expr->code.begin(), true_expr->code.end()); // TAC
+        for(auto i:true_expr->jump_next_list){
+            C->code.erase(remove(C->code.begin(),C->code.end(),i), C->code.end()); // TAC
+        }
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, true_expr->result, new_empty_var(), 0); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+        TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
         C->code.push_back(i1); // TAC
         C->code.push_back(i2); // TAC
+        C->code.push_back(i2_); // TAC
         C->code.insert(C->code.end(), false_expr->code.begin(), false_expr->code.end()); // TAC
+        for(auto i:false_expr->jump_next_list){
+            C->code.erase(remove(C->code.begin(),C->code.end(),i), C->code.end()); // TAC
+        }
         TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, false_expr->result, new_empty_var(), 0); // TAC
         C->code.push_back(i3); // TAC
         backpatch(condition->true_list, true_expr->code[0]->label); // TAC
@@ -3315,12 +3806,24 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
         backpatch(condition->false_list, i3->label); // TAC
         backpatch(true_expr->next_list, i1->label); // TAC
         backpatch(false_expr->next_list, i3->label); // TAC
-        C->next_list.insert(i2); // TAC
+        for(auto i:condition->jump_true_list){
+            if(condition->true_list.find(i)==condition->true_list.end() && condition->false_list.find(i)==condition->false_list.end())C->code.erase(remove(C->code.begin(),C->code.end(),i), C->code.end()); // TAC
+        }
+        for(auto i:condition->jump_false_list){
+            if(condition->true_list.find(i)==condition->true_list.end() && condition->false_list.find(i)==condition->false_list.end())C->code.erase(remove(C->code.begin(),C->code.end(),i), C->code.end()); // TAC
+        }
+        C->next_list.insert(i2_); // TAC
         C->jump_next_list.insert(i2); // TA
 
         C->jump_code = condition->jump_code; // TAC
         C->jump_code.insert(C->jump_code.end(), true_expr->jump_code.begin(), true_expr->jump_code.end()); // TAC
         C->jump_code.insert(C->jump_code.end(), false_expr->jump_code.begin(), false_expr->jump_code.end()); // TAC
+        for(auto i:condition->true_list){
+            if(condition->jump_true_list.find(i)==condition->jump_true_list.end() && condition->jump_false_list.find(i)==condition->jump_false_list.end())C->jump_code.erase(remove(C->jump_code.begin(),C->jump_code.end(),i), C->jump_code.end()); // TAC
+        }
+        for(auto i:condition->false_list){
+            if(condition->jump_true_list.find(i)==condition->jump_true_list.end() && condition->jump_false_list.find(i)==condition->jump_false_list.end())C->jump_code.erase(remove(C->jump_code.begin(),C->jump_code.end(),i), C->jump_code.end()); // TAC
+        }
         backpatch(condition->jump_true_list, true_expr->jump_code[0]->label); // TAC
         backpatch(condition->jump_false_list, false_expr->jump_code[0]->label); // TAC
         C->true_list = merge_lists(true_expr->jump_true_list, false_expr->jump_true_list); // TAC
@@ -3341,9 +3844,11 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
             C->code.insert(C->code.end(), true_expr->code.begin(), true_expr->code.end()); // TAC
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, t1, new_empty_var(), 0); // TAC
             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             C->code.push_back(i0); // TAC
             C->code.push_back(i1); // TAC
             C->code.push_back(i2); // TAC
+            C->code.push_back(i2_); // TAC
             C->code.insert(C->code.end(), false_expr->code.begin(), false_expr->code.end()); // TAC
             C->code.push_back(i0); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, t1, new_empty_var(), 0); // TAC
@@ -3354,7 +3859,7 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
             backpatch(condition->false_list, i3->label); // TAC
             backpatch(true_expr->next_list, i1->label); // TAC
             backpatch(false_expr->next_list, i3->label); // TAC
-            C->next_list.insert(i2); // TAC
+            C->next_list.insert(i2_); // TAC
             C->jump_next_list.insert(i2); // TA
 
             C->jump_code = condition->jump_code; // TAC
@@ -3432,6 +3937,18 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
     A->code.insert(A->code.end(), right->code.begin(), right->code.end()); // TAC
     A->jump_code.insert(A->jump_code.begin(), left->code.begin(), left->code.end()); // TAC
     A->jump_code.insert(A->jump_code.end(), right->code.begin(), right->code.end()); // TAC
+    for(auto i:left->jump_next_list){
+        A->code.erase(remove(A->code.begin(),A->code.end(),i), A->code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        A->code.erase(remove(A->code.begin(),A->code.end(),i), A->code.end()); // TAC
+    }
+    for(auto i:left->jump_next_list){
+        A->jump_code.erase(remove(A->jump_code.begin(),A->jump_code.end(),i), A->jump_code.end()); // TAC
+    }
+    for(auto i:right->jump_next_list){
+        A->jump_code.erase(remove(A->jump_code.begin(),A->jump_code.end(),i), A->jump_code.end()); // TAC
+    }
 
     if (left->type.is_error() || right->type.is_error()) {
         A->type = ERROR_TYPE;
@@ -3479,14 +3996,18 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
 
         }
         else {
@@ -3506,13 +4027,17 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             backpatch(right->jump_false_list, i1->label); // TAC
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
     }
     else if (op->name == "MUL_ASSIGN" || op->name == "DIV_ASSIGN") {
@@ -3546,14 +4071,18 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
         else {
             TACInstruction* i1 = emit(TACOperator(op->name == "MUL_ASSIGN" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), left->result, left->result, right->result, 0); // TAC
@@ -3573,13 +4102,17 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
     }
     else if (op->name == "ADD_ASSIGN" || op->name == "SUB_ASSIGN") {
@@ -3613,14 +4146,18 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
         else {
             A->type = lt;
@@ -3645,14 +4182,18 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                A->true_list.insert(i3); // TAC
-                A->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i3_); // TAC
+                A->false_list.insert(i4_); // TAC
                 A->jump_true_list.insert(i3); // TAC
                 A->jump_false_list.insert(i4); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i2); // TAC
                 A->jump_code.push_back(i3); // TAC
                 A->jump_code.push_back(i4); // TAC
+                A->jump_code.push_back(i3_); // TAC
+                A->jump_code.push_back(i4_); // TAC
             }
             else {
                 TACInstruction* i1 = emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), left->result, left->result, right->result, 0); // TAC
@@ -3672,13 +4213,17 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
                 TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
                 TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                A->true_list.insert(i3); // TAC
-                A->false_list.insert(i4); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i3_); // TAC
+                A->false_list.insert(i4_); // TAC
                 A->jump_true_list.insert(i3); // TAC
                 A->jump_false_list.insert(i4); // TAC
                 A->jump_code.push_back(i1); // TAC
                 A->jump_code.push_back(i3); // TAC
                 A->jump_code.push_back(i4); // TAC
+                A->jump_code.push_back(i3_); // TAC
+                A->jump_code.push_back(i4_); // TAC
             }
         }
     }
@@ -3713,14 +4258,18 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
         else {
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MOD), left->result, left->result, right->result, 0); // TAC
@@ -3740,13 +4289,17 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
 
         }
     }
@@ -3781,14 +4334,18 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
         else {
             TACInstruction* i1 = emit(TACOperator(op->name == "AND_ASSIGN" ? TAC_OPERATOR_BIT_AND : op->name == "OR_ASSIGN" ? TAC_OPERATOR_BIT_OR : TAC_OPERATOR_BIT_XOR), left->result, left->result, right->result, 0); // TAC
@@ -3808,13 +4365,17 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
     }
     else if (op->name == "LEFT_ASSIGN" || op->name == "RIGHT_ASSIGN") {
@@ -3848,14 +4409,18 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i2); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
         else {
             TACInstruction* i1 = emit(TACOperator(op->name == "LEFT_ASSIGN" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), left->result, left->result, right->result, 0); // TAC
@@ -3875,13 +4440,17 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
             TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3); // TAC
-            A->false_list.insert(i4); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), left->result, new_empty_var(), 2); // TAC
+            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            A->true_list.insert(i3_); // TAC
+            A->false_list.insert(i4_); // TAC
             A->jump_true_list.insert(i3); // TAC
             A->jump_false_list.insert(i4); // TAC
             A->jump_code.push_back(i1); // TAC
             A->jump_code.push_back(i3); // TAC
             A->jump_code.push_back(i4); // TAC
+            A->jump_code.push_back(i3_); // TAC
+            A->jump_code.push_back(i4_); // TAC
         }
     }
     A->type.is_const_literal = false;
