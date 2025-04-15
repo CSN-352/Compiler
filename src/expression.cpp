@@ -180,7 +180,7 @@ ArgumentExpressionList* create_argument_expression_list(ArgumentExpressionList* 
     backpatch(x->false_list, i1->label); // TAC
     backpatch(x->jump_true_list, i1->label); // TAC
     backpatch(x->jump_false_list, i1->label); // TAC
-    args_expr_list->code.insert(args_expr_list->code.end(), x->code.begin(), x->code.end());
+    args_expr_list->code.insert(args_expr_list->code.begin(), x->code.begin(), x->code.end());
     args_expr_list->code.push_back(i1); // TAC
     return args_expr_list;
 }
@@ -607,7 +607,6 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
     P->column_no = x->column_no;
     P->code.insert(P->code.begin(), x->code.begin(), x->code.end()); // TAC
     P->jump_code.insert(P->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
-    print_code_vector(P->code); // TAC
     for(auto i:x->jump_next_list){
         P->code.erase(remove(P->code.begin(), P->code.end(), i), P->code.end()); // TAC
     }
@@ -707,7 +706,6 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
             }
         }
     }
-    cout<<"POSTFIX EXPRESSION FUNCTION CALL: " << P->name << endl;
     P->type.is_const_literal = false;
     return P;
 }
@@ -967,7 +965,6 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
     }
     else if (op->name == "MINUS" || op->name == "PLUS")
     {
-
         if (!x->type.isIntorFloat())
         {
             // Throw Error

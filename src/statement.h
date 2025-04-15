@@ -60,6 +60,7 @@ Statement* create_labeled_statement_default(Statement* statement);
 
 class CompoundStatement : public Statement {
 public:
+    DeclarationStatementList* declaration_statement_list;
     CompoundStatement();
 };
 
@@ -75,6 +76,7 @@ public:
     DeclarationStatementList();
     vector<DeclarationList*> declarations;
     vector<StatementList*> statements;
+    vector<TACInstruction*> static_declaration_code; //TAC
 };
 DeclarationStatementList* create_declaration_statement_list(DeclarationList* declaration_list);
 DeclarationStatementList* create_declaration_statement_list(StatementList* statement_list);

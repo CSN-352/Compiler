@@ -12,6 +12,4 @@ int main(){
     struct Point *ptr = &p1;
     ptr->x = 30;
     ptr->y = 40;
-    breakpoint;
-    breakpoint_global;
 }

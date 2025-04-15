@@ -24,8 +24,6 @@ int main()
     // breakpoint;
     // breakpoint_global;
 
-
-    // int arr2[];  // Fails on this
     char* str = "Hello";
     str[0] = 'H';
 }

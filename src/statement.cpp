@@ -15,8 +15,9 @@ extern void print_code_vector(vector<TACInstruction*>& v);
 
 unordered_map<string, TACOperand*> labels; // Map to store labels and their corresponding TAC operands
 unordered_map<string, unordered_set<TACInstruction*>> labels_list; // Map to store labels and their corresponding goto instructions
-vector<TACInstruction*> switch_case; // Map to store switch case labels
-vector<TACInstruction*> cases; 
+vector<pair<Expression*,TACOperand*>> switch_case; // Map to store switch case labels
+TACOperand* default_case; // Map to store default case label
+
 
 // ##############################################################################
 // ################################## STATEMENT ######################################
@@ -80,6 +81,8 @@ Statement* create_labeled_statement_case(Expression* expression, Statement* stat
     ConditionalExpression* cond_expr = dynamic_cast<ConditionalExpression*>(expression);
     if (!expression->type.isInt() || !cond_expr->type.is_const_literal) {
         string error_msg = "Case label must be a constant integer or character at line " + to_string(expression->line_no) + ", column " + to_string(expression->column_no);
+        yyerror(error_msg.c_str());
+        symbolTable.set_error();
     }
     else if (expression->type == ERROR_TYPE || statement->type == ERROR_TYPE) {
         L->type = ERROR_TYPE;
@@ -89,34 +92,29 @@ Statement* create_labeled_statement_case(Expression* expression, Statement* stat
     }
     else {
         L->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_EQ), statement->begin_label, new_empty_var(), expression->result, 2); //TAC
-        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
-        backpatch(expression->next_list, i1->label); //TAC
-        backpatch(expression->true_list, i1->label); //TAC
-        backpatch(expression->false_list, i1->label); //TAC
-        L->code = expression->code; //TAC
-        for(auto i:expression->jump_false_list){
-            L->code.erase(remove(L->code.begin(), L->code.end(), i), L->code.end()); //TAC
-        }
-        for(auto i:expression->jump_true_list){
-            L->code.erase(remove(L->code.begin(), L->code.end(), i), L->code.end()); //TAC
-        }   
-        for(auto i:expression->jump_next_list){
-            L->code.erase(remove(L->code.begin(), L->code.end(), i), L->code.end()); //TAC
-        }
-        L->code.push_back(i1); //TAC
-        L->code.push_back(i2); //TAC
+        // TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_EQ), statement->begin_label, new_empty_var(), expression->result, 2); //TAC
+        // TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); //TAC
+        // backpatch(expression->next_list, statement->begin_label); //TAC
+        // backpatch(expression->true_list, statement->begin_label); //TAC
+        // backpatch(expression->false_list, statement->begin_label); //TAC
+        // L->code = expression->code; //TAC
+        // for(auto i:expression->jump_false_list){
+        //     L->code.erase(remove(L->code.begin(), L->code.end(), i), L->code.end()); //TAC
+        // }
+        // for(auto i:expression->jump_true_list){
+        //     L->code.erase(remove(L->code.begin(), L->code.end(), i), L->code.end()); //TAC
+        // }   
+        // for(auto i:expression->jump_next_list){
+        //     L->code.erase(remove(L->code.begin(), L->code.end(), i), L->code.end()); //TAC
+        // }
+        // L->code.push_back(i1); //TAC
+        // L->code.push_back(i2); //TAC
         L->code.insert(L->code.end(), statement->code.begin(), statement->code.end()); //TAC
         L->begin_label = L->code[0]->label; //TAC
         L->next_list = statement->next_list; //TAC
-        L->next_list.insert(i2); //TAC
         L->continue_list = statement->continue_list; //TAC
         L->break_list = statement->break_list; //TAC
-        if(!cases.empty()){
-            (*cases.rbegin())->result = i1->label;
-        }
-        switch_case.push_back(i1);
-        cases.push_back(i2);
+        switch_case.push_back({expression,L->begin_label}); // Store the case label in the switch_case vector
     }
     return L;
 }
@@ -140,6 +138,7 @@ Statement* create_labeled_statement_default(Statement* statement) {
         L->next_list = statement->next_list; //TAC
         L->continue_list = statement->continue_list; //TAC
         L->break_list = statement->break_list; //TAC
+        default_case = L->begin_label; // Store the default label
     }
     return L;
 }
@@ -163,6 +162,7 @@ Statement* create_compound_statement() {
 Statement* create_compound_statement(DeclarationStatementList* statement)
 {
     CompoundStatement* C = new CompoundStatement();
+    C->declaration_statement_list = statement;
     C->name = "COMPOUND STATEMENT WITH DECALARATION STATEMENT LIST";
     C->return_type.insert(C->return_type.end(), statement->return_type.begin(), statement->return_type.end());
     for(Type t : C->return_type){
@@ -199,14 +199,19 @@ Statement* create_compound_statement(DeclarationStatementList* statement)
 DeclarationStatementList::DeclarationStatementList() : Statement() {
     name = "DECLARATION STATEMENT LIST";
 }
-
+ 
 DeclarationStatementList* create_declaration_statement_list(DeclarationList* declaration_list) {
     DeclarationStatementList* D = new DeclarationStatementList();
     D->declarations.push_back(declaration_list);
     D->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
     for (Declaration* d : declaration_list->declaration_list) {
         for (InitDeclarator* id : d->init_declarator_list->init_declarator_list) {
-            D->code.insert(D->code.end(), id->code.begin(), id->code.end()); //TAC
+            if(d->declaration_specifiers->is_static) {
+                D->static_declaration_code.insert(D->static_declaration_code.end(), id->code.begin(), id->code.end()); //TAC
+            }
+            else {
+                D->code.insert(D->code.end(), id->code.begin(), id->code.end()); //TAC
+            }
         }
     }
     if (!D->code.empty()) {
@@ -253,7 +258,12 @@ DeclarationStatementList* create_declaration_statement_list(DeclarationStatement
     vector<TACInstruction*> dec_code;
     for (Declaration* d : declaration_list->declaration_list) {
         for (InitDeclarator* id : d->init_declarator_list->init_declarator_list) {
-            dec_code.insert(dec_code.end(), id->code.begin(), id->code.end()); //TAC
+            if(d->declaration_specifiers->is_static) {
+                declaration_statement_list->static_declaration_code.insert(declaration_statement_list->static_declaration_code.end(), id->code.begin(), id->code.end()); //TAC
+            }
+            else {
+                dec_code.insert(dec_code.end(), id->code.begin(), id->code.end()); //TAC
+            }
         }
     }
     declaration_statement_list->code.insert(declaration_statement_list->code.end(), dec_code.begin(), dec_code.end()); //TAC
@@ -492,34 +502,40 @@ Statement* create_selection_statement_switch(Expression* expression, Statement* 
     }
     else {
         S->type = Type(PrimitiveTypes::VOID_STATEMENT_T, 0, false);
-        if(!switch_case.empty()){
-            S->code.insert(S->code.end(), expression->code.begin(), expression->code.end());
-            for(auto i:expression->jump_next_list){
-                S->code.erase(remove(S->code.begin(), S->code.end(), i), S->code.end()); //TAC
-            }
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP),(*switch_case.begin())->label , new_empty_var(), new_empty_var(),1);
-            backpatch(expression->next_list, i1->label); //TAC
-            for(auto instr: switch_case){
-                instr->arg1 = expression->result;
-            }
-            S->code.push_back(i1);
-            S->code.insert(S->code.end(), statement->code.begin(), statement->code.end());
-            S->begin_label = S->code[0]->label;
-            S->next_list = statement->next_list;
-            S->break_list = statement->break_list;
-            S->continue_list = statement->continue_list;
+        S->code.insert(S->code.end(), expression->code.begin(), expression->code.end());
+        for(auto i:expression->jump_next_list){
+            S->code.erase(remove(S->code.begin(), S->code.end(), i), S->code.end()); //TAC
         }
-        else {
-            S->code.insert(S->code.end(), expression->code.begin(), expression->code.end()); //TAC
-            for(auto i:expression->jump_next_list){
+        // TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP),(*switch_case.begin())->label , new_empty_var(), new_empty_var(),1);
+        // backpatch(expression->next_list, i1->label); //TAC
+        Expression* backpatch_expression = expression;
+        for(auto p: switch_case){
+            auto expr = p.first;
+            auto label = p.second;
+            S->code.insert(S->code.end(), expr->code.begin(), expr->code.end()); //TAC
+            for(auto i:expr->jump_next_list){
                 S->code.erase(remove(S->code.begin(), S->code.end(), i), S->code.end()); //TAC
             }
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP),new_empty_var() , new_empty_var(), new_empty_var(),1);
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_EQ), label, expression->result , expr->result,2); //TAC
             S->code.push_back(i1); //TAC
+            if(!expr->code.empty())backpatch(expression->next_list, expr->code[0]->label); //TAC
             backpatch(expression->next_list, i1->label); //TAC
-            S->next_list.insert(i1); //TAC
-            S->begin_label = S->code[0]->label; //TAC
+            backpatch(expr->next_list, i1->label); //TAC
+            backpatch_expression = expr; // Update the backpatch expression to the current case
         }
+        if(default_case != nullptr){
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP),default_case , new_empty_var(), new_empty_var(),1);
+            S->code.push_back(i1); //TAC
+            backpatch(backpatch_expression->next_list, i1->label); //TAC
+        }
+        //S->code.push_back(i1);
+        S->code.insert(S->code.end(), statement->code.begin(), statement->code.end());
+        S->begin_label = S->code[0]->label;
+        S->next_list = merge_lists(statement->next_list, expression->next_list); //TAC
+        S->break_list = statement->break_list;
+        S->continue_list = statement->continue_list;
+        switch_case.clear(); // Clear the switch_case vector after processing
+        default_case = nullptr; // Clear the default case label
     }
     return S;
 }

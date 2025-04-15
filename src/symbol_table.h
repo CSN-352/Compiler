@@ -204,6 +204,7 @@ public:
 
     bool is_function;
     bool is_variadic;
+    bool is_static;
     int num_args;
     vector<Type> arg_types;
 
@@ -428,6 +429,7 @@ public:
     vector<int> type_qualifiers;
     bool is_const_variable;
     bool is_typedef;
+    bool is_static;
     bool is_type_name;
     int type_index;
     DeclarationSpecifiers();
