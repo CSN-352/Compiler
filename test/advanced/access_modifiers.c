@@ -28,7 +28,6 @@ int main() {
     int sum = obj1.add(5, 10); // Accessing public method
     int x = sum;
     x++;
-        breakpoint;
     //     obj1.foo(5); // Error: Accessing private method
     return x;
 }

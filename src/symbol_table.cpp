@@ -877,6 +877,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
         }
         else
             t = Type(P->declaration_specifiers->type_index, ptr_level, P->declaration_specifiers->is_const_variable);
+        if(P->declaration_specifiers->is_static) t.is_static = true;
         if (variable->direct_declarator->is_array)
         {
             t.is_array = true;
@@ -917,44 +918,53 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
             }
             else{
                 auto i = init_declarator_list->init_declarator_list[index]->initializer;
-                if (i != nullptr) {
-                    TACOperand* id = new_identifier(variable->direct_declarator->identifier->value); // TAC
-                    init_declarator_list->init_declarator_list[index]->code.insert(init_declarator_list->init_declarator_list[index]->code.end(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
-                    if(i->assignment_expression->result->type != TAC_OPERAND_TEMP_VAR){
-                        TACOperand* t1 = new_temp_var(); // TAC
-                        TACInstruction* i0;
-                        if(t.type_index != i->assignment_expression->type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST),t1, new_type(t.to_string()) , i->assignment_expression->result, 0); // TAC
-                        else i0 = emit(TACOperator(TAC_OPERATOR_NOP),t1, i->assignment_expression->result, new_empty_var(), 0); // TAC
-                        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
-                        init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
-                        init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
-                        for(auto l:i->assignment_expression->jump_next_list){
-                            init_declarator_list->init_declarator_list[index]->code.erase(remove(init_declarator_list->init_declarator_list[index]->code.begin(), init_declarator_list->init_declarator_list[index]->code.end(), l), init_declarator_list->init_declarator_list[index]->code.end()); // TAC
-                        }
-                        backpatch(i->assignment_expression->next_list, i0->label); // TAC
-                        backpatch(i->assignment_expression->jump_next_list, i0->label); // TAC
-                        backpatch(i->assignment_expression->true_list, i0->label); // TAC
-                        backpatch(i->assignment_expression->false_list, i0->label); // TAC
-                        backpatch(i->assignment_expression->jump_true_list, i0->label); // TAC
-                        backpatch(i->assignment_expression->jump_false_list, i0->label); // TAC
+                TACOperand* id = new_identifier(variable->direct_declarator->identifier->value); // TAC
+                init_declarator_list->init_declarator_list[index]->code.insert(init_declarator_list->init_declarator_list[index]->code.end(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
+                if(i->assignment_expression->result->type != TAC_OPERAND_TEMP_VAR){
+                    TACOperand* t1 = new_temp_var(); // TAC
+                    TACInstruction* i0;
+                    if(t.type_index != i->assignment_expression->type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST),t1, new_type(t.to_string()) , i->assignment_expression->result, 0); // TAC
+                    else i0 = emit(TACOperator(TAC_OPERATOR_NOP),t1, i->assignment_expression->result, new_empty_var(), 0); // TAC
+                    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+                    init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
+                    init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
+                    for(auto l:i->assignment_expression->jump_next_list){
+                        init_declarator_list->init_declarator_list[index]->code.erase(remove(init_declarator_list->init_declarator_list[index]->code.begin(), init_declarator_list->init_declarator_list[index]->code.end(), l), init_declarator_list->init_declarator_list[index]->code.end()); // TAC
                     }
-                    else{
-                        TACInstruction* i1;
-                        if(t.type_index != i->assignment_expression->type.type_index)i1 = emit(TACOperator(TAC_OPERATOR_CAST), id, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
-                        else i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
-                        init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
-                        for(auto l:i->assignment_expression->jump_next_list){
-                            init_declarator_list->init_declarator_list[index]->code.erase(remove(init_declarator_list->init_declarator_list[index]->code.begin(), init_declarator_list->init_declarator_list[index]->code.end(), l), init_declarator_list->init_declarator_list[index]->code.end()); // TAC
-                        }
-                        backpatch(i->assignment_expression->next_list, i1->label); // TAC
-                        backpatch(i->assignment_expression->jump_next_list, i1->label); // TAC
-                        backpatch(i->assignment_expression->true_list, i1->label); // TAC
-                        backpatch(i->assignment_expression->false_list, i1->label); // TAC
-                        backpatch(i->assignment_expression->jump_true_list, i1->label); // TAC
-                        backpatch(i->assignment_expression->jump_false_list, i1->label); // TAC
+                    backpatch(i->assignment_expression->next_list, i0->label); // TAC
+                    backpatch(i->assignment_expression->jump_next_list, i0->label); // TAC
+                    backpatch(i->assignment_expression->true_list, i0->label); // TAC
+                    backpatch(i->assignment_expression->false_list, i0->label); // TAC
+                    backpatch(i->assignment_expression->jump_true_list, i0->label); // TAC
+                    backpatch(i->assignment_expression->jump_false_list, i0->label); // TAC
+                }
+                else{
+                    TACInstruction* i1;
+                    if(t.type_index != i->assignment_expression->type.type_index)i1 = emit(TACOperator(TAC_OPERATOR_CAST), id, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
+                    else i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
+                    init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
+                    for(auto l:i->assignment_expression->jump_next_list){
+                        init_declarator_list->init_declarator_list[index]->code.erase(remove(init_declarator_list->init_declarator_list[index]->code.begin(), init_declarator_list->init_declarator_list[index]->code.end(), l), init_declarator_list->init_declarator_list[index]->code.end()); // TAC
                     }
+                    backpatch(i->assignment_expression->next_list, i1->label); // TAC
+                    backpatch(i->assignment_expression->jump_next_list, i1->label); // TAC
+                    backpatch(i->assignment_expression->true_list, i1->label); // TAC
+                    backpatch(i->assignment_expression->false_list, i1->label); // TAC
+                    backpatch(i->assignment_expression->jump_true_list, i1->label); // TAC
+                    backpatch(i->assignment_expression->jump_false_list, i1->label); // TAC
                 }
             }
+        }
+        else if(symbolTable.currentScope == 0){
+            TACOperand* id = new_identifier(variable->direct_declarator->identifier->value); // TAC
+            TACOperand* t1 = new_temp_var(); // TAC
+            Constant* c = new Constant("I_CONSTANT", "0", init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->line_no, init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->column_no); // TAC
+            TACInstruction* i0;
+            if(t.type_index != c->constant_type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST),t1, new_type(t.to_string()) , new_constant("0"), 0); // TAC
+            else i0 = emit(TACOperator(TAC_OPERATOR_NOP),t1, new_constant("0"), new_empty_var(), 0); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+            init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
+            init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
         }
         if (declaration_specifiers->is_typedef)
             symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
@@ -1229,6 +1239,8 @@ DeclarationSpecifiers* create_declaration_specifiers(DeclarationSpecifiers* ds, 
     ds->storage_class_specifiers.push_back(storage_class);
     if (storage_class == TYPEDEF)
         ds->is_typedef = true;
+    if (storage_class == STATIC)
+        ds->is_static = true;
     return ds;
 }
 
@@ -2450,8 +2462,8 @@ ExternalDeclaration* create_external_declaration(Declaration* d)
     P->declaration = d;
     if(d->init_declarator_list != nullptr){
         for (auto id : d->init_declarator_list->init_declarator_list) {
-            if (id->initializer != nullptr) TAC_CODE.insert(TAC_CODE.end(), id->code.begin(), id->code.end()); //TAC
-            }
+            TAC_CODE.insert(TAC_CODE.end(), id->code.begin(), id->code.end()); //TAC
+        }
     }
     else{
         if(d->declaration_specifiers->type_specifiers[0]->enum_specifier != nullptr){
@@ -2556,11 +2568,11 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
 {
     CompoundStatement* cs_cast = dynamic_cast<CompoundStatement*>(cs);
     fd->compound_statement = cs_cast;
-
     Symbol* function = symbolTable.getSymbol(declarator->direct_declarator->identifier->value);
     Type t1 = Type(function->type.type_index,function->type.ptr_level,function->type.is_const_variable);
     Type t2 = Type(PrimitiveTypes::VOID_T, 0, false);
     if(!cs->return_type.empty()) t2 = cs->return_type[0];
+    fd->code.insert(fd->code.end(), cs_cast->declaration_statement_list->static_declaration_code.begin(), cs_cast->declaration_statement_list->static_declaration_code.end()); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
     fd->code.push_back(i1); // TAC
     if(declarator->direct_declarator->parameters != nullptr) {

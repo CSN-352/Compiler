@@ -12,10 +12,6 @@ void add3(){
 }
 int main(){
     int sum = add(5, 10);
-    breakpoint;
-    {
-        breakpoint_global;
-    }
     add(5, 'a');
     add2(5, 'a');
     // add3();

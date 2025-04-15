@@ -151,10 +151,31 @@
 //     // goto label1;
 // }
 
+// int main(){
+//     int a = 10;
+//     int b = 5;
+//     int c = 0;
+//     int d = a<b && a<c;
+// }
+
 int main(){
     int a = 10;
-    int b = 5;
-    int c = 0;
-    int d = a<b && a<c;
+    (--a)--;
 }
 
+//int printf(const char *format, ...){}
+
+// int main(){
+//     int b = -1,x;
+//     switch (b)
+//     {
+//         case 100:
+//             x = 1;
+//         case 1000:
+//             x = 2;
+//             break;
+//         default:
+//             x = 3;
+//             break;
+//     }
+// }
