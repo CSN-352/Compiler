@@ -479,7 +479,6 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             P->jump_code.push_back(i5_); // TAC
         }
     }
-
     P->type.is_const_literal = false;
     return P;
 }
@@ -608,16 +607,12 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
     P->column_no = x->column_no;
     P->code.insert(P->code.begin(), x->code.begin(), x->code.end()); // TAC
     P->jump_code.insert(P->jump_code.begin(), x->code.begin(), x->code.end()); // TAC
+    print_code_vector(P->code); // TAC
     for(auto i:x->jump_next_list){
         P->code.erase(remove(P->code.begin(), P->code.end(), i), P->code.end()); // TAC
     }
     for(auto i:x->next_list){
         P->jump_code.erase(remove(P->jump_code.begin(), P->jump_code.end(), i), P->jump_code.end()); // TAC
-    }
-
-    if (x->type.is_error()) {
-        P->type = ERROR_TYPE;
-        return P;
     }
 
     vector<Type> arguments;
@@ -680,12 +675,12 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type.arg_types.clear();
                 P->result = new_temp_var(); // TAC
                 TACInstruction* i1;
-                if(argument_expression_list != nullptr)P->code = argument_expression_list->code; // TAC
+                if(argument_expression_list != nullptr)P->code.insert(P->code.begin(),argument_expression_list->code.begin(),argument_expression_list->code.end()); // TAC
                 if (x->type.type_index == PrimitiveTypes::VOID_T){
-                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_constant(""), new_identifier(sym->name), new_constant(to_string(arguments.size())), 0); // TAC
+                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_constant(""), x->result, new_constant(to_string(arguments.size())), 0); // TAC
                 }
                 else{
-                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), P->result, new_identifier(sym->name), new_constant(to_string(arguments.size())), 0); // TAC
+                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), P->result, x->result, new_constant(to_string(arguments.size())), 0); // TAC
                 }
                 
                 backpatch(x->next_list, i1->label); // TAC
@@ -712,6 +707,7 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
             }
         }
     }
+    cout<<"POSTFIX EXPRESSION FUNCTION CALL: " << P->name << endl;
     P->type.is_const_literal = false;
     return P;
 }
