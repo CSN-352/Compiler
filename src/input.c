@@ -151,11 +151,11 @@
 //     // goto label1;
 // }
 
-// int main(){
-//     int a = 10;
-//     int b = 5;
-//     int c = 0;
-//     int d = a<b && a<c;
+// // int main(){
+// //     int a = 10;
+// //     int b = 5;
+// //     int c = 0;
+// //     int d = a<b && a<c;
 // }
 
 // int main(){
@@ -218,5 +218,7 @@
 // int main(){
 //     st s;
 //     s.id = 1;
-// }
+// // }
 
+void func(int a){
+}
