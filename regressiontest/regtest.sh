@@ -14,11 +14,12 @@ echo
 FAILURES=0
 TOTAL=0
 
-for test_folder in "$TESTS_DIR"/test*/; do
-    TEST_NUM=$(basename "$test_folder" | grep -o '[0-9]\+')
-    TEST_FILE="$test_folder/test$TEST_NUM.c"
-    EXPECTED_OUTPUT="$test_folder/test$TEST_NUM.txt"
-    ACTUAL_OUTPUT="$OUTPUT_DIR/test$TEST_NUM.txt"
+for test_folder in "$TESTS_DIR"/*/; do
+    TEST_FILE="$test_folder*.c"
+    TEST_FILE=$(echo $TEST_FILE)
+    EXPECTED_OUTPUT="$test_folder*.txt"
+    EXPECTED_OUTPUT=$(echo $EXPECTED_OUTPUT)
+    ACTUAL_OUTPUT="$OUTPUT_DIR/$(basename $test_folder).txt"
 
     echo "▶️  Test $TEST_NUM:"
 
