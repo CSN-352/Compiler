@@ -1910,11 +1910,27 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             A->jump_code.push_back(i4_); // TAC
         }
     }
-    else if (op->name == "ADD" && lt.isPointer() && rt.isInt()) {
+    else if (op->name == "PLUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
+        Type t = lt;
+        if(t.is_array){
+            if(t.array_dim == 1){
+                t.is_array = false;
+                t.is_pointer = false;
+                t.ptr_level = 0;
+            }
+            t.array_dim--;
+            t.array_dims.erase(t.array_dims.begin());
+        }
+        else {
+            t.ptr_level--;
+            if(t.ptr_level == 0){
+                t.is_pointer = false;
+            }
+        }
         TACOperand* t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(rt.get_size())), right->result, 0); // TAC
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(t.get_size())), right->result, 0); // TAC
         backpatch(left->next_list, i1->label); // TAC
         backpatch(right->next_list, i1->label); // TAC
         backpatch(left->jump_next_list, i1->label); // TAC
@@ -1946,11 +1962,27 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         A->jump_code.push_back(i3_); // TAC
         A->jump_code.push_back(i4_); // TAC
     }
-    else if (op->name == "ADD" && lt.isInt() && rt.isPointer()) {
+    else if (op->name == "PLUS" && lt.isInt() && rt.isPointer()) {
         A->type = rt;
+        Type t = rt;
+        if(t.is_array){
+            if(t.array_dim == 1){
+                t.is_array = false;
+                t.is_pointer = false;
+                t.ptr_level = 0;
+            }
+            t.array_dim--;
+            t.array_dims.erase(t.array_dims.begin());
+        }
+        else {
+            t.ptr_level--;
+            if(t.ptr_level == 0){
+                t.is_pointer = false;
+            }
+        }
         TACOperand* t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(lt.get_size())), left->result, 0); // TAC
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(t.get_size())), left->result, 0); // TAC
         backpatch(left->next_list, i1->label); // TAC
         backpatch(right->next_list, i1->label); // TAC
         backpatch(left->jump_next_list, i1->label); // TAC
@@ -1984,9 +2016,25 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
     }
     else if (op->name == "MINUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
+        Type t = lt;
+        if(t.is_array){
+            if(t.array_dim == 1){
+                t.is_array = false;
+                t.is_pointer = false;
+                t.ptr_level = 0;
+            }
+            t.array_dim--;
+            t.array_dims.erase(t.array_dims.begin());
+        }
+        else {
+            t.ptr_level--;
+            if(t.ptr_level == 0){
+                t.is_pointer = false;
+            }
+        }
         TACOperand* t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(rt.get_size())), right->result, 0); // TAC
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MUL), t1, new_constant(to_string(t.get_size())), right->result, 0); // TAC
         backpatch(left->next_list, i1->label); // TAC
         backpatch(right->next_list, i1->label); // TAC
         backpatch(left->jump_next_list, i1->label); // TAC

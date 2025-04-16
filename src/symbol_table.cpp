@@ -886,7 +886,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
             t.array_dim = variable->direct_declarator->array_dimensions.size();
             t.array_dims = variable->direct_declarator->array_dimensions;
         }
-        else if (variable->direct_declarator->is_function)
+        if (variable->direct_declarator->is_function)
         {
             t.is_function = true;
             t.num_args = variable->direct_declarator->parameters->paramater_list->parameter_declarations.size();
@@ -894,7 +894,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                 t.arg_types.push_back(variable->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
             overloaded = 1;
         }
-        else if (!t.isPrimitive()) {
+        if (!t.isPrimitive()) {
             t.is_defined_type = true;
             if (declaration_specifiers->type_specifiers[0]->struct_union_specifier != nullptr)t.defined_type_name = declaration_specifiers->type_specifiers[0]->struct_union_specifier->identifier->value;
             else if (declaration_specifiers->type_specifiers[0]->class_specifier != nullptr)t.defined_type_name = declaration_specifiers->type_specifiers[0]->class_specifier->identifier->value;
