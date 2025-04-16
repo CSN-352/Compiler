@@ -1,0 +1,1 @@
+int main() { int y = square(5); return 0; }

@@ -1,0 +1,1 @@
+class A { public: void foo(int x); }; int main() { A a; a.foo(); return 0; }

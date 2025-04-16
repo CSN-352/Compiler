@@ -1,0 +1,1 @@
+int square(int x) { return x * x; } int main() { float (*fp)(int) = square; return 0; }

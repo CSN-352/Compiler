@@ -1,0 +1,1 @@
+int main() { int x = 5; int y = x + "world"; return 0; }

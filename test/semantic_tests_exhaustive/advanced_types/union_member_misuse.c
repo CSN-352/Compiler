@@ -1,0 +1,1 @@
+union U { int i; float f; }; int main() { U u; u.i = 10; u.f = 3.14; return 0; }
