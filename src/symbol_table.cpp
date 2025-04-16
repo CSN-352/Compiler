@@ -872,13 +872,15 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
 
     P->declaration_specifiers = declaration_specifiers;
     P->init_declarator_list = init_declarator_list;
-
+    cerr << "hey";
     if (init_declarator_list == nullptr)
     {
         return P;
     }
+    cerr << "hey1";
     for (int index = 0; index < init_declarator_list->init_declarator_list.size(); index++)
     {
+        cerr << "hey2";
         Declarator* variable = init_declarator_list->init_declarator_list[index]->declarator;
         int ptr_level = 0;
         int overloaded = 0;
@@ -907,11 +909,13 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
         }
         if (variable->direct_declarator->is_function)
         {
+            cerr << "hey_hehrehr";
             t.is_function = true;
             t.num_args = variable->direct_declarator->parameters->paramater_list->parameter_declarations.size();
             for (int i = 0; i < t.num_args; i++)
                 t.arg_types.push_back(variable->direct_declarator->parameters->paramater_list->parameter_declarations[i]->type);
             overloaded = 1;
+            cerr <<" == ";
         }
         if (!t.isPrimitive()) {
             t.is_defined_type = true;
@@ -1323,6 +1327,7 @@ DirectDeclarator* create_direct_declarator(Declarator* d)
 {
     DirectDeclarator* P = new DirectDeclarator();
     P->declarator = d;
+    cerr << "@#@@@@@@@@@@@@@@@@@" << P->declarator->direct_declarator->identifier->value;
     return P;
 }
 
@@ -1369,6 +1374,9 @@ DirectDeclarator* create_direct_declarator_function(DirectDeclarator* dd, Parame
     }
     dd->is_function = true;
     dd->parameters = ptl;
+    // cerr << "hehe" << dd->declarator->direct_declarator->identifier->value;
+    // cerr << "HEHE ======================== " << dd->identifier->value;
+    // cerr << "HEHE ======================== "<< dd->declarator->direct_declarator->identifier->value;
     return dd;
 }
 

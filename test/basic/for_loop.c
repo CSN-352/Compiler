@@ -1,10 +1,12 @@
 // Passing
 // TAC DONE
 
-int add(int a, int b)
+enum Color
 {
-    return a + b;
-}
+    RED,
+    GREEN,
+    BLUE
+};
 
 int main()
 {
