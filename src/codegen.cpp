@@ -237,39 +237,87 @@ MIPSRegister get_register_for_operand(
     const std::string& var,
     bool for_result
 ) {
-    // 1. Already in a register
-    for (const auto& [reg, vars] : register_descriptor) {
-        if (vars.count(var)) return reg;
-    }
+        // 1. Already in a register
+        for (const auto& [reg, vars] : register_descriptor) {
+            if (vars.count(var)) return reg;
+        }
 
-    // 2. Empty register
-    for (int r = T0; r <= T9; ++r) {
-        MIPSRegister reg = static_cast<MIPSRegister>(r);
-        if (register_descriptor[reg].empty()) return reg;
-    }
+        // 2. Empty register
+        for (int r = T0; r <= T9; ++r) {
+            MIPSRegister reg = static_cast<MIPSRegister>(r);
+            if (register_descriptor[reg].empty()) return reg;
+        }
 
-    // 3. Choose a register to spill or overwrite
-    for (int r = T0; r <= T9; ++r) {
-        MIPSRegister reg = static_cast<MIPSRegister>(r);
-        spill_register(reg);
-        return reg;
-    }
+        // 3. Reuse a register if all variables in it are also in memory
+        for (int r = T0; r <= T9; ++r) {
+            MIPSRegister reg = static_cast<MIPSRegister>(r);
+            bool all_vars_safe = true;
 
-    // If nothing safe, force spill first T-register
-    MIPSRegister fallback = T0;
-    spill_register(fallback);
-    return fallback;
+            for (const auto& v : register_descriptor[reg]) {
+                const auto& locs = address_descriptor[v];
+                if (!locs.count("mem")) {
+                    all_vars_safe = false;
+                    break;
+                }
+            }
+
+            if (all_vars_safe) {
+                // Clean up: remove those vars from register_descriptor and address_descriptor
+                for (const auto& v : register_descriptor[reg]) {
+                    address_descriptor[v].erase(get_mips_register_name(reg));
+                }
+                register_descriptor[reg].clear();
+                return reg;
+            }
+        }
+
+        // 4. Reuse a register if it holds only the result variable itself (var == v)
+        for (int r = T0; r <= T9; ++r) {
+            MIPSRegister reg = static_cast<MIPSRegister>(r);
+
+            bool all_same_as_var = true;
+            for (const auto& v : register_descriptor[reg]) {
+                if (v != var) {
+                    all_same_as_var = false;
+                    break;
+                }
+            }
+
+            if (all_same_as_var) {
+                register_descriptor[reg].clear();  // We can safely reuse it
+                address_descriptor[var].erase(get_mips_register_name(reg));
+                return reg;
+            }
+        }
+
+        // 5. Spill case: Choose a register to spill if no safe register is available
+        // Let's assume T0 is the spill register for now
+        MIPSRegister spill_reg = T0;
+        
+        // Call the spill_register function to handle the spilling
+        spill_register(spill_reg);
+
+        // Return the spill register (T0 in this case) after spilling
+        return spill_reg;
+    
 }
 
 void spill_register(MIPSRegister reg) {
-    auto& vars = register_descriptor[reg];
-    for (const std::string& v : vars) {
-        // insert the instruction in global vector of MIPS instructions
-        // std::cout << "    sw " << get_mips_register_name(reg) << ", " << v << "_addr\n";
-        address_descriptor[v].insert("mem");
+    // Emit store instruction (ST) for each variable in the register
+    for (const auto& v : register_descriptor[reg]) {
+        // Generate store instruction to move variable `v` to memory
+        // Add instruction here
+        // std::cout << "ST " << v << ", " << get_mips_register_name(reg) << "\n"; // Placeholder for actual instruction generation
+
+        // Update the address descriptor to mark the variable `v` as stored in memory
+        address_descriptor[v].erase(get_mips_register_name(reg));  // Remove from register
+        address_descriptor[v].insert("mem");  // Mark as in memory
     }
-    clear_register(reg);
+
+    // Clear the register descriptor after spilling all its variables
+    register_descriptor[reg].clear();
 }
+
 
 //=================== MIPS Instruction Emission ===================//
 
@@ -297,38 +345,41 @@ MIPSInstruction::MIPSInstruction(MIPSOpcode opc)
 
 
 void emit_instruction(const MIPSInstruction& instr) {
+    // change to make intruction inside 
+    
     mips_code.push_back(instr);
 }
 
 void print_mips_code() {
-    for (const auto& instr : mips_code) {
-        // Print label if present
-        if (!instr.label.empty()) {
-            std::cout << instr.label << ":\n";
-            continue;
-        }
+    // correct this code....
+    // for (const auto& instr : mips_code) {
+    //     // Print label if present
+    //     if (!instr.label.empty()) {
+    //         std::cout << instr.label << ":\n";
+    //         continue;
+    //     }
 
-        std::string opcode_str = get_opcode_name(instr.opcode);
-        std::string rd_str = get_mips_register_name(instr.rd);
-        std::string rs_str = get_mips_register_name(instr.rs);
-        std::string rt_str = get_mips_register_name(instr.rt);
+    //     std::string opcode_str = get_opcode_name(instr.opcode);
+    //     std::string rd_str = get_mips_register_name(instr.rd);
+    //     std::string rs_str = get_mips_register_name(instr.rs);
+    //     std::string rt_str = get_mips_register_name(instr.rt);
 
-        // Load/store style: rt, offset(rs)
-        if (!instr.immediate.empty() && instr.rs != MIPSRegister::ZERO) {
-            std::cout << "    " << opcode_str << " " << rt_str << ", " << instr.immediate << "(" << rs_str << ")\n";
-        }
-        // 3-register instruction: rd, rs, rt
-        else if (instr.rt != MIPSRegister::ZERO) {
-            std::cout << "    " << opcode_str << " " << rd_str << ", " << rs_str << ", " << rt_str << "\n";
-        }
-        // 2-register or immediate instruction
-        else {
-            std::cout << "    " << opcode_str;
-            if (instr.rd != MIPSRegister::ZERO) std::cout << " " << rd_str;
-            if (instr.rs != MIPSRegister::ZERO) std::cout << ", " << rs_str;
-            if (!instr.immediate.empty()) std::cout << ", " << instr.immediate;
-            std::cout << "\n";
-        }
-    }
+    //     // Load/store style: rt, offset(rs)
+    //     if (!instr.immediate.empty() && instr.rs != MIPSRegister::ZERO) {
+    //         std::cout << "    " << opcode_str << " " << rt_str << ", " << instr.immediate << "(" << rs_str << ")\n";
+    //     }
+    //     // 3-register instruction: rd, rs, rt
+    //     else if (instr.rt != MIPSRegister::ZERO) {
+    //         std::cout << "    " << opcode_str << " " << rd_str << ", " << rs_str << ", " << rt_str << "\n";
+    //     }
+    //     // 2-register or immediate instruction
+    //     else {
+    //         std::cout << "    " << opcode_str;
+    //         if (instr.rd != MIPSRegister::ZERO) std::cout << " " << rd_str;
+    //         if (instr.rs != MIPSRegister::ZERO) std::cout << ", " << rs_str;
+    //         if (!instr.immediate.empty()) std::cout << ", " << instr.immediate;
+    //         std::cout << "\n";
+    //     }
+    // }
 }
 

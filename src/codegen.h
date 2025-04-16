@@ -14,7 +14,8 @@ enum MIPSRegister {
     A0, A1, A2, A3,
     T0, T1, T2, T3, T4, T5, T6, T7, T8, T9,
     S0, S1, S2, S3, S4, S5, S6, S7,
-    GP, SP, FP, RA
+    GP, SP, FP, RA 
+    // long long 
 };
 
 std::string get_mips_register_name(MIPSRegister reg);
@@ -85,20 +86,17 @@ void set_leader_labels(const std::unordered_map<int, std::string>& leaders);
 
 //=================== Register Allocation ===================//
 
-MIPSRegister get_register_for_operand(
-    const std::string& var,
-    bool for_result = false
-);
+MIPSRegister get_register_for_operand(const std::string& var, bool for_result = false);
 
 void spill_register(MIPSRegister reg);
 
 //=================== MIPS Instruction Struct ===================//
 
-struct MIPSInstruction {
+class MIPSInstruction {
     std::string label;         // Optional label
     MIPSOpcode opcode;         // Enum opcode
     MIPSRegister rd, rs, rt;   // Registers
-    std::string immediate;     // Immediate value or offset
+    std::string immediate;     // Immediate value or offset (12- bits size allowed only)
 
     // Constructor for normal 3-reg instruction (e.g., add rd, rs, rt)
     MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src1, MIPSRegister src2);
