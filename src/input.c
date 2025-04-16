@@ -207,8 +207,16 @@
 
 // class Incomplete;
 
-typedef struct
-{
-   int id;
-   char name[20];
-} Student;
+// typedef struct Student
+// {
+//    int id;
+//    char name[20];
+// } student;
+
+// typedef student st;
+
+// int main(){
+//     st s;
+//     s.id = 1;
+// }
+
