@@ -771,7 +771,7 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
         if (x->type.is_const_variable)
         {
             U->type = ERROR_TYPE;
-            string error_msg = "Invalid operator with constant type " + to_string(x->line_no) + to_string(x->column_no);
+            string error_msg = "Invalid operator with constant type " + to_string(x->line_no) + ", column " + to_string(x->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
             return U;
@@ -818,7 +818,7 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
         else
         {
             U->type = ERROR_TYPE;
-            string error_msg = "Operator with invalid type " + to_string(x->line_no) + to_string(x->column_no);
+            string error_msg = "Operator with invalid type " + to_string(x->line_no) + ", column " + to_string(x->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
             return U;
@@ -928,7 +928,7 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         if (x->type.ptr_level <= 0)
         {
             U->type = ERROR_TYPE;
-            string error_msg = "Cannot dereference a non-pointer at line " + to_string(x->line_no) + to_string(x->column_no);
+            string error_msg = "Cannot dereference a non-pointer at line " + to_string(x->line_no) + ", column " + to_string(x->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
             return U;
@@ -969,7 +969,7 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         {
             // Throw Error
             U->type = ERROR_TYPE;
-            string error_msg = "Invalid operand with unary operator '+/-' at line " + to_string(x->line_no) + to_string(x->column_no);
+            string error_msg = "Invalid operand with unary operator '+/-' at line " + to_string(x->line_no) + ", column " + to_string(x->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
             return U;

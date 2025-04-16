@@ -1,0 +1,1 @@
+struct S { int a; }; int main() { S s; s.a = "abc"; return 0; }

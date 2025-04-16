@@ -1,0 +1,1 @@
+class A { protected: int x; }; class B : public A {}; int main() { B b; b.x = 5; return 0; }

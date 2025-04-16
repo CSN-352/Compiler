@@ -1,0 +1,1 @@
+int main() { int arr[5]; arr["two"] = 2; return 0; }

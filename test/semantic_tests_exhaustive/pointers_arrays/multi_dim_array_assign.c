@@ -1,0 +1,1 @@
+int main() { int mat[2][2]; mat[0][0] = "str"; return 0; }

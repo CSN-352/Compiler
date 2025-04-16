@@ -2,7 +2,7 @@
 
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
 
-SRC="$BASE_DIR/src/build/bin/parser"
+SRC="$BASE_DIR/src/build/bin/compiler"
 TEST_DIR="$BASE_DIR/test"
 OUTPUT_DIR="$BASE_DIR/test/output"
 

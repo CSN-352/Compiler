@@ -1,0 +1,1 @@
+int main() { int x = 5; int ***ppp = &&x; return 0; }

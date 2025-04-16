@@ -1,0 +1,1 @@
+class A { private: int x; }; int main() { A a; a.x = 10; return 0; }

@@ -8,7 +8,7 @@ YACC_FILE = parser.y
 YACC_BASE = $(BUILD_DIR)/parser
 YACC_H_FILE = $(YACC_BASE).tab.h
 YACC_C_FILE = $(YACC_BASE).tab.c
-EXECUTABLE = $(BIN_DIR)/parser
+EXECUTABLE = $(BIN_DIR)/compiler
 YACC_D_FILE = $(YACC_BASE).output
 
 LEX_O_FILE = $(BUILD_DIR)/lex.yy.o

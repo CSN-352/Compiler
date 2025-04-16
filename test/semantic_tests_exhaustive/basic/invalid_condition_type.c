@@ -1,0 +1,1 @@
+int main() { if ("hello") return 1; return 0; }
