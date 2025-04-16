@@ -955,7 +955,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                 }
             }
         }
-        else if(symbolTable.currentScope == 0 && t.isPrimitive() && !t.is_pointer && !t.is_function){
+        else if(symbolTable.currentScope == 0){
             TACOperand* id = new_identifier(variable->direct_declarator->identifier->value); // TAC
             TACOperand* t1 = new_temp_var(); // TAC
             Constant* c = new Constant("I_CONSTANT", "0", init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->line_no, init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->column_no); // TAC
