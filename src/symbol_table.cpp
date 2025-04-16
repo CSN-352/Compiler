@@ -1300,7 +1300,6 @@ DirectDeclarator* create_dir_declarator_id(Identifier* i)
 {
     DirectDeclarator* dd = new DirectDeclarator();
     dd->identifier = i;
-    // dd->add_children(i);
     return dd;
 }
 
@@ -2572,7 +2571,7 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     Type t1 = Type(function->type.type_index,function->type.ptr_level,function->type.is_const_variable);
     Type t2 = Type(PrimitiveTypes::VOID_T, 0, false);
     if(!cs->return_type.empty()) t2 = cs->return_type[0];
-    fd->code.insert(fd->code.end(), cs_cast->declaration_statement_list->static_declaration_code.begin(), cs_cast->declaration_statement_list->static_declaration_code.end()); // TAC
+    if(cs_cast->declaration_statement_list != nullptr) fd->code.insert(fd->code.end(), cs_cast->declaration_statement_list->static_declaration_code.begin(), cs_cast->declaration_statement_list->static_declaration_code.end()); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
     fd->code.push_back(i1); // TAC
     if(declarator->direct_declarator->parameters != nullptr) {
@@ -2594,6 +2593,7 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
         string error_msg = "Function is returning incorrect data type " + to_string(declarator->direct_declarator->identifier->line_no) + ", column " + to_string(declarator->direct_declarator->identifier->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
+        return fd;
     }
     return fd;
 }
