@@ -158,10 +158,10 @@
 //     int d = a<b && a<c;
 // }
 
-int main(){
-    int a = 10;
-    (--a)--;
-}
+// int main(){
+//     int a = 10;
+//     (--a)--;
+// }
 
 //int printf(const char *format, ...){}
 
@@ -179,3 +179,36 @@ int main(){
 //             break;
 //     }
 // }
+
+// struct Point {
+//     int x;
+//     int y;
+// };
+
+// int main(){
+//     struct Point points[2];
+//     points[0].x = 1;
+// }
+
+// int main(){
+//     int arr[5];
+//     *(arr+2) = 10;
+// }
+
+// struct A {
+//     int x;
+//     int y;
+// };
+
+// int main(){
+//     static struct A static_a;
+//     static_a.x = 1;
+// }
+
+// class Incomplete;
+
+typedef struct
+{
+   int id;
+   char name[20];
+} Student;
