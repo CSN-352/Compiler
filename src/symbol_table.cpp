@@ -3142,7 +3142,7 @@ bool SymbolTable::lookup(string name)
 
 bool SymbolTable::lookup_symbol_using_mangled_name(std::string name)
 {
-    // Add logic
+    return lookup_mangled_name(name);
 }
 
 bool SymbolTable::lookup_function(std::string name, vector<Type> arg_types)
