@@ -3305,7 +3305,7 @@ Type SymbolTable::get_type_of_member_variable(string name, string member, vector
 }
 
 Symbol* SymbolTable:: get_symbol_using_mangled_name(std::string name){
-    // Add logic
+    return getSymbolFromMangledName(name);
 }
 
 Symbol* SymbolTable::getSymbol(string name)
