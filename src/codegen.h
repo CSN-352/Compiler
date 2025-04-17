@@ -89,8 +89,8 @@ void set_leader_labels(const std::unordered_map<int, std::string>& leaders);
 
 //=================== Register Allocation ===================//
 
-vector<MIPSRegister> get_register_for_operand(const string& op, const string& dest, const string& src1, const string& src2, bool is_assignment);
-vector<MIPSRegister> get_float_register_for_operand(const string& op, const string& dest, const string& src1, const string& src2, bool is_assignment, bool is_double = false);
+MIPSRegister get_register_for_operand(const string& var, bool for_result = false);
+MIPSRegister get_float_register_for_operand(const string& var, bool for_result = false, bool is_double = false);
 
 void spill_register(MIPSRegister reg);
 
@@ -109,7 +109,7 @@ public:
     // Constructor for load/store: opcode rt, offset(rs)
     MIPSInstruction(MIPSOpcode opc, MIPSRegister reg, const std::string& offset, MIPSRegister base);
 
-    // Constructor for immediate instructions (e.g., li, lui)
+    // Constructor for immediate instructions (e.g., li, lui, la)
     MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, const std::string& imm);
 
     // Constructor for move instructions (e.g., move rd, rs)
@@ -126,7 +126,7 @@ public:
 
 extern std::vector<MIPSInstruction> mips_code_text;
 
-void emit_instruction(const MIPSInstruction& instr);
+void emit_instruction(string op, string dest, string src1, string src2, bool is_assignment);
 void print_mips_code();
 
 //=================== MIPS Data Instruction Class ===================//
