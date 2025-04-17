@@ -32,7 +32,7 @@ ifeq ($(NAME),aaditya)
     CFLAGS = -ll -I$(SRC_DIR)
 endif
 ifeq ($(DEBUG),1)
-    CFLAGS += -DDEBUG
+    CFLAGS += -DDEBUG -O0
 endif
 ifeq ($(DJ),1)
     CFLAGS += -DDJ
