@@ -20,7 +20,7 @@ vector<TACInstruction*> TAC_CODE;
 TACOperand::TACOperand(TACOperandType type, string value) : type(type), value(value) {}
 
 TACOperand* new_temp_var() {
-    string temp_var = "t" + to_string(temp_var_id++);
+    string temp_var = "#t" + to_string(temp_var_id++);
     TACOperand* t = new TACOperand(TAC_OPERAND_TEMP_VAR, temp_var);
     return t; // Return a pointer to the temporary variable
 }

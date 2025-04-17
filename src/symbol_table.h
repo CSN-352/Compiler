@@ -265,6 +265,7 @@ public:
     int offset;
     std::string mangled_name;
     FunctionDefinition* function_definition;
+    bool is_temp;
 
     Symbol(string n, Type t, int s, int o);
     Symbol();
