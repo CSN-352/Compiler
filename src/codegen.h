@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <vector>
 #include <iostream>
+#include <symbol_table.h>
 
 //=================== MIPS Register Definitions ===================//
 
@@ -14,8 +15,9 @@ enum MIPSRegister {
     A0, A1, A2, A3,
     T0, T1, T2, T3, T4, T5, T6, T7, T8, T9,
     S0, S1, S2, S3, S4, S5, S6, S7,
-    GP, SP, FP, RA 
-    // long long 
+    GP, SP, FP, RA , 
+    // Floating Point Registers
+    F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25, F26, F27, F28, F29, F30, F31
 };
 
 std::string get_mips_register_name(MIPSRegister reg);
@@ -38,13 +40,13 @@ enum class MIPSOpcode {
 
     // Loads
     LW, LH, LHU, LB, LBU,
-    LUI, LI,
+    LUI, LI, LWC1, LDC1,
 
     // Stores
     SW, SH, SB,
 
     // Moves
-    MOVE, MFHI, MFLO, MTHI, MTLO,
+    MOVE, MFHI, MFLO, MTHI, MTLO, MOVS, MOVD,
 
     // Branches
     BEQ, BNE, BGTZ, BLEZ, BLTZ, BGEZ,
@@ -70,6 +72,7 @@ extern std::unordered_map<MIPSRegister, std::unordered_set<std::string>> registe
 extern std::unordered_map<std::string, std::unordered_set<std::string>> address_descriptor;
 
 void init_descriptors();
+bool check_if_variable_in_register(const std::string& var);
 
 void update_for_load(MIPSRegister reg, const std::string& var);
 void update_for_store(const std::string& var, MIPSRegister reg);
@@ -77,7 +80,7 @@ void update_for_add(const std::string& x, MIPSRegister rx);
 void update_for_assign(const std::string& x, const std::string& y, MIPSRegister ry);
 
 void clear_register(MIPSRegister reg);
-void print_descriptors();
+void print_descriptors(); 
 
 //=================== Leader Labels ===================//
 
@@ -86,13 +89,15 @@ void set_leader_labels(const std::unordered_map<int, std::string>& leaders);
 
 //=================== Register Allocation ===================//
 
-MIPSRegister get_register_for_operand(const std::string& var, bool for_result = false);
+vector<MIPSRegister> get_register_for_operand(const string& op, const string& dest, const string& src1, const string& src2, bool is_assignment);
+vector<MIPSRegister> get_float_register_for_operand(const string& op, const string& dest, const string& src1, const string& src2, bool is_assignment, bool is_double = false);
 
 void spill_register(MIPSRegister reg);
 
-//=================== MIPS Instruction Struct ===================//
+//=================== MIPS Instruction Class ===================//
 
 class MIPSInstruction {
+public:
     std::string label;         // Optional label
     MIPSOpcode opcode;         // Enum opcode
     MIPSRegister rd, rs, rt;   // Registers
@@ -107,6 +112,9 @@ class MIPSInstruction {
     // Constructor for immediate instructions (e.g., li, lui)
     MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, const std::string& imm);
 
+    // Constructor for move instructions (e.g., move rd, rs)
+    MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src);
+
     // Constructor for label-only instruction
     MIPSInstruction(const std::string& lbl);
 
@@ -116,9 +124,35 @@ class MIPSInstruction {
 
 //=================== MIPS Instruction Emission ===================//
 
-extern std::vector<MIPSInstruction> mips_code;
+extern std::vector<MIPSInstruction> mips_code_text;
 
 void emit_instruction(const MIPSInstruction& instr);
 void print_mips_code();
+
+//=================== MIPS Data Instruction Class ===================//
+
+enum MIPSDirective {
+    WORD, BYTE, HALF, FLOAT, DOUBLE, ASCIIZ, SPACE
+};
+
+string get_directive_name(MIPSDirective directive);
+
+class MIPSDataInstruction {
+    public:
+        string label;         // Unique identifier for the data
+        MIPSDirective directive;     // Directive (e.g., .word, .byte, .half, .float, .double, .asciiz)
+        string value;         // Value to be stored in the data segment
+
+        MIPSDataInstruction(const string& label, MIPSDirective dir, const string& val);
+};
+
+//=================== MIPS Data Storage ===================//
+
+unordered_map<string, string> immediate_storage_map;
+
+extern std::vector<MIPSDataInstruction> mips_code_data;
+
+void store_immediate(const string& immediate, Type type);
+bool check_immediate(const string& immediate);
 
 #endif // CODEGEN_UTILS_H

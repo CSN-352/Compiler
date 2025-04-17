@@ -81,7 +81,9 @@ Expression* create_primary_expression(Constant* x) {
     P->constant = x;
     P->type = x->get_constant_type();
     P->type.is_const_literal = true;
-    P->result = new_constant(x->value); // TAC
+    P->result = new_temp_var(); // TAC
+    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, new_constant(x->value), new_empty_var(), 0); // TAC
+    P->code.push_back(i0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     TACInstruction* i1_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
@@ -90,6 +92,7 @@ Expression* create_primary_expression(Constant* x) {
     P->jump_false_list.insert(i2);
     P->true_list.insert(i1_);
     P->false_list.insert(i2_); // TAC
+    P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     P->jump_code.push_back(i1_); // TAC
@@ -105,7 +108,9 @@ Expression* create_primary_expression(StringLiteral* x) {
     P->string_literal = x;
     P->type = Type(CHAR_T, 1, true);
     P->result = new_temp_var(); // TAC
-    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), P->result, new_string(x->value), new_empty_var(), 0); // TAC
+    TACOperand* t1 = new_temp_var(); // TAC
+    TACInstruction* i = emit(TACOperator(TAC_OPERATOR_NOP), P->result, new_string(x->value), new_empty_var(), 0); // TAC
+    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), t1, P->result, new_empty_var(), 0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     TACInstruction* i1_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
@@ -114,7 +119,9 @@ Expression* create_primary_expression(StringLiteral* x) {
     P->jump_false_list.insert(i2);
     P->true_list.insert(i1_);
     P->false_list.insert(i2_); // TAC
+    P->code.push_back(i); // TAC
     P->code.push_back(i0); // TAC
+    P->jump_code.push_back(i); // TAC
     P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
@@ -542,10 +549,9 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
                 P->type.array_dims.erase(P->type.array_dims.begin());
                 if (P->type.array_dim == 0){
                     P->type.is_array = false;
-                    P->type.ptr_level--;
                 }
             }
-            else P->type.ptr_level--;
+            P->type.ptr_level--;
             if (P->type.ptr_level == 0) P->type.is_pointer = false;
         }
     }
@@ -1913,20 +1919,16 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
     else if (op->name == "PLUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
         Type t = lt;
+        t.ptr_level--;
         if(t.is_array){
             if(t.array_dim == 1){
                 t.is_array = false;
-                t.is_pointer = false;
-                t.ptr_level = 0;
             }
             t.array_dim--;
             t.array_dims.erase(t.array_dims.begin());
         }
-        else {
-            t.ptr_level--;
-            if(t.ptr_level == 0){
-                t.is_pointer = false;
-            }
+        if(t.ptr_level == 0){
+            t.is_pointer = false;
         }
         TACOperand* t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
@@ -1965,20 +1967,16 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
     else if (op->name == "PLUS" && lt.isInt() && rt.isPointer()) {
         A->type = rt;
         Type t = rt;
+        t.ptr_level--;
         if(t.is_array){
             if(t.array_dim == 1){
                 t.is_array = false;
-                t.is_pointer = false;
-                t.ptr_level = 0;
             }
             t.array_dim--;
             t.array_dims.erase(t.array_dims.begin());
         }
-        else {
-            t.ptr_level--;
-            if(t.ptr_level == 0){
-                t.is_pointer = false;
-            }
+        if(t.ptr_level == 0){
+            t.is_pointer = false;
         }
         TACOperand* t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
@@ -2017,20 +2015,16 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
     else if (op->name == "MINUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
         Type t = lt;
+        t.ptr_level--;
         if(t.is_array){
             if(t.array_dim == 1){
                 t.is_array = false;
-                t.is_pointer = false;
-                t.ptr_level = 0;
             }
             t.array_dim--;
             t.array_dims.erase(t.array_dims.begin());
         }
-        else {
-            t.ptr_level--;
-            if(t.ptr_level == 0){
-                t.is_pointer = false;
-            }
+        if(t.ptr_level == 0){
+            t.is_pointer = false;
         }
         TACOperand* t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
