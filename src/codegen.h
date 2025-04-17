@@ -150,7 +150,8 @@ class MIPSDataInstruction {
 
 unordered_map<string, string> immediate_storage_map;
 
-extern std::vector<MIPSDataInstruction> mips_code_data;
+extern std::vector<MIPSDataInstruction> mips_code_data; // Data segment
+extern std::vector<MIPSDataInstruction> mips_code_rodata; // Read-only data segment
 
 void store_immediate(const string& immediate, Type type);
 bool check_immediate(const string& immediate);
