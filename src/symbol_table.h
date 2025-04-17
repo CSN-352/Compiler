@@ -298,7 +298,6 @@ public:
     bool lookup_symbol_using_mangled_name(std::string name);
     bool lookup_mangled_name(std::string name);
     bool lookup_exact_function_match(std::string name, const std::vector<Type>& arg_types);
-    bool lookup_symbol_using_mangled_name(std::string name);
     bool lookup_function(std::string name, vector<Type> arg_types);
     bool lookup_defined_type(string name);
     bool lookup_typedef(string name);
