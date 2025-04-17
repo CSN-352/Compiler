@@ -3330,6 +3330,26 @@ Symbol* SymbolTable::getSymbol(string name)
     return sym;
 }
 
+Symbol* SymbolTable::getSymbolFromMangledName(std::string mangled_name)
+{
+    for (const auto& entry : table)
+    {
+        for (const auto symbol : entry.second)
+        {
+            if (symbol->mangled_name == mangled_name)
+            {
+                return symbol;
+            }
+        }
+    }
+    return nullptr;
+}
+
+bool SymbolTable::lookup_mangled_name(std::string mangled_name)
+{
+    return (this->getSymbolFromMangledName(mangled_name) != nullptr);
+}
+
 Symbol* SymbolTable::getFunction(std::string name, vector<Type> arg_types)
 {
     auto it = table.find(name);
