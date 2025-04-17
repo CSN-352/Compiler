@@ -536,9 +536,9 @@ TypeDefinition* create_type_definition(TypeDefinition* P, StructDeclarationSet* 
                 {
                     t.is_array = true;
                     t.is_pointer = true;
-                    pointer_level++;
                     t.array_dim = d->declarator->direct_declarator->array_dimensions.size();
                     t.array_dims = d->declarator->direct_declarator->array_dimensions;
+                    pointer_level += t.array_dim;
                 }
                 else if (d->declarator->direct_declarator->is_function)
                 {
@@ -629,6 +629,7 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
                         t.is_pointer = true;
                         t.array_dim = dec->direct_declarator->array_dimensions.size();
                         t.array_dims = dec->direct_declarator->array_dimensions;
+                        t.ptr_level += t.array_dim;
                     }
 
                     MemberInfo member_info;
@@ -882,9 +883,9 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
         {
             t.is_array = true;
             t.is_pointer = true;
-            t.ptr_level++;
             t.array_dim = variable->direct_declarator->array_dimensions.size();
             t.array_dims = variable->direct_declarator->array_dimensions;
+            t.ptr_level += t.array_dim;
         }
         if (variable->direct_declarator->is_function)
         {
@@ -1397,7 +1398,7 @@ ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, Ab
     if (ad->pointer != nullptr)
         pointer_level = ad->pointer->pointer_level;
     if(ad->direct_abstract_declarator->is_array)
-        pointer_level++;
+        pointer_level+= ad->direct_abstract_declarator->array_dimensions.size();
     P->type = Type(ds->type_index, pointer_level, ds->is_const_variable);
     return P;
 }
@@ -1411,7 +1412,7 @@ ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, De
     if (d->pointer != nullptr)
         pointer_level = d->pointer->pointer_level;
     if(d->direct_declarator->is_array)
-        pointer_level++;
+        pointer_level+= d->direct_declarator->array_dimensions.size();
     P->type = Type(ds->type_index, pointer_level, ds->is_const_variable);
     return P;
 }
@@ -2383,7 +2384,7 @@ TypeName* create_type_name(SpecifierQualifierList* sql, AbstractDeclarator* ad)
             if (dad->is_array)
             {
                 P->type.is_array = true;
-                P->type.ptr_level++;
+                P->type.ptr_level+=dad->array_dimensions.size();
                 P->type.array_dim = dad->array_dimensions.size();
                 P->type.array_dims.insert(P->type.array_dims.begin(), dad->array_dimensions.begin(), dad->array_dimensions.end());
             }
@@ -2736,7 +2737,7 @@ StringLiteral::StringLiteral(string value, unsigned int line_no, unsigned int co
 }
 
 // ##############################################################################
-// ################################## SYMBOLTABLE ######################################
+// ################################## SYMBOL TABLE ######################################
 // ##############################################################################
 
 SymbolTable::SymbolTable()
@@ -3038,6 +3039,11 @@ bool SymbolTable::lookup(string name)
     return false;
 }
 
+bool SymbolTable::lookup_symbol_using_mangled_name(std::string name)
+{
+    // Add logic
+}
+
 bool SymbolTable::lookup_function(std::string name, vector<Type> arg_types)
 {
     auto it = table.find(name);
@@ -3173,6 +3179,10 @@ Type SymbolTable::get_type_of_member_variable(string name, string member, vector
     }
     Symbol* sym = dt->type_definition->type_symbol_table.getFunction(member, arg_types);
     return sym->type;
+}
+
+Symbol* SymbolTable:: get_symbol_using_mangled_name(std::string name){
+    // Add logic
 }
 
 Symbol* SymbolTable::getSymbol(string name)
