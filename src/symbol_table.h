@@ -263,13 +263,15 @@ public:
     Type type;
     int scope;
     int offset;
-    string mangled_name;
+    std::string mangled_name;
     FunctionDefinition* function_definition;
 
-    Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o), mangled_name(n){
-        function_definition = nullptr;
-    }
+    Symbol(string n, Type t, int s, int o);
+    Symbol();
 };
+
+std::string create_mangled_name(std::string& name, Type& type, int scope,
+                                stack<Symbol>& scope_stack);
 
 // ##############################################################################
 // ################################## SYMBOL TABLE ######################################
@@ -284,7 +286,7 @@ public:
     int currentScope;
     unsigned int currAddress = 0;
     bool error;
-    stack<pair<int, pair<Type, string>>> scope_stack;
+    stack<Symbol> scope_stack;
 
     SymbolTable();
     void enterScope(Type t, string name);
@@ -293,6 +295,8 @@ public:
     void insert_defined_type(std::string name, DefinedTypes* type);
     void insert_typedef(std::string name, Type type, int offset);
     bool lookup(std::string name);
+    bool lookup_mangled_name(std::string mangled_name);
+    bool lookup_exact_function_match(std::string name, const std::vector<Type>& arg_types);
     bool lookup_function(std::string name, vector<Type> arg_types);
     bool lookup_defined_type(string name);
     bool lookup_typedef(string name);
@@ -302,7 +306,9 @@ public:
     Type get_type_of_member_variable(string name, string member);
     Type get_type_of_member_variable(string name, string member, vector<Type> arg_types);
     Symbol* getSymbol(std::string name);
+    Symbol* getSymbolFromMangledName(std::string mangled_name);
     Symbol* getFunction(std::string name, vector<Type> arg_types);
+    // Symbol* getClosestFunction(std::string name, vector<Type> arg_types);
     Symbol* getTypedef(std::string name);
     DefinedTypes* get_defined_type(std::string name);
     void update(std::string name, Type newType);

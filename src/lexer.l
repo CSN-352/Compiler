@@ -137,54 +137,54 @@ void debug_local_symbol_table() {
     debug("Location => Line: " + to_string(line_no) + ", Column: " + to_string(column_no) + ", Scope: " + to_string(symbolTable.currentScope) , CYAN);
     bool printed = false;
 
-    if (!symbolTable.scope_stack.empty()) {
-        pair<int, pair<Type, string>> top = symbolTable.scope_stack.top();
+    // if (!symbolTable.scope_stack.empty()) {
+    //     pair<int, pair<Type, string>> top = symbolTable.scope_stack.top();
 
-        if (top.second.first.is_function) {
-            Symbol* sym = symbolTable.getFunction(top.second.second, top.second.first.arg_types);
-            if (!sym) {
-                debug("⚠️ ERROR: Function '" + top.second.second + "' not found!", RED);
-                return;
-            }
-            if (!sym->function_definition) {
-                debug("⚠️ ERROR: Function '" + top.second.second + "' is declared but not defined!", RED);
-                return;
-            }
-            printed = true;
-            debug("🔍 SCOPE: Function", MAGENTA);
-            sym->function_definition->function_symbol_table.print_typedefs();   
-            sym->function_definition->function_symbol_table.print_defined_types();
-            sym->function_definition->function_symbol_table.print();
+    //     if (top.second.first.is_function) {
+    //         Symbol* sym = symbolTable.getFunction(top.second.second, top.second.first.arg_types);
+    //         if (!sym) {
+    //             debug("⚠️ ERROR: Function '" + top.second.second + "' not found!", RED);
+    //             return;
+    //         }
+    //         if (!sym->function_definition) {
+    //             debug("⚠️ ERROR: Function '" + top.second.second + "' is declared but not defined!", RED);
+    //             return;
+    //         }
+    //         printed = true;
+    //         debug("🔍 SCOPE: Function", MAGENTA);
+    //         sym->function_definition->function_symbol_table.print_typedefs();   
+    //         sym->function_definition->function_symbol_table.print_defined_types();
+    //         sym->function_definition->function_symbol_table.print();
 
-        }
+    //     }
 
-        else if (top.second.first.is_defined_type) {
-            DefinedTypes* dt = symbolTable.get_defined_type(top.second.second);
-            if (!dt) {
-                debug("⚠️ ERROR: Type '" + top.second.second + "' not found!", RED);
-                return;
-            }
-            if (!dt->type_definition) {
-                debug("⚠️ ERROR: Type '" + top.second.second + "' has no definition!", RED);
-                return;
-            }
-            printed = true;
-            debug("🔍 SCOPE: User-defined type", MAGENTA);
-            dt->type_definition->type_symbol_table.print_typedefs();
-            dt->type_definition->type_symbol_table.print_defined_types();
-            dt->type_definition->type_symbol_table.print();
-        }
-    }
+    //     else if (top.second.first.is_defined_type) {
+    //         DefinedTypes* dt = symbolTable.get_defined_type(top.second.second);
+    //         if (!dt) {
+    //             debug("⚠️ ERROR: Type '" + top.second.second + "' not found!", RED);
+    //             return;
+    //         }
+    //         if (!dt->type_definition) {
+    //             debug("⚠️ ERROR: Type '" + top.second.second + "' has no definition!", RED);
+    //             return;
+    //         }
+    //         printed = true;
+    //         debug("🔍 SCOPE: User-defined type", MAGENTA);
+    //         dt->type_definition->type_symbol_table.print_typedefs();
+    //         dt->type_definition->type_symbol_table.print_defined_types();
+    //         dt->type_definition->type_symbol_table.print();
+    //     }
+    // }
 
-    if(!printed) {
-        debug("🔍 SCOPE: Global", MAGENTA);
-        symbolTable.print_typedefs();
-        symbolTable.print_defined_types();
-        symbolTable.print();
-    }
+    // if(!printed) {
+    //     debug("🔍 SCOPE: Global", MAGENTA);
+    //     symbolTable.print_typedefs();
+    //     symbolTable.print_defined_types();
+    //     symbolTable.print();
+    // }
 
-    debug("\n✅ End of Local Symbol Table Snapshot", MAGENTA);
-    debug("========================================\n", MAGENTA);
+    // debug("\n✅ End of Local Symbol Table Snapshot", MAGENTA);
+    // debug("========================================\n", MAGENTA);
 #endif
 }
 

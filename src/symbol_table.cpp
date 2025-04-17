@@ -44,6 +44,7 @@ Type::Type()
     defined_type_name = "";
     is_function = false;
     is_variadic = false;
+    is_static = false;
     num_args = 0;
 }
 
@@ -61,6 +62,7 @@ Type::Type(int idx, int p_lvl, bool is_con)
 
     is_function = false;
     is_variadic = false;
+    is_static = false;
     num_args = 0;
     is_defined_type = false;
 }
@@ -471,7 +473,7 @@ int TypeDefinition::get_size()
     int size = 0;
     for (auto member : members)
     {
-        if(member.kind == MEMBER_KIND_FUNCTION) {
+        if (member.kind == MEMBER_KIND_FUNCTION) {
             continue;
         }
         if (type_category == TYPE_CATEGORY_UNION) {
@@ -486,7 +488,7 @@ int TypeDefinition::get_size()
 
 AccessSpecifiers TypeDefinition::get_member_access_specifier(const string& member)
 {
-    for(const auto& m : members) {
+    for (const auto& m : members) {
         if (m.name == member) {
             return m.access_specifier;
         }
@@ -652,7 +654,7 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
                         member_info.access_specifier = ACCESS_SPECIFIER_PRIVATE; // default access specifier
                         P->members.push_back(member_info);
                     }
-                    debug("Member: " + member_info.name + " Access: " + to_string(member_info.access_specifier), BLUE);
+                    // debug("Member: " + member_info.name + " Access: " + to_string(member_info.access_specifier), BLUE);
 
                 }
             }
@@ -675,7 +677,8 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
                 }
                 if (fd->declarator->direct_declarator->parameters == nullptr || fd->declarator->direct_declarator->parameters->paramater_list == nullptr) {
                     t.num_args = 0;
-                } else {
+                }
+                else {
                     t.num_args = fd->declarator->direct_declarator->parameters->paramater_list->parameter_declarations.size();
                 }
                 for (int i = 0; i < t.num_args; i++)
@@ -710,7 +713,7 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
                     P->members.push_back(member_info);
                 }
 
-                debug("Member function: " + member_info.name + " Access: " + to_string(member_info.access_specifier), BLUE);
+                // debug("Member function: " + member_info.name + " Access: " + to_string(member_info.access_specifier), BLUE);
             }
         }
     }
@@ -734,7 +737,7 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
             for (auto& member_info : t->members)
             {
                 auto& [member_name, member_type, member_kind, access_specifier] = member_info;
-                if(P->lookup_member(member_name)) {
+                if (P->lookup_member(member_name)) {
                     debug("Member: " + member_name + " already exists in type " + type_name, BLUE);
                     continue;
                 }
@@ -793,7 +796,7 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
                 }
                 else
                 {
-                    if (!P->type_symbol_table.lookup_function(member_name, sym->type.arg_types)){
+                    if (!P->type_symbol_table.lookup_function(member_name, sym->type.arg_types)) {
                         P->type_symbol_table.table[member_name].push_front(sym_copy);
                     }
                 }
@@ -877,7 +880,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
         }
         else
             t = Type(P->declaration_specifiers->type_index, ptr_level, P->declaration_specifiers->is_const_variable);
-        if(P->declaration_specifiers->is_static) t.is_static = true;
+        if (P->declaration_specifiers->is_static) t.is_static = true;
         if (variable->direct_declarator->is_array)
         {
             t.is_array = true;
@@ -916,19 +919,19 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                 symbolTable.set_error();
                 return P;
             }
-            else{
+            else {
                 auto i = init_declarator_list->init_declarator_list[index]->initializer;
                 TACOperand* id = new_identifier(variable->direct_declarator->identifier->value); // TAC
                 init_declarator_list->init_declarator_list[index]->code.insert(init_declarator_list->init_declarator_list[index]->code.end(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
-                if(i->assignment_expression->result->type != TAC_OPERAND_TEMP_VAR){
+                if (i->assignment_expression->result->type != TAC_OPERAND_TEMP_VAR) {
                     TACOperand* t1 = new_temp_var(); // TAC
                     TACInstruction* i0;
-                    if(t.type_index != i->assignment_expression->type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST),t1, new_type(t.to_string()) , i->assignment_expression->result, 0); // TAC
-                    else i0 = emit(TACOperator(TAC_OPERATOR_NOP),t1, i->assignment_expression->result, new_empty_var(), 0); // TAC
+                    if (t.type_index != i->assignment_expression->type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
+                    else i0 = emit(TACOperator(TAC_OPERATOR_NOP), t1, i->assignment_expression->result, new_empty_var(), 0); // TAC
                     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
                     init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
                     init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
-                    for(auto l:i->assignment_expression->jump_next_list){
+                    for (auto l : i->assignment_expression->jump_next_list) {
                         init_declarator_list->init_declarator_list[index]->code.erase(remove(init_declarator_list->init_declarator_list[index]->code.begin(), init_declarator_list->init_declarator_list[index]->code.end(), l), init_declarator_list->init_declarator_list[index]->code.end()); // TAC
                     }
                     backpatch(i->assignment_expression->next_list, i0->label); // TAC
@@ -938,12 +941,12 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                     backpatch(i->assignment_expression->jump_true_list, i0->label); // TAC
                     backpatch(i->assignment_expression->jump_false_list, i0->label); // TAC
                 }
-                else{
+                else {
                     TACInstruction* i1;
-                    if(t.type_index != i->assignment_expression->type.type_index)i1 = emit(TACOperator(TAC_OPERATOR_CAST), id, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
+                    if (t.type_index != i->assignment_expression->type.type_index)i1 = emit(TACOperator(TAC_OPERATOR_CAST), id, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
                     else i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
                     init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
-                    for(auto l:i->assignment_expression->jump_next_list){
+                    for (auto l : i->assignment_expression->jump_next_list) {
                         init_declarator_list->init_declarator_list[index]->code.erase(remove(init_declarator_list->init_declarator_list[index]->code.begin(), init_declarator_list->init_declarator_list[index]->code.end(), l), init_declarator_list->init_declarator_list[index]->code.end()); // TAC
                     }
                     backpatch(i->assignment_expression->next_list, i1->label); // TAC
@@ -955,13 +958,13 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                 }
             }
         }
-        else if(symbolTable.currentScope == 0){
+        else if (symbolTable.currentScope == 0) {
             TACOperand* id = new_identifier(variable->direct_declarator->identifier->value); // TAC
             TACOperand* t1 = new_temp_var(); // TAC
             Constant* c = new Constant("I_CONSTANT", "0", init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->line_no, init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->column_no); // TAC
             TACInstruction* i0;
-            if(t.type_index != c->constant_type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST),t1, new_type(t.to_string()) , new_constant("0"), 0); // TAC
-            else i0 = emit(TACOperator(TAC_OPERATOR_NOP),t1, new_constant("0"), new_empty_var(), 0); // TAC
+            if (t.type_index != c->constant_type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(t.to_string()), new_constant("0"), 0); // TAC
+            else i0 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant("0"), new_empty_var(), 0); // TAC
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
             init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
             init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
@@ -1201,13 +1204,13 @@ void DeclarationSpecifiers::set_type()
         {
             string name = type_specifiers[0]->class_specifier->identifier->value;
             DefinedTypes* dt = symbolTable.get_defined_type(name);
-            type_index = PrimitiveTypes::TYPE_ERROR_T; 
-            if(dt != nullptr) type_index = dt->type_index;
+            type_index = PrimitiveTypes::TYPE_ERROR_T;
+            if (dt != nullptr) type_index = dt->type_index;
         }
         else if (isTypeName)
         {
             Symbol* sym = symbolTable.getTypedef(type_specifiers[0]->type_name);
-            if(sym == nullptr){
+            if (sym == nullptr) {
                 string error_msg = "Type name " + type_specifiers[0]->type_name + " not found";
                 yyerror(error_msg.c_str());
                 symbolTable.set_error();
@@ -1396,7 +1399,7 @@ ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, Ab
     int pointer_level = 0;
     if (ad->pointer != nullptr)
         pointer_level = ad->pointer->pointer_level;
-    if(ad->direct_abstract_declarator->is_array)
+    if (ad->direct_abstract_declarator->is_array)
         pointer_level++;
     P->type = Type(ds->type_index, pointer_level, ds->is_const_variable);
     return P;
@@ -1410,7 +1413,7 @@ ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, De
     int pointer_level = 0;
     if (d->pointer != nullptr)
         pointer_level = d->pointer->pointer_level;
-    if(d->direct_declarator->is_array)
+    if (d->direct_declarator->is_array)
         pointer_level++;
     P->type = Type(ds->type_index, pointer_level, ds->is_const_variable);
     return P;
@@ -1679,7 +1682,7 @@ ClassSpecifier* create_class_specifier(ClassSpecifier* cs, ClassDeclaratorList* 
         return cs;
     }
     TypeDefinition* td = dt->type_definition;
-    if(td == nullptr){
+    if (td == nullptr) {
         string error_msg = "Class '" + cs->identifier->value + "' not defined at line " + to_string(cs->identifier->line_no) + ", column " + to_string(cs->identifier->column_no);
         yyerror(error_msg.c_str());
         symbolTable.set_error();
@@ -1944,17 +1947,17 @@ EnumeratorList* create_enumerator_list(Enumerator* e)
     EnumeratorList* P = new EnumeratorList();
     TACOperand* id = new_identifier(e->identifier->value); // TAC
     TACOperand* t1 = new_temp_var();
-    if(e->initializer_expression == nullptr){
+    if (e->initializer_expression == nullptr) {
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant("0"), new_empty_var(), 0); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
         P->last_constant_value = "0"; // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i2); // TAC
     }
-    else{
+    else {
         string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(value), new_empty_var(), 0); // TAC
-        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type("int"),new_constant(value), 0); // TAC
+        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type("int"), new_constant(value), 0); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
         P->last_constant_value = value; // TAC
         P->code.push_back(i1); // TAC
@@ -1971,17 +1974,17 @@ EnumeratorList* create_enumerator_list(EnumeratorList* el, Enumerator* e)
     el->enumerator_list.push_back(e);
     TACOperand* id = new_identifier(e->identifier->value); // TAC
     TACOperand* t1 = new_temp_var();
-    if(e->initializer_expression == nullptr){
-        el->last_constant_value = to_string(stoi(el->last_constant_value)+1); // TAC
+    if (e->initializer_expression == nullptr) {
+        el->last_constant_value = to_string(stoi(el->last_constant_value) + 1); // TAC
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(el->last_constant_value), new_empty_var(), 0); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
         el->code.push_back(i1); // TAC
         el->code.push_back(i2); // TAC
     }
-    else{
+    else {
         string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(value), new_empty_var(), 0); // TAC
-        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type("int"),new_constant(value), 0); // TAC
+        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type("int"), new_constant(value), 0); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
         el->last_constant_value = value; // TAC
         el->code.push_back(i1); // TAC
@@ -2291,13 +2294,13 @@ void SpecifierQualifierList::set_type()
         {
             string name = type_specifiers[0]->class_specifier->identifier->value;
             DefinedTypes* dt = symbolTable.get_defined_type(name);
-            type_index = PrimitiveTypes::TYPE_ERROR_T; 
-            if(dt != nullptr) type_index = dt->type_index;
+            type_index = PrimitiveTypes::TYPE_ERROR_T;
+            if (dt != nullptr) type_index = dt->type_index;
         }
         else if (isTypeName)
         {
             Symbol* sym = symbolTable.getTypedef(type_specifiers[0]->type_name);
-            if(sym == nullptr){
+            if (sym == nullptr) {
                 string error_msg = "Type name " + type_specifiers[0]->type_name + " not found";
                 yyerror(error_msg.c_str());
                 symbolTable.set_error();
@@ -2459,13 +2462,13 @@ ExternalDeclaration* create_external_declaration(Declaration* d)
 {
     ExternalDeclaration* P = new ExternalDeclaration();
     P->declaration = d;
-    if(d->init_declarator_list != nullptr){
+    if (d->init_declarator_list != nullptr) {
         for (auto id : d->init_declarator_list->init_declarator_list) {
             TAC_CODE.insert(TAC_CODE.end(), id->code.begin(), id->code.end()); //TAC
         }
     }
-    else{
-        if(d->declaration_specifiers->type_specifiers[0]->enum_specifier != nullptr){
+    else {
+        if (d->declaration_specifiers->type_specifiers[0]->enum_specifier != nullptr) {
             auto el = d->declaration_specifiers->type_specifiers[0]->enum_specifier->enumerators;
             TAC_CODE.insert(TAC_CODE.end(), el->code.begin(), el->code.end()); //TAC
         }
@@ -2491,6 +2494,7 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers* ds, Declar
     if (d->direct_declarator->is_function)
     {
         string function_name = d->direct_declarator->identifier->value;
+        debug("Function name: " + function_name);
         int pointer_level = 0;
         if (d->pointer != nullptr)
             pointer_level = d->pointer->pointer_level;
@@ -2516,9 +2520,13 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers* ds, Declar
         Symbol* sym = symbolTable.getFunction(function_name, arg_types);
         if (sym != nullptr)
         {
+            debug("Inserting definition");
+            for(auto arg: arg_types) {
+                debug("Arg: " + arg.to_string());
+            }
             if (sym->function_definition == nullptr)
             {
-                symbolTable.add_function_definition(sym,P);
+                symbolTable.add_function_definition(sym, P);
                 symbolTable.enterScope(type, function_name);
                 if (d->direct_declarator->parameters != nullptr)
                 {
@@ -2541,7 +2549,7 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers* ds, Declar
         {
             symbolTable.insert(function_name, type, type.get_size(), 1);
             Symbol* sym = symbolTable.getSymbol(function_name);
-            symbolTable.add_function_definition(sym,P);
+            symbolTable.add_function_definition(sym, P);
             symbolTable.enterScope(type, function_name);
             if (d->direct_declarator->parameters != nullptr)
             {
@@ -2568,21 +2576,21 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     CompoundStatement* cs_cast = dynamic_cast<CompoundStatement*>(cs);
     fd->compound_statement = cs_cast;
     Symbol* function = symbolTable.getSymbol(declarator->direct_declarator->identifier->value);
-    Type t1 = Type(function->type.type_index,function->type.ptr_level,function->type.is_const_variable);
+    Type t1 = Type(function->type.type_index, function->type.ptr_level, function->type.is_const_variable);
     Type t2 = Type(PrimitiveTypes::VOID_T, 0, false);
     if(!cs->return_type.empty()) t2 = cs->return_type[0];
     if(cs_cast->declaration_statement_list != nullptr) fd->code.insert(fd->code.end(), cs_cast->declaration_statement_list->static_declaration_code.begin(), cs_cast->declaration_statement_list->static_declaration_code.end()); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
     fd->code.push_back(i1); // TAC
-    if(declarator->direct_declarator->parameters != nullptr) {
-         for(auto pd:declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
-             if(pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
-                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
-                 fd->code.push_back(i2); // TAC
-             }
-         }
+    if (declarator->direct_declarator->parameters != nullptr) {
+        for (auto pd : declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
+            if (pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
+                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
+                fd->code.push_back(i2); // TAC
+            }
+        }
     }
-    
+
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
     backpatch(cs_cast->next_list, i2->label); // TAC
     backpatch(cs_cast->break_list, i2->label); // TAC
@@ -2736,6 +2744,71 @@ StringLiteral::StringLiteral(string value, unsigned int line_no, unsigned int co
 }
 
 // ##############################################################################
+// ################################## SYMBOL ######################################
+// ##############################################################################
+
+Symbol::Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o) {
+    function_definition = nullptr;
+    this->mangled_name = create_mangled_name(this->name, this->type, this->scope, symbolTable.scope_stack);
+}
+
+Symbol::Symbol() : name(""), type(Type()), scope(0), offset(0) {
+    function_definition = nullptr;
+}
+
+std::string create_mangled_name(std::string& name, Type& type, int scope,
+                                stack<Symbol>& scope_stack)
+{
+    stringstream ss;
+
+    ss << "0_";
+
+    // Kind
+    if (type.is_function)
+        ss << "f_";
+    else if (type.is_defined_type)
+        ss << "dt_";
+    else
+        ss << "v_";
+
+    // Base name + scope
+    ss << name << "@S" << scope;
+
+    // pair<int, pair<Type, string>> top = { 0, {Type(), name} };
+    // if (!scope_stack.empty())
+    // {
+    //     top = scope_stack.top();
+    // }
+    Symbol top = Symbol();
+
+    if (!scope_stack.empty())
+    {
+        top = scope_stack.top();
+    }
+
+    // const auto& [stack_scope, type_and_name] = top;
+    // const Type& enclosing_type = type_and_name.first;
+    // const std::string& enclosing_mangled = type_and_name.second;
+
+    if (top.type.is_function || top.type.is_defined_type) {
+        ss << "__in_" << top.mangled_name.size() << top.mangled_name;
+    }
+
+    // If function, add signature
+    if (type.is_function) {
+        ss << "__sig";
+        for (auto& arg_type : type.arg_types) {
+            ss << "_" << arg_type.type_index;
+        }
+        if (type.is_variadic) {
+            ss << "_var";
+        }
+    }
+
+    return ss.str();
+}
+
+// ##############################################################################
 // ################################## SYMBOLTABLE ######################################
 // ##############################################################################
 
@@ -2743,6 +2816,7 @@ SymbolTable::SymbolTable()
 {
     currentScope = 0;
     error = false;
+    scope_stack = stack<Symbol>();
 }
 
 void SymbolTable::enterScope(Type type, string name)
@@ -2750,11 +2824,11 @@ void SymbolTable::enterScope(Type type, string name)
     currentScope++;
     if (type.is_function)
     {
-        scope_stack.push({ currentScope, {type, name} });
+        scope_stack.push(Symbol(name, type, currentScope, currAddress));
     }
     else if (type.is_defined_type)
     {
-        scope_stack.push({ currentScope, {type, name} });
+        scope_stack.push(Symbol(name, type, currentScope, currAddress));
     }
 }
 
@@ -2847,14 +2921,19 @@ void SymbolTable::exitScope()
     }
 
     auto top = scope_stack.top();
-    if (top.first == currentScope)
+    if (top.scope == currentScope)
         scope_stack.pop();
     currentScope--;
 }
 
 void SymbolTable::insert(string name, Type type, int size, int overloaded)
 {
-    pair<int, pair<Type, string>> top = { 0, {Type(), name} };
+    // pair<int, pair<Type, string>> top = { 0, {Type(), name} };
+    // if (!scope_stack.empty())
+    // {
+    //     top = scope_stack.top();
+    // }
+    Symbol top = Symbol();
     if (!scope_stack.empty())
     {
         top = scope_stack.top();
@@ -2866,10 +2945,10 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
             if (overloaded == 1)
             {
                 if (sym->type.arg_types != type.arg_types)
-                if (sym->type.is_function && sym->type.arg_types != type.arg_types)
-                {
-                    continue;
-                }
+                    if (sym->type.is_function && sym->type.arg_types != type.arg_types)
+                    {
+                        continue;
+                    }
             }
             else
             {
@@ -2882,11 +2961,18 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
     }
     Symbol* sym = new Symbol(name, type, currentScope, this->currAddress);
     table[name].push_front(sym);
-    if (top.second.first.is_function)
+    if (top.type.is_function)
     {
-        FunctionDefinition* func = getFunction(top.second.second, top.second.first.arg_types)->function_definition;
+        Symbol* func_sym = getFunction(top.name, top.type.arg_types);
+        if (func_sym == nullptr) {
+            string error_msg = "Function " + top.name + " not found";
+            yyerror(error_msg.c_str());
+            set_error();
+            return;
+        }
+        FunctionDefinition* func = func_sym->function_definition;
         if (func == nullptr) {
-            string error_msg = "Function " + top.second.second + " not defined";
+            string error_msg = "Function " + top.name + " not defined";
             yyerror(error_msg.c_str());
             set_error();
             return;
@@ -2895,11 +2981,11 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
         func->function_symbol_table.table[sym->name].push_front(sym_f);
         func->function_symbol_table.currAddress += size;
     }
-    else if (top.second.first.is_defined_type)
+    else if (top.type.is_defined_type)
     {
-        DefinedTypes* dt = get_defined_type(top.second.second);
+        DefinedTypes* dt = get_defined_type(top.name);
         if (dt == nullptr || dt->type_definition == nullptr) {
-            string error_msg = "Undefined type " + top.second.second;
+            string error_msg = "Undefined type " + top.name;
             yyerror(error_msg.c_str());
             set_error();
             return;
@@ -2915,18 +3001,23 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
     }
 }
 
-void SymbolTable :: add_function_definition(Symbol* sym, FunctionDefinition* fd){
+void SymbolTable::add_function_definition(Symbol* sym, FunctionDefinition* fd) {
     sym->function_definition = fd;
-    pair<int, pair<Type, string>> top = { 0, {Type(), ""} };
+    // pair<int, pair<Type, string>> top = { 0, {Type(), ""} };
+    // if (!scope_stack.empty())
+    // {
+    //     top = scope_stack.top();
+    // }
+    Symbol top = Symbol();
     if (!scope_stack.empty())
     {
         top = scope_stack.top();
     }
-    if (top.second.first.is_function)
+    if (top.type.is_function)
     {
-        FunctionDefinition* func = getFunction(top.second.second, top.second.first.arg_types)->function_definition;
+        FunctionDefinition* func = getFunction(top.name, top.type.arg_types)->function_definition;
         if (func == nullptr) {
-            string error_msg = "Function " + top.second.second + " not defined";
+            string error_msg = "Function " + top.name + " not defined";
             yyerror(error_msg.c_str());
             set_error();
             return;
@@ -2934,23 +3025,28 @@ void SymbolTable :: add_function_definition(Symbol* sym, FunctionDefinition* fd)
         Symbol* sym_f = func->function_symbol_table.getSymbol(sym->name);
         sym_f->function_definition = fd;
     }
-    else if (top.second.first.is_defined_type)
+    else if (top.type.is_defined_type)
     {
-        DefinedTypes* dt = get_defined_type(top.second.second);
+        DefinedTypes* dt = get_defined_type(top.name);
         if (dt == nullptr || dt->type_definition == nullptr) {
-            string error_msg = "Undefined type " + top.second.second;
+            string error_msg = "Undefined type " + top.name;
             yyerror(error_msg.c_str());
             set_error();
             return;
         }
         Symbol* sym_c = dt->type_definition->type_symbol_table.getSymbol(sym->name);
-        sym_c->function_definition = fd;   
+        sym_c->function_definition = fd;
     }
 }
 
 void SymbolTable::insert_defined_type(std::string name, DefinedTypes* type)
 {
-    pair<int, pair<Type, string>> top = { 0, {Type(), name} };
+    // pair<int, pair<Type, string>> top = { 0, {Type(), name} };
+    // if (!scope_stack.empty())
+    // {
+    //     top = scope_stack.top();
+    // }
+    Symbol top = Symbol();
     if (!scope_stack.empty())
     {
         top = scope_stack.top();
@@ -2967,16 +3063,16 @@ void SymbolTable::insert_defined_type(std::string name, DefinedTypes* type)
         }
     }
     defined_types[name].push_front({ currentScope, type });
-    if (top.second.first.is_function)
+    if (top.type.is_function)
     {
-        FunctionDefinition* func = getFunction(top.second.second, top.second.first.arg_types)->function_definition;
+        FunctionDefinition* func = getFunction(top.name, top.type.arg_types)->function_definition;
         func->function_symbol_table.defined_types[name].push_front({ currentScope, type });
     }
-    else if (top.second.first.is_defined_type)
+    else if (top.type.is_defined_type)
     {
-        DefinedTypes* dt = get_defined_type(top.second.second);
+        DefinedTypes* dt = get_defined_type(top.name);
         if (dt == nullptr) {
-            string error_msg = "Undefined type " + top.second.second;
+            string error_msg = "Undefined type " + top.name;
             yyerror(error_msg.c_str());
             set_error();
             return;
@@ -2987,7 +3083,12 @@ void SymbolTable::insert_defined_type(std::string name, DefinedTypes* type)
 
 void SymbolTable::insert_typedef(std::string name, Type type, int offset)
 {
-    pair<int, pair<Type, string>>top = { 0, {Type(), name} };
+    // pair<int, pair<Type, string>>top = { 0, {Type(), name} };
+    // if (!scope_stack.empty())
+    // {
+    //     top = scope_stack.top();
+    // }
+    Symbol top = Symbol();
     if (!scope_stack.empty())
     {
         top = scope_stack.top();
@@ -3005,17 +3106,17 @@ void SymbolTable::insert_typedef(std::string name, Type type, int offset)
     Symbol* sym = new Symbol(name, type, currentScope, this->currAddress);
     this->currAddress += offset;
     typedefs[name].push_front(sym);
-    if (top.second.first.is_function)
+    if (top.type.is_function)
     {
-        FunctionDefinition* func = getFunction(top.second.second, top.second.first.arg_types)->function_definition;
+        FunctionDefinition* func = getFunction(top.name, top.type.arg_types)->function_definition;
         func->function_symbol_table.typedefs[name].push_front(sym);
     }
-    else if (top.second.first.is_defined_type)
+    else if (top.type.is_defined_type)
     {
-        DefinedTypes* dt = get_defined_type(top.second.second);
+        DefinedTypes* dt = get_defined_type(top.name);
         Symbol* sym_c = new Symbol(name, type, currentScope - 1, this->currAddress);
         if (dt == nullptr) {
-            string error_msg = "Undefined type " + top.second.second;
+            string error_msg = "Undefined type " + top.name;
             yyerror(error_msg.c_str());
             set_error();
             return;
@@ -3066,6 +3167,28 @@ bool SymbolTable::lookup_function(std::string name, vector<Type> arg_types)
             //     }
             // }
             return true;
+        }
+    }
+    return false;
+}
+
+bool SymbolTable::lookup_exact_function_match(std::string name, const std::vector<Type>& arg_types) {
+    auto it = table.find(name);
+    if (it == table.end())
+        return false;
+
+    for (const Symbol* sym : it->second)
+    {
+        if (sym->scope <= currentScope && arg_types.size() == sym->type.arg_types.size()) {
+            bool all_match = true;
+            for (int i = 0; i < arg_types.size(); i++) {
+                if (!(arg_types[i] == sym->type.arg_types[i])) { // use exact type equality
+                    all_match = false;
+                    break;
+                }
+            }
+            if (all_match)
+                return true;
         }
     }
     return false;
@@ -3131,7 +3254,7 @@ bool SymbolTable::check_member_variable(string name, string member)
         set_error();
         return false;
     }
-    if(access_specifier == ACCESS_SPECIFIER_PROTECTED)
+    if (access_specifier == ACCESS_SPECIFIER_PROTECTED)
     {
         string error_msg = "Member variable '" + member + "' is protected in class '" + name;
         yyerror(error_msg.c_str());
@@ -3153,7 +3276,7 @@ Type SymbolTable::get_type_of_member_variable(string name, string member)
     }
 
     Symbol* sym = dt->type_definition->type_symbol_table.getSymbol(member);
-    if(sym == nullptr) {
+    if (sym == nullptr) {
         string error_msg = "Member variable '" + member + "' not found in class '" + name + "'";
         yyerror(error_msg.c_str());
         set_error();
@@ -3195,6 +3318,26 @@ Symbol* SymbolTable::getSymbol(string name)
     }
 
     return sym;
+}
+
+Symbol* SymbolTable::getSymbolFromMangledName(std::string mangled_name)
+{
+    for (const auto& entry : table)
+    {
+        for (const auto symbol : entry.second)
+        {
+            if (symbol->mangled_name == mangled_name)
+            {
+                return symbol;
+            }
+        }
+    }
+    return nullptr;
+}
+
+bool SymbolTable::lookup_mangled_name(std::string mangled_name)
+{
+    return (this->getSymbolFromMangledName(mangled_name) != nullptr);
 }
 
 Symbol* SymbolTable::getFunction(std::string name, vector<Type> arg_types)
@@ -3327,26 +3470,27 @@ void SymbolTable::print()
     }
 
     cout << "\nSYMBOL TABLE:\n";
-    cout << "----------------------------------------------------------------------------\n";
+    cout << "------------------------------------------------------------------------------------------------------------------------\n";
     cout << "| " << setw(20) << left << "Name"
-        << "| " << setw(26) << left << "Type"
-        << "| " << setw(8) << left << "Scope"
-        << "| " << setw(12) << left << "Offset" << " |\n";
-    cout << "----------------------------------------------------------------------------\n";
+         << "| " << setw(40) << left << "Mangled Name"
+         << "| " << setw(20) << left << "Type"
+         << "| " << setw(8) << left << "Scope"
+         << "| " << setw(12) << left << "Offset" << " |\n";
+    cout << "------------------------------------------------------------------------------------------------------------------------\n";
 
     for (const auto& entry : table)
     {
         for (const auto symbol : entry.second)
         {
             cout << "| " << setw(20) << left << symbol->name
-                << "| " << setw(26) << left << symbol->type.type_index
-                // Aren ~ maine add kiya hai .type_index (isko change krna hai according to Type class)
-                << "| " << setw(8) << left << symbol->scope
-                << "| " << setw(12) << left << symbol->offset << " |\n";
+                 << "| " << setw(40) << left << symbol->mangled_name
+                 << "| " << setw(20) << left << symbol->type.type_index
+                 << "| " << setw(8)  << left << symbol->scope
+                 << "| " << setw(12) << left << symbol->offset << " |\n";
         }
     }
 
-    cout << "----------------------------------------------------------------------------\n";
+    cout << "------------------------------------------------------------------------------------------------------------------------\n";
 }
 
 void SymbolTable::print_typedefs()
@@ -3357,26 +3501,29 @@ void SymbolTable::print_typedefs()
     }
 
     cout << "\nTYPEDEFS:\n";
-    cout << "----------------------------------------------------------------------------\n";
+    cout << "-------------------------------------------------------------------------------------------------------------\n";
     cout << "| " << setw(20) << left << "Name"
-        << "| " << setw(26) << left << "Type"
-        << "| " << setw(8) << left << "Scope"
-        << "| " << setw(12) << left << "Offset" << " |\n";
-    cout << "----------------------------------------------------------------------------\n";
+         << "| " << setw(30) << left << "Mangled Name"
+         << "| " << setw(20) << left << "Type"
+         << "| " << setw(8)  << left << "Scope"
+         << "| " << setw(12) << left << "Offset" << " |\n";
+    cout << "-------------------------------------------------------------------------------------------------------------\n";
 
     for (const auto& entry : typedefs)
     {
         for (const auto symbol : entry.second)
         {
             cout << "| " << setw(20) << left << symbol->name
-                << "| " << setw(26) << left << symbol->type.type_index
-                << "| " << setw(8) << left << symbol->scope
-                << "| " << setw(12) << left << symbol->offset << " |\n";
+                 << "| " << setw(30) << left << symbol->mangled_name
+                 << "| " << setw(20) << left << symbol->type.type_index
+                 << "| " << setw(8)  << left << symbol->scope
+                 << "| " << setw(12) << left << symbol->offset << " |\n";
         }
     }
 
-    cout << "----------------------------------------------------------------------------\n";
+    cout << "-------------------------------------------------------------------------------------------------------------\n";
 }
+
 
 void SymbolTable::print_defined_types()
 {
