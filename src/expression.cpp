@@ -70,6 +70,8 @@ Expression* create_primary_expression(Identifier* i) {
     P->jump_code.push_back(i1_); // TAC
     P->jump_code.push_back(i2_); // TAC
 
+    symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
     return P;
 }
 
@@ -97,6 +99,9 @@ Expression* create_primary_expression(Constant* x) {
     P->jump_code.push_back(i2); // TAC
     P->jump_code.push_back(i1_); // TAC
     P->jump_code.push_back(i2_); // TAC
+
+    symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
     return P;
 }
 
@@ -127,6 +132,10 @@ Expression* create_primary_expression(StringLiteral* x) {
     P->jump_code.push_back(i2); // TAC
     P->jump_code.push_back(i1_); // TAC
     P->jump_code.push_back(i2_); // TAC
+
+    symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+    symbolTable.insert(t1->value, Type(CHAR_T, 2, true), 4, 0); // Insert temp into symbol table
+
     return P;
 }
 
@@ -349,6 +358,9 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         return P;
     }
     P->type.is_const_literal = false;
+
+    symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
     return P;
 }
 
@@ -451,6 +463,14 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             P->jump_code.push_back(i6); // TAC
             P->jump_code.push_back(i5_); // TAC
             P->jump_code.push_back(i6_); // TAC
+
+            Type t1_type = x->type;
+            t1_type.ptr_level ++;
+            symbolTable.insert(t1->value, t1_type, t1_type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(t2->value, t1_type, t1_type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(t3->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
         }
         else if (op->name == "PTR_OP") {
             TACOperand* t1 = new_temp_var(); // TAC
@@ -484,6 +504,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             P->jump_code.push_back(i5); // TAC
             P->jump_code.push_back(i4_); // TAC
             P->jump_code.push_back(i5_); // TAC
+
+            symbolTable.insert(t1->value, x->type, x->type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(t2->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
         }
     }
     P->type.is_const_literal = false;
@@ -572,6 +596,7 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     backpatch(index_expression->jump_false_list, i1->label); // TAC
     P->code.push_back(i1); // TAC
     P->jump_code.push_back(i1); // TAC
+    symbolTable.insert(t1->value, x->type, x->type.get_size(), 0); // Insert temp into symbol table
     if(P->type.ptr_level == 0){
         TACOperand* t2 = new_temp_var(); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), t2, x->result, t1, 0); // TAC
@@ -580,6 +605,7 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
         P->jump_code.push_back(i2); // TAC
         P->code.push_back(i3); // TAC
         P->jump_code.push_back(i3); // TAC
+        symbolTable.insert(t2->value, x->type, x->type.get_size(), 0); // Insert temp into symbol table
     }
     else {
         TACInstruction* i2 = emit(TAC_OPERATOR_ADD, P->result, x->result, t1, 0); // TAC
@@ -599,6 +625,9 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     P->jump_code.push_back(i5_); // TAC
     P->jump_code.push_back(i6_); // TAC
     P->type.is_const_literal = false;
+
+    symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
     return P;
 }
 
@@ -709,6 +738,8 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->jump_code.push_back(i3); // TAC
                 P->jump_code.push_back(i2_); // TAC
                 P->jump_code.push_back(i3_); // TAC
+
+                symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
             }
         }
     }
@@ -820,6 +851,8 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
             U->jump_code.push_back(i4); // TAC
             U->jump_code.push_back(i3_); // TAC
             U->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(U->result->value, U->type, U->type.get_size(), 0); // Insert temp into symbol table
         }
         else
         {
@@ -857,6 +890,8 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
         U->jump_code.push_back(i3); // TAC
         U->jump_code.push_back(i2_); // TAC
         U->jump_code.push_back(i3_); // TAC
+
+        symbolTable.insert(U->result->value, U->type, U->type.get_size(), 0); // Insert temp into symbol table
     }
     U->type.is_const_literal = false;
     return U;
@@ -1099,6 +1134,7 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         U->jump_code.push_back(i3_); // TAC
     }
     U->type.is_const_literal = false;
+    symbolTable.insert(U->result->value, U->type, U->type.get_size(), 0); // Insert temp into symbol table
     return U;
 }
 
@@ -1129,6 +1165,7 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn) {
     U->jump_code.push_back(i2_); // TAC
     U->jump_code.push_back(i3_); // TAC
     U->type.is_const_literal = false;
+    symbolTable.insert(U->result->value, U->type, U->type.get_size(), 0); // Insert temp into symbol table
     return U;
 }
 
@@ -1213,6 +1250,7 @@ Expression* create_cast_expression(TypeName* tn, Expression* x) {
     C->jump_code.push_back(i2_); // TAC
     C->jump_code.push_back(i3_); // TAC
     C->type.is_const_literal = false;
+    symbolTable.insert(C->result->value, C->type, C->type.get_size(), 0); // Insert temp into symbol table
     return C;
 }
 
@@ -1294,7 +1332,8 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             if (lt.type_index > rt.type_index) {
                 TACOperand* t1 = new_temp_var(); // TAC
                 M->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
+                M->type = lt; // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), right->result, 0); // TAC
                 backpatch(left->next_list, i1->label); // TAC
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
@@ -1325,6 +1364,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 M->jump_code.push_back(i4); // TAC
                 M->jump_code.push_back(i3_); // TAC
                 M->jump_code.push_back(i4_); // TAC
+                symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
             }
             else if (lt.type_index == rt.type_index) {
                 M->type = lt;
@@ -1362,7 +1402,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 M->type = rt;
                 TACOperand* t1 = new_temp_var(); // TAC
                 M->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(rt.to_string()), left->result, 0); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), left->result, 0); // TAC
                 backpatch(left->next_list, i1->label); // TAC
                 backpatch(right->next_list, i1->label); // TAC
                 backpatch(left->jump_next_list, i1->label); // TAC
@@ -1392,6 +1432,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 M->jump_code.push_back(i4); // TAC
                 M->jump_code.push_back(i3_); // TAC
                 M->jump_code.push_back(i4_); // TAC
+                symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
             }
         }
         else if (lt.isInt() && rt.isInt()) {
@@ -1434,6 +1475,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 M->jump_code.push_back(i4); // TAC
                 M->jump_code.push_back(i3_); // TAC
                 M->jump_code.push_back(i4_); // TAC
+                symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
             }
             else if (lt.type_index == rt.type_index) {
                 M->type = lt;
@@ -1505,6 +1547,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 M->jump_code.push_back(i4); // TAC
                 M->jump_code.push_back(i3_); // TAC
                 M->jump_code.push_back(i4_); // TAC
+                symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
             }
         }
     }
@@ -1556,6 +1599,7 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             M->jump_code.push_back(i4); // TAC
             M->jump_code.push_back(i3_); // TAC
             M->jump_code.push_back(i4_); // TAC
+            symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
         }
         else if (lt.type_index == rt.type_index) {
             M->type = lt;
@@ -1627,10 +1671,13 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             M->jump_code.push_back(i4); // TAC
             M->jump_code.push_back(i3_); // TAC
             M->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // insert temp into symbol table
         }
 
     }
     M->type.is_const_literal = false;
+    symbolTable.insert(M->result->value, M->type, M->type.get_size(), 0); // insert temp into symbol table
     return M;
 }
 
@@ -1700,9 +1747,10 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
     if (lt.isFloat() || rt.isFloat()) {
         // float * float => float
         if (lt.type_index > rt.type_index) {
+            A->type = lt;
             TACOperand* t1 = new_temp_var(); // TAC
             A->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(A->type.to_string()), right->result, 0); // TAC
             backpatch(left->next_list, i1->label); // TAC
             backpatch(right->next_list, i1->label); // TAC
             backpatch(left->jump_next_list, i1->label); // TAC
@@ -1733,6 +1781,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+            symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
         }
         else if (lt.type_index == rt.type_index) {
             A->type = lt;
@@ -1801,6 +1850,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+            symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
         }
     }
     else if (lt.isInt() && rt.isInt()) {
@@ -1843,6 +1893,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+            symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
         }
         else if (lt.type_index == rt.type_index) {
             A->type = lt;
@@ -1914,6 +1965,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+            symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
         }
     }
     else if (op->name == "PLUS" && lt.isPointer() && rt.isInt()) {
@@ -1963,6 +2015,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         A->jump_code.push_back(i4); // TAC
         A->jump_code.push_back(i3_); // TAC
         A->jump_code.push_back(i4_); // TAC
+        symbolTable.insert(t1->value, t, t.get_size(), 0); // Insert temp into symbol table
     }
     else if (op->name == "PLUS" && lt.isInt() && rt.isPointer()) {
         A->type = rt;
@@ -2011,6 +2064,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         A->jump_code.push_back(i4); // TAC
         A->jump_code.push_back(i3_); // TAC
         A->jump_code.push_back(i4_); // TAC
+        symbolTable.insert(t1->value, t, t.get_size(), 0); // Insert temp into symbol table
     }
     else if (op->name == "MINUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
@@ -2059,6 +2113,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         A->jump_code.push_back(i4); // TAC
         A->jump_code.push_back(i3_); // TAC
         A->jump_code.push_back(i4_); // TAC
+        symbolTable.insert(t1->value, t, t.get_size(), 0); // Insert temp into symbol table
     }
     else if (op->name == "MINUS" && lt.isPointer() && rt.isPointer()) {
         if (lt == rt) {
@@ -2096,6 +2151,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+            symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
         }
         else {
             A->type = ERROR_TYPE;
@@ -2115,6 +2171,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         return A;
     }
     A->type.is_const_literal = false;
+    symbolTable.insert(A->result->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
 
     return A;
 }
@@ -2237,6 +2294,8 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         S->jump_code.push_back(i4); // TAC
         S->jump_code.push_back(i3_); // TAC
         S->jump_code.push_back(i4_); // TAC
+
+        symbolTable.insert(t1->value, S->type, S->type.get_size(), 0); // Insert temp into symbol table
     }
     else if (lt.type_index == rt.type_index) {
         S->type = lt;
@@ -2312,8 +2371,11 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         S->jump_code.push_back(i4); // TAC
         S->jump_code.push_back(i3_); // TAC
         S->jump_code.push_back(i4_); // TAC
+
+        symbolTable.insert(t1->value, S->type, S->type.get_size(), 0); // Insert temp into symbol table
     }
     S->type.is_const_literal = false;
+    symbolTable.insert(S->result->value, S->type, S->type.get_size(), 0); // Insert temp into symbol table
     return S;
 }
 
@@ -2447,6 +2509,8 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->jump_code.push_back(i8); // TAC
             R->jump_code.push_back(i7_); // TAC
             R->jump_code.push_back(i8_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else if (lt.type_index == rt.type_index) {
             R->result = new_temp_var(); // TAC
@@ -2557,6 +2621,8 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->jump_code.push_back(i8); // TAC
             R->jump_code.push_back(i7_); // TAC
             R->jump_code.push_back(i8_); // TAC
+
+            symbolTable.insert(t1->value, rt, rt.get_size(), 0); // Insert temp into symbol table
         }
     }
     else if (lt.is_pointer && rt.is_pointer) {
@@ -2635,6 +2701,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
         return R;
     }
     R->type.is_const_literal = false;
+    symbolTable.insert(R->result->value, R->type, R->type.get_size(), 0); // Insert temp into symbol table
     return R;
 }
 
@@ -2759,6 +2826,8 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->jump_code.push_back(i8); // TAC
             E->jump_code.push_back(i7_); // TAC
             E->jump_code.push_back(i8_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else if (lt.type_index == rt.type_index) {
             E->result = new_temp_var(); // TAC
@@ -2851,6 +2920,8 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->jump_code.push_back(i8); // TAC
             E->jump_code.push_back(i7_); // TAC
             E->jump_code.push_back(i8_); // TAC
+
+            symbolTable.insert(t1->value, rt, rt.get_size(), 0); // Insert temp into symbol table
         }
 
     }
@@ -2902,6 +2973,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->jump_code.push_back(i7); // TAC
             E->jump_code.push_back(i6_); // TAC
             E->jump_code.push_back(i7_); // TAC
+
         }
         else {
             E->type = ERROR_TYPE;
@@ -2922,6 +2994,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
         return E;
     }
     E->type.is_const_literal = false;
+    symbolTable.insert(E->result->value, E->type, E->type.get_size(), 0); // Insert temp into symbol table
     return E;
 }
 
@@ -3031,6 +3104,8 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 A->jump_code.push_back(i4); // TAC
                 A->jump_code.push_back(i3_); // TAC
                 A->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
             }
             else if (lt.type_index == rt.type_index) {
                 A->type = lt;
@@ -3105,6 +3180,8 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 A->jump_code.push_back(i4); // TAC
                 A->jump_code.push_back(i3_); // TAC
                 A->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
             }
         }
         else {
@@ -3117,6 +3194,7 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
         }
     }
     A->type.is_const_literal = false;
+    symbolTable.insert(A->result->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
     return A;
 }
 
@@ -3226,6 +3304,8 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 X->jump_code.push_back(i4); // TAC
                 X->jump_code.push_back(i3_); // TAC
                 X->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, X->type, X->type.get_size(), 0); // Insert temp into symbol table
             }
             else if (lt.type_index == rt.type_index) {
                 X->type = lt;
@@ -3300,6 +3380,8 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 X->jump_code.push_back(i4); // TAC
                 X->jump_code.push_back(i3_); // TAC
                 X->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, X->type, X->type.get_size(), 0); // Insert temp into symbol table
             }
         }
         else {
@@ -3312,6 +3394,7 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
         }
     }
     X->type.is_const_literal = false;
+    symbolTable.insert(X->result->value, X->type, X->type.get_size(), 0); // Insert temp into symbol table
     return X;
 }
 
@@ -3421,6 +3504,8 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 O->jump_code.push_back(i4); // TAC
                 O->jump_code.push_back(i3_); // TAC
                 O->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, O->type, O->type.get_size(), 0); // Insert temp into symbol table
             }
             else if (lt.type_index == rt.type_index) {
                 O->type = lt;
@@ -3495,6 +3580,8 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 O->jump_code.push_back(i4); // TAC
                 O->jump_code.push_back(i3_); // TAC
                 O->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, O->type, O->type.get_size(), 0); // Insert temp into symbol table
             }
         }
         else {
@@ -3507,6 +3594,7 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
         }
     }
     O->type.is_const_literal = false;
+    symbolTable.insert(O->result->value, O->type, O->type.get_size(), 0); // Insert temp into symbol table
     return O;
 }
 
@@ -3570,7 +3658,6 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 return L;
             }
             else{
-                TACOperand* t1 = new_temp_var(); // TAC
                 L->result = new_temp_var(); // TAC
                 L->code = left->jump_code; // TAC
                 L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
@@ -3620,7 +3707,7 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 L->jump_true_list = right->jump_true_list; // TAC
                 L->jump_false_list = merge_lists(left->jump_false_list, right->jump_false_list); // TAC
                 L->true_list = L->jump_true_list; // TAC
-                L->false_list = L->jump_false_list; // TAC
+                L->false_list = L->jump_false_list; // TAC   
             }
         }
         else {
@@ -3629,9 +3716,11 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 to_string(L->line_no) + ", column " + to_string(L->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return L;
         }
     }
     L->type.is_const_literal = false;
+    symbolTable.insert(L->result->value, L->type, L->type.get_size(), 0); // Insert temp into symbol table
     return L;
 }
 
@@ -3694,7 +3783,6 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
                 return L;
             }
             else{
-                TACOperand* t1 = new_temp_var(); // TAC
                 L->result = new_temp_var(); // TAC
                 L->code = left->jump_code; // TAC
                 L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
@@ -3752,9 +3840,11 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
                 to_string(L->line_no) + ", column " + to_string(L->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return L;
         }
     }
     L->type.is_const_literal = false;
+    symbolTable.insert(L->result->value, L->type, L->type.get_size(), 0); // Insert temp into symbol table
     return L;
 }
 
@@ -3906,6 +3996,8 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
             C->false_list = merge_lists(true_expr->jump_false_list, false_expr->jump_false_list); // TAC
             C->jump_true_list = C->true_list; // TAC
             C->jump_false_list = C->false_list; // TAC
+
+            symbolTable.insert(t1->value, C->type, C->type.get_size(), 0); // Insert temp into symbol table
         }
         else if (tt.type_index < ft.type_index) {
             C->type = ft;
@@ -3914,7 +4006,40 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
             }
             TACOperand* t1 = new_temp_var(); // TAC
             TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(C->type.to_string()), true_expr->result, 0); // TAC
+            C->result = new_temp_var(); // TAC
+            C->code.insert(C->code.end(), true_expr->code.begin(), true_expr->code.end()); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, t1, new_empty_var(), 0); // TAC
+            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             C->code.push_back(i0); // TAC
+            C->code.push_back(i1); // TAC
+            C->code.push_back(i2); // TAC
+            C->code.push_back(i2_); // TAC
+            C->code.insert(C->code.end(), false_expr->code.begin(), false_expr->code.end()); // TAC
+            C->code.push_back(i0); // TAC
+            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, t1, new_empty_var(), 0); // TAC
+            C->code.push_back(i3); // TAC
+            backpatch(condition->true_list, true_expr->code[0]->label); // TAC
+            backpatch(condition->true_list, i1->label); // TAC
+            backpatch(condition->false_list, false_expr->code[0]->label); // TAC
+            backpatch(condition->false_list, i3->label); // TAC
+            backpatch(true_expr->next_list, i1->label); // TAC
+            backpatch(false_expr->next_list, i3->label); // TAC
+            C->next_list.insert(i2_); // TAC
+            C->jump_next_list.insert(i2); // TA
+
+            C->jump_code = condition->jump_code; // TAC
+            C->jump_code.insert(C->jump_code.end(), true_expr->jump_code.begin(), true_expr->jump_code.end()); // TAC
+            C->jump_code.insert(C->jump_code.end(), false_expr->jump_code.begin(), false_expr->jump_code.end()); // TAC
+            backpatch(condition->jump_true_list, true_expr->jump_code[0]->label); // TAC
+            backpatch(condition->jump_false_list, false_expr->jump_code[0]->label); // TAC
+            C->true_list = merge_lists(true_expr->jump_true_list, false_expr->jump_true_list); // TAC
+            C->false_list = merge_lists(true_expr->jump_false_list, false_expr->jump_false_list); // TAC
+            C->jump_true_list = C->true_list; // TAC
+            C->jump_false_list = C->false_list; // TAC
+
+            symbolTable.insert(t1->value, C->type, C->type.get_size(), 0); // Insert temp into symbol table
+
         }
     }
     else {
@@ -3925,6 +4050,7 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
         symbolTable.set_error();
     }
     C->type.is_const_literal = false;
+    symbolTable.insert(C->result->value, C->type, C->type.get_size(), 0); // Insert temp into symbol table
     return C;
 }
 
@@ -3992,6 +4118,7 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
     Type lt = left->type;
     Type rt = right->type;
+    A->result = left->result; // TAC
 
     if (lt.is_const_variable) {
         yyerror(("Assignment to const variable at line " + std::to_string(A->line_no)).c_str());
@@ -4043,6 +4170,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
 
         }
         else {
@@ -4118,6 +4247,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             TACInstruction* i1 = emit(TACOperator(op->name == "MUL_ASSIGN" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), left->result, left->result, right->result, 0); // TAC
@@ -4193,6 +4324,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, rt, rt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             A->type = lt;
@@ -4229,6 +4362,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
                 A->jump_code.push_back(i4); // TAC
                 A->jump_code.push_back(i3_); // TAC
                 A->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
             }
             else {
                 TACInstruction* i1 = emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), left->result, left->result, right->result, 0); // TAC
@@ -4305,6 +4440,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MOD), left->result, left->result, right->result, 0); // TAC
@@ -4381,6 +4518,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             TACInstruction* i1 = emit(TACOperator(op->name == "AND_ASSIGN" ? TAC_OPERATOR_BIT_AND : op->name == "OR_ASSIGN" ? TAC_OPERATOR_BIT_OR : TAC_OPERATOR_BIT_XOR), left->result, left->result, right->result, 0); // TAC
@@ -4456,6 +4595,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             TACInstruction* i1 = emit(TACOperator(op->name == "LEFT_ASSIGN" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), left->result, left->result, right->result, 0); // TAC

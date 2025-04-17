@@ -2749,12 +2749,12 @@ StringLiteral::StringLiteral(string value, unsigned int line_no, unsigned int co
 // ################################## SYMBOL ######################################
 // ##############################################################################
 
-Symbol::Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o) {
+Symbol::Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o), is_temp(false) {
     function_definition = nullptr;
     this->mangled_name = create_mangled_name(this->name, this->type, this->scope, symbolTable.scope_stack);
 }
 
-Symbol::Symbol() : name(""), type(Type()), scope(0), offset(0) {
+Symbol::Symbol() : name(""), type(Type()), scope(0), offset(0), is_temp(false), mangled_name("") {
     function_definition = nullptr;
 }
 
