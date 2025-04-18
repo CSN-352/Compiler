@@ -45,8 +45,11 @@ enum class MIPSOpcode {
     // Stores
     SW, SH, SB, SWC1, SDC1,
 
+    // Type Cnversions
+    CVT_S_D, CVT_D_S, CVT_S_W, CVT_W_S, CVT_D_W, CVT_W_D,
+
     // Moves
-    MOVE, MFHI, MFLO, MTHI, MTLO, MOVS, MOVD,
+    MOVE, MFHI, MFLO, MTHI, MTLO, MOVS, MOVD, MTC1, MFC1,
 
     // Branches
     BEQ, BNE, BGTZ, BLEZ, BLTZ, BGEZ,
@@ -126,7 +129,7 @@ public:
 
 extern std::vector<MIPSInstruction> mips_code_text;
 
-void emit_instruction(string op, string dest, string src1, string src2, bool is_assignment);
+void emit_instruction(string op, string dest, string src1, string src2);
 void print_mips_code();
 
 //=================== MIPS Data Instruction Class ===================//
