@@ -43,7 +43,7 @@ enum class MIPSOpcode {
     LUI, LI, LWC1, LDC1,
 
     // Stores
-    SW, SH, SB,
+    SW, SH, SB, SWC1, SDC1,
 
     // Moves
     MOVE, MFHI, MFLO, MTHI, MTLO, MOVS, MOVD,
@@ -148,10 +148,12 @@ class MIPSDataInstruction {
 
 //=================== MIPS Data Storage ===================//
 
-unordered_map<string, string> immediate_storage_map;
+unordered_map<string, string> immediate_storage_map; // Immediate storage map
+unordered_map<string, string> global_variable_storage_map; // Global variable storage map
 
 extern std::vector<MIPSDataInstruction> mips_code_data; // Data segment
 extern std::vector<MIPSDataInstruction> mips_code_rodata; // Read-only data segment
+extern std::vector<MIPSDataInstruction> mips_code_bss; // Uninitialized data segment
 
 void store_immediate(const string& immediate, Type type);
 bool check_immediate(const string& immediate);

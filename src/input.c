@@ -220,5 +220,16 @@
 //     s.id = 1;
 // // }
 
-void func(int a){
+// void func(int a){
+// }
+
+// int arr[5];
+void func(int x){
+    x++;
+}
+
+int main(){
+    int x = 1;
+    func(x);
+    return 0;
 }

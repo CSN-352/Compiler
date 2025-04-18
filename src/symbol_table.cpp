@@ -281,6 +281,8 @@ int Type::get_size()
     }
     else if (ptr_level > 0 || is_function)
         return WORD_SIZE;
+    else if(isVoid())
+        return 0;
     else if (!isPrimitive())
     {
         DefinedTypes* dt = symbolTable.get_defined_type(defined_type_name);
@@ -929,6 +931,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                     TACInstruction* i0;
                     if (t.type_index != i->assignment_expression->type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
                     else i0 = emit(TACOperator(TAC_OPERATOR_NOP), t1, i->assignment_expression->result, new_empty_var(), 0); // TAC
+                    
                     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
                     init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
                     init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
@@ -941,6 +944,8 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                     backpatch(i->assignment_expression->false_list, i0->label); // TAC
                     backpatch(i->assignment_expression->jump_true_list, i0->label); // TAC
                     backpatch(i->assignment_expression->jump_false_list, i0->label); // TAC
+
+                    symbolTable.insert(t1->value, t, t.get_size(), overloaded); // TAC
                 }
                 else {
                     TACInstruction* i1;
@@ -969,6 +974,8 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
             init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
             init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
+
+            symbolTable.insert(t1->value, t, t.get_size(), overloaded); // TAC
         }
         if (declaration_specifiers->is_typedef)
             symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
@@ -1948,23 +1955,31 @@ EnumeratorList* create_enumerator_list(Enumerator* e)
     EnumeratorList* P = new EnumeratorList();
     TACOperand* id = new_identifier(e->identifier->value); // TAC
     TACOperand* t1 = new_temp_var();
+    TACOperand* t2 = new_temp_var(); // TAC
     if (e->initializer_expression == nullptr) {
         TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant("0"), new_empty_var(), 0); // TAC
-        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_CAST), t2, new_type("int"), t1, 0); // TAC
+        TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), id, t2, new_empty_var(), 0); // TAC
         P->last_constant_value = "0"; // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i2); // TAC
+
+        symbolTable.insert(t1->value, Type(PrimitiveTypes::SHORT_T, 0, true), 4, 0); // TAC
+        symbolTable.insert(t2->value, Type(PrimitiveTypes::INT_T, 0, true), 4, 0); // TAC
     }
     else {
-        string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(value), new_empty_var(), 0); // TAC
-        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type("int"), new_constant(value), 0); // TAC
+        Constant* c = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant;
+        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(c->value), new_empty_var(), 0); // TAC
+        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t2, new_type("int"), t1, 0); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
-        P->last_constant_value = value; // TAC
+        P->last_constant_value = c->value; // TAC
         P->code.push_back(i1); // TAC
         P->code.push_back(i0); // TAC
         P->code.push_back(i2); // TAC
         backpatch(e->initializer_expression->next_list, i1->label); // TAC
+
+        symbolTable.insert(t1->value,c->constant_type, c->constant_type.get_size(), 0); // TAC
+        symbolTable.insert(t2->value, Type(PrimitiveTypes::INT_T, 0, true), 4, 0); // TAC
     }
     P->enumerator_list.push_back(e);
     return P;
