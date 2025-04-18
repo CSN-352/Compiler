@@ -27,7 +27,7 @@ std::string get_mips_register_name(MIPSRegister reg);
 enum class MIPSOpcode {
     // Arithmetic
     ADD, ADDU, SUB, SUBU,
-    MUL, MULT, MULTU, DIV, DIVU,
+    MUL, MULT, MULTU, DIV, DIVU, ADD_S, ADD_D, SUB_S, SUB_D, MUL_S, MUL_D, DIV_S, DIV_D,
 
     // Logical
     AND, OR, XOR, NOR,
