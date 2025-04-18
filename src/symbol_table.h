@@ -231,6 +231,7 @@ public:
     bool isVoid();
     bool is_ea(); // is effective array
     bool is_convertible_to(Type t); // whether implicit conversion is possible
+    bool is_same_type(Type t); // {short, int, long}, {char}, {double, float}
     Type promote_to_int(Type t); // IMPLEMENT
     int get_size();
     void debug_type();
@@ -311,8 +312,9 @@ public:
     Symbol* getSymbol(std::string name);
     Symbol* getSymbolFromMangledName(std::string mangled_name);
     Symbol* getFunction(std::string name, vector<Type> arg_types);
+    Symbol* getSameTypeFunction(std::string name, vector<Type> arg_types);
     // Symbol* getClosestFunction(std::string name, vector<Type> arg_types);
-    Symbol* getTypedef(std::string name);
+    Symbol *getTypedef(std::string name);
     DefinedTypes* get_defined_type(std::string name);
     void update(std::string name, Type newType);
     void remove(std::string name);

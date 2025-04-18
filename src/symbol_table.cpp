@@ -253,6 +253,104 @@ bool Type::is_convertible_to(Type t)
     return false;
 }
 
+int getTypeGroup(int type)
+{
+    switch (type)
+    {
+    case PrimitiveTypes::SHORT_T:
+    case PrimitiveTypes::INT_T:
+    case PrimitiveTypes::LONG_T:
+    case PrimitiveTypes::LONG_LONG_T:
+        return 1; // signed integers group
+
+    case PrimitiveTypes::U_SHORT_T:
+    case PrimitiveTypes::U_INT_T:
+    case PrimitiveTypes::U_LONG_T:
+    case PrimitiveTypes::U_LONG_LONG_T:
+        return 2; // unsigned integers group
+
+    case PrimitiveTypes::CHAR_T:
+        return 3; // char group
+
+    case PrimitiveTypes::U_CHAR_T:
+        return 4; // unsigned char group
+
+    case PrimitiveTypes::FLOAT_T:
+    case PrimitiveTypes::DOUBLE_T:
+        return 5; // float/double group
+
+    case PrimitiveTypes::LONG_DOUBLE_T:
+        return 6; // long double group
+
+    case PrimitiveTypes::VOID_T:
+        return 7; // void group
+
+    default:
+        return -1; // error or unknown
+    }
+}
+
+bool Type::is_same_type(Type t)
+{   
+    if (getTypeGroup(this->type_index) == getTypeGroup(t.type_index) && !this->is_pointer && !t.is_pointer ) {
+        return true;
+    }
+    if (getTypeGroup(this->type_index) == getTypeGroup(t.type_index) && this->is_pointer && t.is_pointer && this->ptr_level == t.ptr_level)
+    {
+        return true;
+    }
+        return false;
+}
+
+int getTypeGroup(int type)
+{
+    switch (type)
+    {
+    case PrimitiveTypes::SHORT_T:
+    case PrimitiveTypes::INT_T:
+    case PrimitiveTypes::LONG_T:
+    case PrimitiveTypes::LONG_LONG_T:
+        return 1; // signed integers group
+
+    case PrimitiveTypes::U_SHORT_T:
+    case PrimitiveTypes::U_INT_T:
+    case PrimitiveTypes::U_LONG_T:
+    case PrimitiveTypes::U_LONG_LONG_T:
+        return 2; // unsigned integers group
+
+    case PrimitiveTypes::CHAR_T:
+        return 3; // char group
+
+    case PrimitiveTypes::U_CHAR_T:
+        return 4; // unsigned char group
+
+    case PrimitiveTypes::FLOAT_T:
+    case PrimitiveTypes::DOUBLE_T:
+        return 5; // float/double group
+
+    case PrimitiveTypes::LONG_DOUBLE_T:
+        return 6; // long double group
+
+    case PrimitiveTypes::VOID_T:
+        return 7; // void group
+
+    default:
+        return -1; // error or unknown
+    }
+}
+
+bool Type::is_same_type(Type t)
+{   
+    if (getTypeGroup(this->type_index) == getTypeGroup(t.type_index) && !this->is_pointer && !t.is_pointer ) {
+        return true;
+    }
+    if (getTypeGroup(this->type_index) == getTypeGroup(t.type_index) && this->is_pointer && t.is_pointer && this->ptr_level == t.ptr_level)
+    {
+        return true;
+    }
+        return false;
+}
+
 Type Type::promote_to_int(Type t)
 {
     if (t.type_index >= PrimitiveTypes::U_CHAR_T && t.type_index <= PrimitiveTypes::SHORT_T)
@@ -931,6 +1029,8 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
         }
         if (init_declarator_list->init_declarator_list[index]->initializer != nullptr)
         {
+            debug(init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.type_index); 
+            debug(t.type_index);
             bool compatible = init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.is_convertible_to(t);
             if (!compatible)
             {
@@ -2977,7 +3077,12 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
     Symbol* sym = new Symbol(name, type, currentScope, this->currAddress);
     table[name].push_front(sym);
     if (top.type.is_function)
-    {
+    {   
+        symbolTable.print();
+        debug(top.name);
+        for (auto a : top.type.arg_types) {
+            debug(a.type_index);
+        }
         Symbol* func_sym = getFunction(top.name, top.type.arg_types);
         if (func_sym == nullptr) {
             string error_msg = "Function " + top.name + " not found";
@@ -3363,45 +3468,143 @@ Symbol* SymbolTable::getFunction(std::string name, vector<Type> arg_types)
     if (it == table.end() || it->second.empty())
         return nullptr;
 
-    Symbol* sym = nullptr;
+    // for (Symbol* _sym : it->second)
+    // {
+    //     if (_sym->scope <= currentScope && (int)_sym->type.arg_types.size() == (int)arg_types.size())
+    //     {
+    //         for (int i = 0; i < arg_types.size(); i++)
+    //         {
+    //             if(arg_types[i] != _sym->type.arg_types[i])
+    //             // if (arg_types[i].is_convertible_to(_sym->type.arg_types[i]) == false)
+    //             {
+    //                 break;
+    //                 // return nullptr;
+                    
+    //             }
+    //         }
+            
+    //     }
+    //     else if (arg_types.size() > 0 && _sym->type.arg_types.size() > 0 && arg_types[arg_types.size() - 1].is_variadic && arg_types.size() >= _sym->type.arg_types.size()) {
 
-    for (Symbol* _sym : it->second)
-    {
-        if (_sym->scope <= currentScope && (int)_sym->type.arg_types.size() == (int)arg_types.size())
+            // for (int i = 0;i < _sym->type.arg_types.size();i++) {
+            //     if (arg_types[i] != _sym->type.arg_types[i])
+            //     {
+            //         return nullptr;
+            //     }
+            // }
+            // for (int i = _sym->type.arg_types.size();i < arg_types.size();i++) {
+            //     if (arg_types[i] != _sym->type.arg_types[_sym->type.arg_types.size() - 1]) {
+            //         return nullptr;
+            //     }
+            // }
+    //         if (sym == nullptr || _sym->scope > sym->scope)
+    //         {
+    //             sym = _sym;
+    //         }
+    //     }
+    // }
+    if (arg_types.size() > 0 && arg_types[arg_types.size() - 1].is_variadic) {
+        for (Symbol *_sym : it->second)
         {
-            for (int i = 0; i < arg_types.size(); i++)
+            int count =0;
+            for (int i = 0; i < _sym->type.arg_types.size(); i++)
             {
-                if (arg_types[i].is_convertible_to(_sym->type.arg_types[i]) == false)
+                if (arg_types[i] == _sym->type.arg_types[i])
                 {
-                    return nullptr;
+                    count++;
                 }
             }
-            if (sym == nullptr || _sym->scope > sym->scope)
+            for (int i = _sym->type.arg_types.size(); i < arg_types.size(); i++)
             {
-                sym = _sym;
+                if (arg_types[i] == _sym->type.arg_types[_sym->type.arg_types.size() - 1])
+                {
+                    count++;
+                }
+            }
+            if (count == arg_types.size())
+            {
+                return _sym;
             }
         }
-        else if (arg_types.size() > 0 && _sym->type.arg_types.size() > 0 && arg_types[arg_types.size() - 1].is_variadic && arg_types.size() >= _sym->type.arg_types.size()) {
-
-            for (int i = 0;i < _sym->type.arg_types.size();i++) {
-                if (arg_types[i].is_convertible_to(_sym->type.arg_types[i]) == false)
-                {
-                    return nullptr;
-                }
-            }
-            for (int i = _sym->type.arg_types.size();i < arg_types.size();i++) {
-                if (arg_types[i].is_convertible_to(_sym->type.arg_types[_sym->type.arg_types.size() - 1]) == false) {
-                    return nullptr;
-                }
-            }
-            if (sym == nullptr || _sym->scope > sym->scope)
-            {
-                sym = _sym;
-            }
-        }
+        return nullptr;
     }
+    else
+    {
+        for (Symbol *_sym : it->second)
+        {
+            if (_sym->scope <= currentScope && (int)_sym->type.arg_types.size() == (int)arg_types.size())
+            {
+                int count = 0;
+                for (int i = 0; i < arg_types.size(); i++)
+                {
+                    if (arg_types[i] == _sym->type.arg_types[i])
+                    {
+                        count++;
+                    }
+                }
+                if (count == arg_types.size())
+                {
+                    return _sym;
+                }
+            }
+        }
+        return nullptr;
+    }
+}
 
-    return sym;
+Symbol *SymbolTable::getSameTypeFunction(std::string name, vector<Type> arg_types)
+{
+    auto it = table.find(name);
+    if (it == table.end() || it->second.empty())
+        return nullptr;
+    if (arg_types.size() > 0 && arg_types[arg_types.size() - 1].is_variadic)
+    {
+        for (Symbol *_sym : it->second)
+        {
+            int count = 0;
+            for (int i = 0; i < _sym->type.arg_types.size(); i++)
+            {
+                if (arg_types[i].is_same_type(_sym->type.arg_types[i]))
+                {
+                    count++;
+                }
+            }
+            for (int i = _sym->type.arg_types.size(); i < arg_types.size(); i++)
+            {
+                if (arg_types[i].is_same_type(_sym->type.arg_types[_sym->type.arg_types.size() - 1]))
+                {
+                    count++;
+                }
+            }
+            if (count == arg_types.size())
+            {
+                return _sym;
+            }
+        }
+        return nullptr;
+    }
+    else
+    {
+        for (Symbol *_sym : it->second)
+        {
+            if (_sym->scope <= currentScope && (int)_sym->type.arg_types.size() == (int)arg_types.size())
+            {
+                int count = 0;
+                for (int i = 0; i < arg_types.size(); i++)
+                {
+                    if (arg_types[i].is_same_type( _sym->type.arg_types[i]))
+                    {
+                        count++;
+                    }
+                }
+                if (count == arg_types.size())
+                {
+                    return _sym;
+                }
+            }
+        }
+        return nullptr;
+    }
 }
 
 DefinedTypes* SymbolTable::get_defined_type(std::string name)
@@ -3492,7 +3695,8 @@ void SymbolTable::print()
          << "| " << setw(40) << left << "Mangled Name"
          << "| " << setw(20) << left << "Type"
          << "| " << setw(8) << left << "Scope"
-         << "| " << setw(12) << left << "Offset" << " |\n";
+         << "| " << setw(12) << left << "Offset"
+         << "| " << setw(20) << left << "Vars" << " |\n";
     cout << "------------------------------------------------------------------------------------------------------------------------\n";
 
     for (const auto& entry : table)
@@ -3515,11 +3719,23 @@ void SymbolTable::print()
                              << "| " << setw(40) << left << symbol->mangled_name
                              << "| " << setw(20) << left << symbol->type.type_index
                              << "| " << setw(8)  << left << symbol->scope
-                             << "| " << setw(12) << left << symbol->offset << " |\n";
+                             << "| " << setw(12) << left << symbol->offset;
+            cout << "| ";
+            if (symbol->type.is_function)
+            {
+                
+                for (const auto args : symbol->type.arg_types)
+                {
+                    cout << setw(12) << left << args.type_index;
+                }
+                
+            }
+            cout << "\n";
                     }
                 }
             }
         }
+    
     }
 
     cout << "------------------------------------------------------------------------------------------------------------------------\n";

@@ -745,10 +745,17 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
                     sym = dt->type_definition->type_symbol_table.getSymbol(P->base_expression->member_name->value);
                 }
             }
-            else
-                sym = symbolTable.getSymbol(P->primary_expression->identifier->value);
-            if (sym == nullptr)
-            {
+            else{
+                debug(P->primary_expression->identifier->value);
+                for (auto a : arguments)
+                {
+                    debug(a.type_index);
+                }
+                sym = symbolTable.getFunction(P->primary_expression->identifier->value, arguments);
+                if (sym == nullptr)
+                    sym = symbolTable.getSameTypeFunction(P->primary_expression->identifier->value, arguments);
+            }
+            if (sym == nullptr) {
                 P->type = ERROR_TYPE;
                 string error_msg = "Function " + P->primary_expression->identifier->value + " not found";
                 yyerror(error_msg.c_str());
@@ -764,6 +771,8 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
                 symbolTable.set_error();
                 return P;
             }
+            else {
+                P->type = sym->type;
             else
             {
                 P->type = x->type;
@@ -772,6 +781,9 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
                 P->type.arg_types.clear();
                 P->result = new_temp_var(); // TAC
                 TACInstruction* i1;
+                if(argument_expression_list != nullptr)P->code.insert(P->code.begin(),argument_expression_list->code.begin(),argument_expression_list->code.end()); // TAC
+                if (sym->type.type_index == PrimitiveTypes::VOID_T){
+                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_constant(""), x->result, new_constant(to_string(arguments.size())), 0); // TAC
                 if(argument_expression_list != nullptr){
                     P->code.insert(P->code.begin(),argument_expression_list->code.begin(),argument_expression_list->code.end()); // TAC
                     vector<string> arg_results;
