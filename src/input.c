@@ -224,12 +224,19 @@
 // }
 
 // int arr[5];
-void func(int x){
-    x++;
-}
+// void func(int x){
+//     x++;
+// }
+
+// int main(){
+//     int x = 1;
+//     func(x);
+//     return 0;
+// }
 
 int main(){
-    int x = 1;
-    func(x);
+    short x = 0xF;
+    short y = -2;
+    short z = x + y;
     return 0;
 }

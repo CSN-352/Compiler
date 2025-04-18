@@ -10,6 +10,7 @@
 #include <vector>
 #include <utility>
 #include <iterator>
+#include <string>
 
 #include "parser.tab.h"
 #include "symbol_table.h"
@@ -148,6 +149,18 @@ bool Type::isIntorFloat()
 bool Type::isUnsigned()
 {
     if (type_index == 0 || type_index == 2 || type_index == 4 || type_index == 6 || type_index == 8)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool Type::isSigned()
+{
+    if (type_index == 1 || type_index == 3 || type_index == 5 || type_index == 7 || type_index == 9)
     {
         return true;
     }
@@ -2641,6 +2654,13 @@ Constant::Constant(string name, string value, unsigned int line_no, unsigned int
 {
     this->constant_type = this->set_constant_type(value);
     this->value = this->convert_to_decimal();
+    string new_value = "";
+    // preserve only numerical values in the constant
+    for(char c : this->value){
+        if(!isalpha(c)) new_value += c;
+        else cout<<"HELLO"<<endl;
+    }
+    this->value = new_value;
 }
 
 Type Constant::set_constant_type(string value)
@@ -2719,6 +2739,7 @@ Type Constant::set_constant_type(string value)
             t.type_index = PrimitiveTypes::DOUBLE_T;
         }
     }
+
     else
     {
         string error_msg = "Invalid type: " + name;

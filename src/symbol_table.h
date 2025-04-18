@@ -223,6 +223,7 @@ public:
     bool isFloat();
     bool isIntorFloat();
     bool isUnsigned();
+    bool isSigned();
     bool isPointer();
     bool is_error();
     void make_signed();
