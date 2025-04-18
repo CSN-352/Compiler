@@ -98,6 +98,8 @@ std::string get_opcode_name(MIPSOpcode opcode) {
     switch (opcode) {
         case MIPSOpcode::ADD:      return "ADD";
         case MIPSOpcode::ADDU:     return "ADDU";
+        case MIPSOpcode::ADD_S:    return "ADD.S";
+        case MIPSOpcode::ADD_D:    return "ADD.D";
         case MIPSOpcode::SUB:      return "SUB";
         case MIPSOpcode::SUBU:     return "SUBU";
         case MIPSOpcode::MUL:      return "MUL";
@@ -854,6 +856,62 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(cvt_instr); 
             mips_code_text.push_back(move_instr); // Emit move instruction
         }
+    }
+    else if(op == "add"){
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
+        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
+
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            emit_instruction("load", src2, src2, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister src2_reg = get_register_for_operand(src2); // Get a register for the source 2
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction add_instr(MIPSOpcode::ADDU, dest_reg, src1_reg, src2_reg); // Add the two registers
+            mips_code_text.push_back(add_instr); // Emit add instruction
+        }
+        else if(dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T || dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T){
+            emit_instruction("load", src1+"_hi", src1+"_hi", ""); // Load the source value into a register
+            emit_instruction("load", src1+"_lo", src1+"_lo", ""); // Load the source value into a register
+            emit_instruction("load", src2+"_hi", src2+"_hi", ""); // Load the source value into a register
+            emit_instruction("load", src2+"_lo", src2+"_lo", ""); // Load the source value into a register
+            MIPSRegister src1_reg_hi = get_register_for_operand(src1+"_hi"); // Get a register for the source 1 hi
+            MIPSRegister src1_reg_lo = get_register_for_operand(src1+"_lo"); // Get a register for the source 1 lo
+            MIPSRegister src2_reg_hi = get_register_for_operand(src2+"_hi"); // Get a register for the source 2 hi
+            MIPSRegister src2_reg_lo = get_register_for_operand(src2+"_lo"); // Get a register for the source 2 lo
+            MIPSRegister dest_reg_hi = get_register_for_operand(dest+"_hi", true); // Get a register for the destination hi
+            MIPSRegister dest_reg_lo = get_register_for_operand(dest+"_lo", true); // Get a register for the destination lo
+            MIPSInstruction add_instr_lo(MIPSOpcode::ADDU, dest_reg_lo, src1_reg_lo, src2_reg_lo); // Add the two registers lo
+            mips_code_text.push_back(add_instr_lo); // Emit add instruction for lo
+            emit_instruction("sltu", "carry", dest+"_lo", src1+"_lo"); // Set carry register if overflow occurs
+            MIPSRegister carry_reg = get_register_for_operand("carry"); // Get a register for the carry
+            MIPSInstruction add_instr_hi(MIPSOpcode::ADDU, dest_reg_hi, src1_reg_hi, src2_reg_hi); // Add the two registers hi
+            MIPSInstruction add_carry_instr(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, carry_reg); // Add the carry to the hi register
+            mips_code_text.push_back(add_instr_hi); // Emit add instruction for hi
+            mips_code_text.push_back(add_carry_instr); // Emit add instruction for carry
+        }
+        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            emit_instruction("load", src2, src2, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister src2_reg = get_float_register_for_operand(src2); // Get a register for the source 2
+            MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction add_instr(MIPSOpcode::ADD_S, dest_reg, src1_reg, src2_reg); // Add the two registers
+            mips_code_text.push_back(add_instr); // Emit add instruction
+        }
+        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            emit_instruction("load", src2, src2, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
+            MIPSRegister src2_reg = get_float_register_for_operand(src2, false, true); // Get a register for the source 2
+            MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
+            MIPSInstruction add_instr(MIPSOpcode::ADD_D, dest_reg, src1_reg, src2_reg); // Add the two registers
+            mips_code_text.push_back(add_instr); // Emit add instruction
+        }
+    }
+    else if(op == "sub"){
+        // To implement
     }
 
 }
