@@ -248,7 +248,7 @@ void print_descriptors() {
 
 std::unordered_map<int, std::string> leader_labels_map;
 // to be changed.
-void set_leader_labels(vector<TACInstruction*> TAC_CODE) {
+void set_leader_labels() {
     std::unordered_set<int> leader_lines;
     // std::vector<std::pair<int, std::string>> instructions;
 
@@ -1358,37 +1358,47 @@ bool check_immediate(const string& immediate) {
 }
 
 // ===================== MIPS Code Printing ===================//
+vector<string> parameters_emit_instrcution(TACInstruction* instr){
+    vector<string> emit_instruction_args(4,"");
+    if(instr->op.type == TACOperatorType::TAC_OPERATOR_ASSIGN){
+        emit_instruction_args[0] = "load";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+    }
+    return emit_instruction_args;
+}
+
+void initalize_mips_code_vectors(){
+    for(int instr_no=0; instr_no<TAC_CODE.size(); instr_no++){
+        TACInstruction* instr = TAC_CODE[instr_no];
+        vector<string> emit_instruction_args = parameters_emit_instrcution(instr);
+        emit_instruction(emit_instruction_args[0],emit_instruction_args[1],emit_instruction_args[2],emit_instruction_args[3]);
+    }
+}
 
 void print_mips_code() {
-    // correct this code....
-    // for (const auto& instr : mips_code) {
-    //     // Print label if present
-    //     if (!instr.label.empty()) {
-    //         std::cout << instr.label << ":\n";
-    //         continue;
-    //     }
+    // Printing bss section
+    cout<< ".bss" << endl;
+    for(int instr_no=0;instr_no<mips_code_bss.size();instr_no++){
+        MIPSDataInstruction instr = mips_code_bss[instr_no];
+        cout<<instr.label<<": ."<<instr.directive<<" "<<instr.value;
+    }
+    cout<<endl;
 
-    //     std::string opcode_str = get_opcode_name(instr.opcode);
-    //     std::string rd_str = get_mips_register_name(instr.rd);
-    //     std::string rs_str = get_mips_register_name(instr.rs);
-    //     std::string rt_str = get_mips_register_name(instr.rt);
+    // Printing data section
+    cout<< ".data" << endl;
+    for(int instr_no=0;instr_no<mips_code_data.size();instr_no++){
+        MIPSDataInstruction instr = mips_code_data[instr_no];
+        cout<<instr.label<<": ."<<instr.directive<<" "<<instr.value;
+    }
+    cout<<endl;
 
-    //     // Load/store style: rt, offset(rs)
-    //     if (!instr.immediate.empty() && instr.rs != MIPSRegister::ZERO) {
-    //         std::cout << "    " << opcode_str << " " << rt_str << ", " << instr.immediate << "(" << rs_str << ")\n";
-    //     }
-    //     // 3-register instruction: rd, rs, rt
-    //     else if (instr.rt != MIPSRegister::ZERO) {
-    //         std::cout << "    " << opcode_str << " " << rd_str << ", " << rs_str << ", " << rt_str << "\n";
-    //     }
-    //     // 2-register or immediate instruction
-    //     else {
-    //         std::cout << "    " << opcode_str;
-    //         if (instr.rd != MIPSRegister::ZERO) std::cout << " " << rd_str;
-    //         if (instr.rs != MIPSRegister::ZERO) std::cout << ", " << rs_str;
-    //         if (!instr.immediate.empty()) std::cout << ", " << instr.immediate;
-    //         std::cout << "\n";
-    //     }
-    // }
+    // Printing rodata section
+    cout<< ".rodata" << endl;
+    for(int instr_no=0;instr_no<mips_code_rodata.size();instr_no++){
+        MIPSDataInstruction instr = mips_code_rodata[instr_no];
+        cout<<instr.label<<": ."<<instr.directive<<" "<<instr.value;
+    }
+    cout<<endl;
 }
 
