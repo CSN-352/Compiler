@@ -51,6 +51,8 @@ std::string get_mips_register_name(MIPSRegister reg) {
         case MIPSRegister::SP: return "$sp";
         case MIPSRegister::FP: return "$fp";
         case MIPSRegister::RA: return "$ra";
+        case MIPSRegister::HI: return "$hi";
+        case MIPSRegister::LO: return "$lo";
 
         // Floating Point Registers
         case MIPSRegister::F0: return "$f0";
@@ -399,6 +401,10 @@ MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, const std::s
 // Constructor for move instructions (e.g., move rd, rs)
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src)
     : opcode(opc), rd(dest), rs(src), rt(MIPSRegister::ZERO), immediate(""), label("") {}
+
+// Constructor for mflo, mfhi instructions
+MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest)
+    : opcode(opc), rd(dest) , rs(MIPSRegister::ZERO), rt(MIPSRegister::ZERO), immediate(""), label("") {}
 
 // Constructor for label-only instruction
 MIPSInstruction::MIPSInstruction(const std::string& lbl)
@@ -914,6 +920,10 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "sub"){ // sub instruction
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
+        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
+
         if (dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T) {
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -964,7 +974,143 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction sub_instr(MIPSOpcode::SUB_D, dest_reg, src1_reg, src2_reg); // Add the two registers
             mips_code_text.push_back(sub_instr); // Emit add instruction
         }
-        
+    }
+    else if(op == "mul"){ // mul instruction
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
+        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
+
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            emit_instruction("load", src2, src2, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister src2_reg = get_register_for_operand(src2); // Get a register for the source 2
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction mul_instr(MIPSOpcode::MUL, src1_reg, src2_reg); // Multiply the two registers
+            mips_code_text.push_back(mul_instr); // Emit mul instruction
+        }
+        else if(dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T ){
+            emit_instruction("load", src1+"_lo", src1+"_lo", ""); // Load the source value into a register
+            emit_instruction("load", src2+"_lo", src2+"_lo", ""); // Load the source value into a register
+            emit_instruction("load", src1+"_hi", src1+"_hi", ""); // Load the source value into a register
+            emit_instruction("load", src2+"_hi", src2+"_hi", ""); // Load the source value into a register
+            MIPSRegister src1_reg_lo = get_register_for_operand(src1+"_lo"); // Get a register for the source 1 lo
+            MIPSRegister src2_reg_lo = get_register_for_operand(src2+"_lo"); // Get a register for the source 2 lo
+            MIPSRegister src1_reg_hi = get_register_for_operand(src1+"_hi"); // Get a register for the source 1 hi
+            MIPSRegister src2_reg_hi = get_register_for_operand(src2+"_hi"); // Get a register for the source 2 hi
+            MIPSRegister dest_reg_lo = get_register_for_operand(dest+"_lo", true); // Get a register for the destination lo
+            MIPSRegister dest_reg_hi = get_register_for_operand(dest+"_hi", true); // Get a register for the destination hi
+            MIPSRegister carry_reg = get_register_for_operand("carry", true); // Get a register for the carry
+            MIPSRegister temp_reg = get_register_for_operand("temp"); // Temporary register for upper bits of multiplication
+            // set carry to 0
+            emit_instruction("andi", "carry", "carry", "0"); // Set carry to 0
+            // set dest_hi to 0
+            emit_instruction("andi", dest+"_hi", dest+"_hi", "0"); // Set dest_hi to 0
+            // t1 = src1_lo * src2_lo
+            MIPSInstruction mul_instr_1(MIPSOpcode::MULTU, src1_reg_lo, src2_reg_lo); // Multiply the two registers
+            mips_code_text.push_back(mul_instr_1); // Emit mul instruction
+            MIPSInstruction mflo_instr_1(MIPSOpcode::MFLO, dest_reg_lo); // Move the result to the destination lo register
+            mips_code_text.push_back(mflo_instr_1); // Emit move instruction
+            MIPSInstruction mfhi_instr_1(MIPSOpcode::MFHI, temp_reg); // Move Carry from src1_lo * src2_lo to temp register
+            mips_code_text.push_back(mfhi_instr_1); // Emit move instruction
+            MIPSInstruction add_to_carry_instr_1(MIPSOpcode::ADDU, carry_reg, carry_reg, temp_reg); // Add the carry from src1_lo * src2_lo to the carry register
+            mips_code_text.push_back(add_to_carry_instr_1); // Emit add instruction for carry
+            // t2 =  src1_lo * src2_hi
+            MIPSInstruction mul_instr_2(MIPSOpcode::MULTU, src1_reg_lo, src2_reg_hi); // Multiply the two registers
+            mips_code_text.push_back(mul_instr_2); // Emit mul instruction
+            MIPSInstruction mflo_instr_2(MIPSOpcode::MFLO, temp_reg); // Move the result to the temporary register
+            mips_code_text.push_back(mflo_instr_2); // Emit move instruction
+            MIPSInstruction add_to_carry_instr_2(MIPSOpcode::ADDU, carry_reg, carry_reg, temp_reg); // Add the carry from src1_lo * src2_hi to the carry register
+            mips_code_text.push_back(add_to_carry_instr_2); // Emit add instruction for carry
+            MIPSInstruction mfhi_instr_2(MIPSOpcode::MFHI, temp_reg); // Move Carry from src1_lo * src2_hi to temp register
+            mips_code_text.push_back(mfhi_instr_2); // Emit move instruction
+            MIPSInstruction add_to_dest_hi_instr_1(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, temp_reg); // Add the carry from src1_lo * src2_hi to the destination hi register
+            mips_code_text.push_back(add_to_dest_hi_instr_1); // Emit add instruction for carry
+            // t3 = src1_hi * src2_lo
+            MIPSInstruction mul_instr_3(MIPSOpcode::MULTU, src1_reg_hi, src2_reg_lo); // Multiply the two registers
+            mips_code_text.push_back(mul_instr_3); // Emit mul instruction
+            MIPSInstruction mflo_instr_3(MIPSOpcode::MFLO, temp_reg); // Move the result to the temporary register
+            mips_code_text.push_back(mflo_instr_3); // Emit move instruction
+            MIPSInstruction add_to_carry_instr_3(MIPSOpcode::ADDU, carry_reg, carry_reg, temp_reg); // Add the carry from src1_hi * src2_lo to the carry register
+            mips_code_text.push_back(add_to_carry_instr_3); // Emit add instruction for carry
+            MIPSInstruction mfhi_instr_3(MIPSOpcode::MFHI, temp_reg); // Move Carry from src1_hi * src2_lo to temp register
+            mips_code_text.push_back(mfhi_instr_3); // Emit move instruction
+            MIPSInstruction add_to_dest_hi_instr_2(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, temp_reg); // Add the carry from src1_hi * src2_lo to the destination hi register
+            mips_code_text.push_back(add_to_dest_hi_instr_2); // Emit add instruction for carry
+            // add carry to dest_hi
+            MIPSInstruction add_carry_instr(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, carry_reg); // Add the carry to the hi register
+            mips_code_text.push_back(add_carry_instr); // Emit add instruction for carry
+        }
+        else if(dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T){
+            emit_instruction("load", src1+"_lo", src1+"_lo", ""); // Load the source value into a register
+            emit_instruction("load", src2+"_lo", src2+"_lo", ""); // Load the source value into a register
+            emit_instruction("load", src1+"_hi", src1+"_hi", ""); // Load the source value into a register
+            emit_instruction("load", src2+"_hi", src2+"_hi", ""); // Load the source value into a register
+            MIPSRegister src1_reg_lo = get_register_for_operand(src1+"_lo"); // Get a register for the source 1 lo
+            MIPSRegister src2_reg_lo = get_register_for_operand(src2+"_lo"); // Get a register for the source 2 lo
+            MIPSRegister src1_reg_hi = get_register_for_operand(src1+"_hi"); // Get a register for the source 1 hi
+            MIPSRegister src2_reg_hi = get_register_for_operand(src2+"_hi"); // Get a register for the source 2 hi
+            MIPSRegister dest_reg_lo = get_register_for_operand(dest+"_lo", true); // Get a register for the destination lo
+            MIPSRegister dest_reg_hi = get_register_for_operand(dest+"_hi", true); // Get a register for the destination hi
+            MIPSRegister carry_reg = get_register_for_operand("carry", true); // Get a register for the carry
+            MIPSRegister temp_reg = get_register_for_operand("temp"); // Temporary register for upper bits of multiplication
+            // set carry to 0
+            emit_instruction("andi", "carry", "carry", "0"); // Set carry to 0
+            // set dest_hi to 0
+            emit_instruction("andi", dest+"_hi", dest+"_hi", "0"); // Set dest_hi to 0
+            // t1 = src1_lo * src2_lo
+            MIPSInstruction mul_instr_1(MIPSOpcode::MULT, src1_reg_lo, src2_reg_lo); // Multiply the two registers
+            mips_code_text.push_back(mul_instr_1); // Emit mul instruction
+            MIPSInstruction mflo_instr_1(MIPSOpcode::MFLO, dest_reg_lo); // Move the result to the destination lo register
+            mips_code_text.push_back(mflo_instr_1); // Emit move instruction
+            MIPSInstruction mfhi_instr_1(MIPSOpcode::MFHI, temp_reg); // Move Carry from src1_lo * src2_lo to temp register
+            mips_code_text.push_back(mfhi_instr_1); // Emit move instruction
+            MIPSInstruction add_to_carry_instr_1(MIPSOpcode::ADDU, carry_reg, carry_reg, temp_reg); // Add the carry from src1_lo * src2_lo to the carry register
+            mips_code_text.push_back(add_to_carry_instr_1); // Emit add instruction for carry
+            // t2 =  src1_lo * src2_hi
+            MIPSInstruction mul_instr_2(MIPSOpcode::MULT, src1_reg_lo, src2_reg_hi); // Multiply the two registers
+            mips_code_text.push_back(mul_instr_2); // Emit mul instruction
+            MIPSInstruction mflo_instr_2(MIPSOpcode::MFLO, temp_reg); // Move the result to the temporary register
+            mips_code_text.push_back(mflo_instr_2); // Emit move instruction
+            MIPSInstruction add_to_carry_instr_2(MIPSOpcode::ADDU, carry_reg, carry_reg, temp_reg); // Add the carry from src1_lo * src2_hi to the carry register
+            mips_code_text.push_back(add_to_carry_instr_2); // Emit add instruction for carry
+            MIPSInstruction mfhi_instr_2(MIPSOpcode::MFHI, temp_reg); // Move Carry from src1_lo * src2_hi to temp register
+            mips_code_text.push_back(mfhi_instr_2); // Emit move instruction
+            MIPSInstruction add_to_dest_hi_instr_1(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, temp_reg); // Add the carry from src1_lo * src2_hi to the destination hi register
+            mips_code_text.push_back(add_to_dest_hi_instr_1); // Emit add instruction for carry
+            // t3 = src1_hi * src2_lo
+            MIPSInstruction mul_instr_3(MIPSOpcode::MULT, src1_reg_hi, src2_reg_lo); // Multiply the two registers
+            mips_code_text.push_back(mul_instr_3); // Emit mul instruction
+            MIPSInstruction mflo_instr_3(MIPSOpcode::MFLO, temp_reg); // Move the result to the temporary register
+            mips_code_text.push_back(mflo_instr_3); // Emit move instruction
+            MIPSInstruction add_to_carry_instr_3(MIPSOpcode::ADDU, carry_reg, carry_reg, temp_reg); // Add the carry from src1_hi * src2_lo to the carry register
+            mips_code_text.push_back(add_to_carry_instr_3); // Emit add instruction for carry
+            MIPSInstruction mfhi_instr_3(MIPSOpcode::MFHI, temp_reg); // Move Carry from src1_hi * src2_lo to temp register
+            mips_code_text.push_back(mfhi_instr_3); // Emit move instruction
+            MIPSInstruction add_to_dest_hi_instr_2(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, temp_reg); // Add the carry from src1_hi * src2_lo to the destination hi register
+            mips_code_text.push_back(add_to_dest_hi_instr_2); // Emit add instruction for carry
+            // add carry to dest_hi
+            MIPSInstruction add_carry_instr(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, carry_reg); // Add the carry to the hi register
+            mips_code_text.push_back(add_carry_instr); // Emit add instruction for carry
+        }
+        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            emit_instruction("load", src2, src2, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister src2_reg = get_float_register_for_operand(src2); // Get a register for the source 2
+            MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction mul_instr(MIPSOpcode::MUL_S, dest_reg, src1_reg, src2_reg); // Multiply the two registers
+            mips_code_text.push_back(mul_instr); // Emit mul instruction
+        }
+        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            emit_instruction("load", src2, src2, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
+            MIPSRegister src2_reg = get_float_register_for_operand(src2, false, true); // Get a register for the source 2
+            MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
+            MIPSInstruction mul_instr(MIPSOpcode::MUL_D, dest_reg, src1_reg, src2_reg); // Multiply the two registers
+            mips_code_text.push_back(mul_instr); // Emit mul instruction
+        }
     }
 
 }
