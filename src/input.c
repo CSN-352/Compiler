@@ -234,9 +234,29 @@
 //     return 0;
 // }
 
-int main(){
-    short x = 0xF;
-    short y = -2;
-    short z = x + y;
-    return 0;
+// int main(){
+//     short x = 0xF;
+//     short y = -2;
+//     short z = x + y;
+//     return 0;
+// }
+
+// char x = '\n';
+// int y = 5;
+// long long z= 10000000000;
+// float f = 3.14;
+// double d = 3.14;
+// char* s = "Hello, World!";
+// char c;
+
+int sub(int a, int b) {
+    int diff = a - b;
+    return diff;
 }
+
+int add(int a, int b) {
+    int sum = a + b;
+    return sum;
+}
+breakpoint_global;
+

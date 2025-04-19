@@ -62,9 +62,9 @@ enum TACOperatorType {
     // Arithmetic Operators
     TAC_OPERATOR_ADD = 0,        // + #codegen done (add)
     TAC_OPERATOR_SUB,        // - #codegen done (sub)
-    TAC_OPERATOR_MUL,        // *
-    TAC_OPERATOR_DIV,        // /
-    TAC_OPERATOR_MOD,        // %
+    TAC_OPERATOR_MUL,        // * #codegen done (mul)
+    TAC_OPERATOR_DIV,        // / #codegen done (div)
+    TAC_OPERATOR_MOD,        // % #codegen done (mod)
     TAC_OPERATOR_UMINUS,     // Unary minus (-x)
 
     // Relational Operators
@@ -76,7 +76,7 @@ enum TACOperatorType {
     TAC_OPERATOR_LE,         // <=
 
     // Logical Operators
-    TAC_OPERATOR_AND,        // &&
+    TAC_OPERATOR_AND,        // && 
     TAC_OPERATOR_OR,         // ||
     TAC_OPERATOR_NOT,        // !
 

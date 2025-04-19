@@ -75,7 +75,7 @@ $(STATEMENT_O_FILE): $(SRC_DIR)/statement.cpp $(SRC_DIR)/statement.h | $(BUILD_D
 	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/statement.cpp -o $(STATEMENT_O_FILE) $(CFLAGS)
 
 # Compile codegen.cpp into codegen.o
-$(CODEGEN_O_FILE): $(SRC_DIR)/tac.cpp $(SRC_DIR)/tac.h | $(BUILD_DIR)
+$(CODEGEN_O_FILE): $(SRC_DIR)/tac.cpp $(SRC_DIR)/tac.h $(SRC_DIR)/codegen.cpp $(SRC_DIR)/codegen.h | $(BUILD_DIR)
 	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/codegen.cpp -o $(CODEGEN_O_FILE) $(CFLAGS)
 
 # Compile lex.yy.c into lex.yy.o
