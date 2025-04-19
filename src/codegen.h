@@ -8,6 +8,12 @@
 #include <iostream>
 #include <symbol_table.h>
 
+// =================== Symbol Table ===================//
+
+void initialize_global_symbol_table();
+void insert_function_symbol_table(const string& function_name);
+void erase_function_symbol_table(const string& function_name);
+
 //=================== MIPS Register Definitions ===================//
 
 enum MIPSRegister {
@@ -27,10 +33,10 @@ std::string get_mips_register_name(MIPSRegister reg);
 enum MIPSOpcode {
     // Arithmetic
     ADD, ADDU, SUB, SUBU,
-    MUL, MULT, MULTU, DIV, DIVU, ADD_S, ADD_D, SUB_S, SUB_D, MUL_S, MUL_D, DIV_S, DIV_D,
+    MUL, MULU, MULT, MULTU, DIV, DIVU, ADD_S, ADD_D, SUB_S, SUB_D, MUL_S, MUL_D, DIV_S, DIV_D,
 
     // Logical
-    AND, OR, XOR, NOR,
+    AND, ANDI, OR, XOR, NOR,
 
     // Shifts
     SLL, SRL, SRA,
@@ -115,6 +121,9 @@ public:
     // Constructor for immediate instructions (e.g., li, lui, la)
     MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, const std::string& imm);
 
+    // Constructor for immediate instructions with 2 registers (e.g., addi, andi, ori)
+    MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src, const std::string& imm);
+
     // Constructor for move instructions (e.g., move rd, rs)
     MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src);
 
@@ -163,10 +172,10 @@ unordered_map<string, string> immediate_storage_map; // Immediate storage map
 unordered_map<string, string> global_variable_storage_map; // Global variable storage map
 
 extern std::vector<MIPSDataInstruction> mips_code_data; // Data segment
-extern std::vector<MIPSDataInstruction> mips_code_rodata; // Read-only data segment
-extern std::vector<MIPSDataInstruction> mips_code_bss; // Uninitialized data segment
 
 void store_immediate(const string& immediate, Type type);
 bool check_immediate(const string& immediate);
+void store_global_variable_data(const string& var, Type type, const string& value);
+bool check_global_variable(const string& var);
 
 #endif // CODEGEN_UTILS_H
