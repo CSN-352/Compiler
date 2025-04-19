@@ -24,7 +24,7 @@ std::string get_mips_register_name(MIPSRegister reg);
 
 //=================== MIPS Opcode Definitions ===================//
 
-enum class MIPSOpcode {
+enum MIPSOpcode {
     // Arithmetic
     ADD, ADDU, SUB, SUBU,
     MUL, MULT, MULTU, DIV, DIVU, ADD_S, ADD_D, SUB_S, SUB_D, MUL_S, MUL_D, DIV_S, DIV_D,
@@ -71,8 +71,8 @@ std::string get_opcode_name(MIPSOpcode opcode);
 
 //=================== Descriptors ===================//
 
-extern std::unordered_map<MIPSRegister, std::unordered_set<std::string>> register_descriptor;
-extern std::unordered_map<std::string, std::unordered_set<std::string>> address_descriptor;
+extern std::unordered_map<MIPSRegister, std::unordered_set<std::string> > register_descriptor;
+extern std::unordered_map<std::string, std::unordered_set<std::string> > address_descriptor;
 
 void init_descriptors();
 bool check_if_variable_in_register(const std::string& var);
@@ -88,7 +88,7 @@ void print_descriptors();
 //=================== Leader Labels ===================//
 
 extern std::unordered_map<int, std::string> leader_labels_map;
-void set_leader_labels(const std::unordered_map<int, std::string>& leaders);
+void set_leader_labels(vector<TACInstruction*> TAC_CODE);
 
 //=================== Register Allocation ===================//
 

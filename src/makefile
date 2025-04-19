@@ -18,6 +18,7 @@ TAC_O_FILE = $(BUILD_DIR)/tac.o
 AST_O_FILE = $(BUILD_DIR)/ast.o
 EXPRESSION_O_FILE = $(BUILD_DIR)/expression.o
 STATEMENT_O_FILE = $(BUILD_DIR)/statement.o
+CODEGEN_O_FILE = $(BUILD_DIR)/codegen.o
 
 # Compiler and flags
 LEX = flex

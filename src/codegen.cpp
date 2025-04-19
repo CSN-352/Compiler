@@ -1,4 +1,5 @@
 #include "codegen.h"
+#include "tac.h"
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -180,7 +181,10 @@ void init_descriptors() {
 
 bool check_if_variable_in_register(const std::string& var){
     for (const auto& [reg, vars] : register_descriptor) {
-        if (vars.count(var)) return true;
+        if (vars.count(var)){
+            if(address_descriptor[var].count(get_mips_register_name(reg)))
+                return true;
+        }
     }
     return false;
 }
@@ -242,66 +246,79 @@ void print_descriptors() {
 }
 //=================== Leader Detection ===================//
 
-std::unordered_map<int, std::string> find_leaders_from_tac_file(const std::string& filename) {
-    std::ifstream infile(filename);
-    std::unordered_map<int, std::string> leader_labels;
+std::unordered_map<int, std::string> leader_labels_map;
+// to be changed.
+void set_leader_labels(vector<TACInstruction*> TAC_CODE) {
     std::unordered_set<int> leader_lines;
-    std::vector<std::pair<int, std::string>> instructions;
+    // std::vector<std::pair<int, std::string>> instructions;
 
-    if (!infile) {
-        std::cerr << "Error: Cannot open file " << filename << "\n";
-        return leader_labels;
-    }
+    if(TAC_CODE.empty()) return;
 
-    std::string line;
-    std::regex line_num_regex(R"(^(\d+):\s+(.*)$)");
-    std::smatch match;
+    leader_lines.insert(0);
 
-    while (std::getline(infile, line)) {
-        if (std::regex_match(line, match, line_num_regex)) {
-            int line_num = std::stoi(match[1]);
-            std::string instr = match[2];
-            instructions.emplace_back(line_num, instr);
-        }
-    }
-
-    if (!instructions.empty()) {
-        leader_lines.insert(instructions.front().first); // first instruction
-    }
-
-    for (size_t i = 0; i < instructions.size(); ++i) {
-        const std::string& instr = instructions[i].second;
-
-        if (instr.find("goto") != std::string::npos) {
-            std::smatch target_match;
-            if (std::regex_search(instr, target_match, std::regex(R"(goto\s+I(\d+))"))) {
-                int target = std::stoi(target_match[1]);
-                leader_lines.insert(target);
-            }
-            if (i + 1 < instructions.size()) {
-                leader_lines.insert(instructions[i + 1].first);
-            }
+    for(int instr_no = 0; instr_no<TAC_CODE.size();instr_no++){
+        TACInstruction* instr = TAC_CODE[instr_no];
+        if(instr->flag == 1){
+            std::string label = get_operand_string(instr->result);
+            int num = std::stoi(label.substr(1));
+            leader_lines.insert(num);
+            if(instr_no + 1 < TAC_CODE.size()) leader_lines.insert(num+1);
+        } else if(instr->flag == 2){
+            std::string label = get_operand_string(instr->result);
+            int num = std::stoi(label.substr(1));
+            leader_lines.insert(num);
+        } else if(instr->op.type == TAC_OPERATOR_FUNC_BEGIN){
+            if(instr_no + 1 < TAC_CODE.size()) leader_lines.insert(instr_no+1);
         }
     }
 
     int label_counter = 0;
     for (int line_num : leader_lines) {
-        leader_labels[line_num] = "L" + std::to_string(label_counter++);
+        leader_labels_map[line_num] = "L" + std::to_string(label_counter++);
     }
 
-    return leader_labels;
+    return;
 }
 
 
 //=================== Register Management ===================//
 
-// Modify this so that register to be spilled is chosen cyclicly
-MIPSRegister get_register_for_operand(const std::string& var,bool for_result) {
-        // 1. Already in a register
-        for (const auto& [reg, vars] : register_descriptor) {
-            if (vars.count(var)) return reg;
+void spill_register(MIPSRegister reg) {
+    // Emit store instruction (ST) for each variable in the register
+    for (const auto& v : register_descriptor[reg]) {
+        if(address_descriptor[v].count("mem")){
+            continue;
+        } else {
+            emit_instruction("store",v,v,"");
+            if(address_descriptor[v].count(get_mips_register_name(reg))){
+                address_descriptor[v].erase(get_mips_register_name(reg));
+            }
+            address_descriptor[v].insert("mem");
         }
+    }
+    // Clear the register descriptor after spilling all its variables
+    register_descriptor[reg].clear();
+}
 
+// Modify this so that register to be spilled is chosen cyclicly
+MIPSRegister get_register_for_operand(const std::string& var,bool for_result=false) {
+
+    // 1. Already in a register
+    if(var.size()>0 && (var[0]=='#' || var[0]=='0') && !for_result){
+        for (const auto& [reg, vars] : register_descriptor) {
+            if (vars.count(var)){
+                if(address_descriptor[var].count(get_mips_register_name(reg)))
+                    return reg;
+            } 
+        }
+    } else if((var[0]=='#' || var[0]=='0') && for_result){
+        for (const auto& [reg, vars] : register_descriptor) {
+            if (vars.count(var) && vars.size() == 1){
+                if(address_descriptor[var].count(get_mips_register_name(reg)))
+                    return reg;
+            } 
+        }
+    }
         // 2. Empty register
         for (int r = T0; r <= T9; ++r) {
             MIPSRegister reg = static_cast<MIPSRegister>(r);
@@ -332,56 +349,139 @@ MIPSRegister get_register_for_operand(const std::string& var,bool for_result) {
         }
 
         // 4. Reuse a register if it holds only the result variable itself (var == v)
-        for (int r = T0; r <= T9; ++r) {
-            MIPSRegister reg = static_cast<MIPSRegister>(r);
-
-            bool all_same_as_var = true;
-            for (const auto& v : register_descriptor[reg]) {
-                if (v != var) {
-                    all_same_as_var = false;
-                    break;
-                }
-            }
-
-            if (all_same_as_var) {
-                register_descriptor[reg].clear();  // We can safely reuse it
-                address_descriptor[var].erase(get_mips_register_name(reg));
-                return reg;
-            }
-        }
 
         // 5. Spill case: Choose a register to spill if no safe register is available
-        // Let's assume T0 is the spill register for now
-        MIPSRegister spill_reg = T0;
+        // Maintain a cyclic count for getting spill register
+        static int reg_index = 0;
+        static const std::vector<MIPSRegister> allocatableRegs = {
+            T0, T1, T2, T3, T4, T5, T6, T7, T8, T9
+        };
+
+        MIPSRegister spill_reg = allocatableRegs[reg_index];
+        reg_index = (reg_index + 1) % allocatableRegs.size();
         
         // Call the spill_register function to handle the spilling
         spill_register(spill_reg);
 
         // Return the spill register (T0 in this case) after spilling
         return spill_reg;
-    
 }
 
+// MIPSRegister get_float_register_for_operand(const std::string& var, bool for_result = false, bool is_double = false) {
+//     static int float_index = 0;
+//     static int double_index = 0;
 
-MIPSRegister get_float_register_for_operand(const std::string& var, bool for_result, bool is_double){
-    // add logic for double and float register allocation
-}
+//     // Float: odd-numbered only
+//     static const std::vector<MIPSRegister> float_regs = {
+//         F1, F3, F5, F7, F9, F11, F13, F15,
+//         F17, F19, F21, F23, F25, F27, F29, F31
+//     };
 
-void spill_register(MIPSRegister reg) {
-    // Emit store instruction (ST) for each variable in the register
-    for (const auto& v : register_descriptor[reg]) {
-        // Generate store instruction to move variable `v` to memory
-        // Add instruction here
-        // std::cout << "ST " << v << ", " << get_mips_register_name(reg) << "\n"; // Placeholder for actual instruction generation
+//     // Double: even-numbered only (each one implies paired reg: fN and fN+1)
+//     static const std::vector<MIPSRegister> double_regs = {
+//         F0, F2, F4, F6, F8, F10, F12, F14,
+//         F16, F18, F20, F22, F24, F26, F28, F30
+//     };
 
-        // Update the address descriptor to mark the variable `v` as stored in memory
-        address_descriptor[v].erase(get_mips_register_name(reg));  // Remove from register
-        address_descriptor[v].insert("mem");  // Mark as in memory
-    }
+//     const std::vector<MIPSRegister>& regs = is_double ? double_regs : float_regs;
+//     int& index = is_double ? double_index : float_index;
 
-    // Clear the register descriptor after spilling all its variables
-    register_descriptor[reg].clear();
-}
+//     // 1. Already in a register
+//     if(var.size()>0 && (var[0]=='#' || var[0]=='0') && !for_result){
+//         for (const auto& [reg, vars] : register_descriptor) {
+//             if (vars.count(var)) {
+//                 if (address_descriptor[var].count(get_mips_register_name(reg))) {
+//                     return reg;
+//                 }
+//             }
+//         }
+//     } else if((var[0]=='#' || var[0]=='0') && for_result){
+//         for (const auto& [reg, vars] : register_descriptor) {
+//             if (vars.count(var) && vars.size() == 1){
+//                 if(address_descriptor[var].count(get_mips_register_name(reg)))
+//                     return reg;
+//             } 
+//         }
+//     }
+
+//     // 2. Find empty register
+//     for (MIPSRegister reg : regs) {
+//         if (is_double) {
+//             MIPSRegister next = static_cast<MIPSRegister>(static_cast<int>(reg) + 1);
+//             if (register_descriptor[reg].empty() && register_descriptor[next].empty()) {
+//                 return reg;
+//             }
+//         } else {
+//             if (register_descriptor[reg].empty()) {
+//                 return reg;
+//             }
+//         }
+//     }
+
+//     // 3. Reuse register if all vars are in memory
+//     for (MIPSRegister reg : regs) {
+//         bool safe = true;
+
+//         if (is_double) {
+//             MIPSRegister next = static_cast<MIPSRegister>(static_cast<int>(reg) + 1);
+//             for (const auto& v : register_descriptor[reg]) {
+//                 if (!address_descriptor[v].count("mem")) {
+//                     safe = false;
+//                     break;
+//                 }
+//             }
+//             for (const auto& v : register_descriptor[next]) {
+//                 if (!address_descriptor[v].count("mem")) {
+//                     safe = false;
+//                     break;
+//                 }
+//             }
+
+//             if (safe) {
+//                 for (const auto& v : register_descriptor[reg]) {
+//                     address_descriptor[v].erase(get_mips_register_name(reg));
+//                 }
+//                 register_descriptor[reg].clear();
+
+//                 for (const auto& v : register_descriptor[next]) {
+//                     address_descriptor[v].erase(get_mips_register_name(next));
+//                 }
+//                 register_descriptor[next].clear();
+
+//                 return reg;
+//             }
+//         } else {
+//             for (const auto& v : register_descriptor[reg]) {
+//                 if (!address_descriptor[v].count("mem")) {
+//                     safe = false;
+//                     break;
+//                 }
+//             }
+
+//             if (safe) {
+//                 for (const auto& v : register_descriptor[reg]) {
+//                     address_descriptor[v].erase(get_mips_register_name(reg));
+//                 }
+//                 register_descriptor[reg].clear();
+//                 return reg;
+//             }
+//         }
+//     }
+
+//     // 4. Spill cyclically
+//     MIPSRegister spill_reg = regs[index];
+//     index = (index + 1) % regs.size();
+
+//     if (is_double) {
+//         MIPSRegister next = static_cast<MIPSRegister>(static_cast<int>(spill_reg) + 1);
+//         spill_register(spill_reg);
+//         spill_register(next);
+//     } else {
+//         spill_register(spill_reg);
+//     }
+
+//     return spill_reg;
+// }
 
 
 //=================== MIPS Instruction Class ===================//
@@ -413,6 +513,71 @@ MIPSInstruction::MIPSInstruction(const std::string& lbl)
 // Constructor for standalone ops like SYSCALL, NOP
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc)
     : opcode(opc), rd(MIPSRegister::ZERO), rs(MIPSRegister::ZERO), rt(MIPSRegister::ZERO), immediate(""), label("") {}
+
+
+
+// ===================== Global Variable Storage ===================//
+
+
+bool store_global_variable_data(const string& var, Type type, const string& value) {
+    if(type.type_index == PrimitiveTypes::U_CHAR_T || type.type_index == PrimitiveTypes::CHAR_T){
+        if(type.ptr_level == 0){
+            global_variable_storage_map[var] = var;
+            string value_ascii = to_string((int)(value[0])); // Convert char to ASCII value
+            MIPSDataInstruction data_instr(var, MIPSDirective::BYTE, value_ascii); // char
+            mips_code_data.push_back(data_instr);
+        }
+        else if(type.ptr_level == 1){
+            global_variable_storage_map[var] = var;
+            MIPSDataInstruction data_instr(var, MIPSDirective::ASCIIZ, value); // string
+            mips_code_data.push_back(data_instr);
+        }
+    }
+    else if(type.type_index == PrimitiveTypes::U_SHORT_T || type.type_index == PrimitiveTypes::SHORT_T){
+        global_variable_storage_map[var] = var;
+        MIPSDataInstruction data_instr(var, MIPSDirective::HALF, value); // short
+        mips_code_data.push_back(data_instr);
+    }
+    else if(type.type_index >= PrimitiveTypes::U_INT_T && type.type_index <= PrimitiveTypes::LONG_T){
+        global_variable_storage_map[var] = var;
+        MIPSDataInstruction data_instr(var, MIPSDirective::WORD, value); // int
+        mips_code_data.push_back(data_instr);
+    }
+    else if(type.type_index == PrimitiveTypes::U_LONG_LONG_T || type.type_index == PrimitiveTypes::LONG_LONG_T){
+        string value_hi = to_string(stoll(value) >> 32);
+        string value_lo = to_string(stoll(value) & 0xFFFFFFFF);
+        global_variable_storage_map[var+"_hi"] = var + "_hi";
+        global_variable_storage_map[var+"_lo"] = var + "_lo";
+        // Store the upper and lower 32 bits of the long long value separately
+        MIPSDataInstruction data_instr1(var + "_hi", MIPSDirective::WORD, value_hi); // upper 32 bits of long long
+        MIPSDataInstruction data_instr2(var + "_lo", MIPSDirective::WORD, value_lo); // lower 32 bits of long long
+        mips_code_data.push_back(data_instr1);
+        mips_code_data.push_back(data_instr2);
+    }
+    else if(type.type_index == PrimitiveTypes::FLOAT_T){
+        global_variable_storage_map[var] = var;
+        MIPSDataInstruction data_instr(var, MIPSDirective::FLOAT, value); // float
+        mips_code_data.push_back(data_instr);
+    }
+    else if(type.type_index == PrimitiveTypes::DOUBLE_T || type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+        global_variable_storage_map[var] = var;
+        MIPSDataInstruction data_instr(var, MIPSDirective::DOUBLE, value); // double
+        mips_code_data.push_back(data_instr);
+    }
+}
+
+void store_global_variable_bss(const string& var, Type type){
+    global_variable_storage_map[var] = var;
+    MIPSDataInstruction data_instr(var, MIPSDirective::SPACE, to_string(type.get_size())); // Allocate space for the variable
+    mips_code_bss.push_back(data_instr);
+}
+    
+bool check_global_variable(const string& var) {
+    if(global_variable_storage_map.find(var) == global_variable_storage_map.end()){
+        return false;
+    }
+    return true;
+}
 
 //=================== MIPS Instruction Emission ===================//
 
@@ -1184,68 +1349,6 @@ void store_immediate(const string& immediate, Type type) {
 
 bool check_immediate(const string& immediate) {
     if(immediate_storage_map.find(immediate) == immediate_storage_map.end()){
-        return false;
-    }
-    return true;
-}
-
-// ===================== Global Variable Storage ===================//
-
-bool store_global_variable_data(const string& var, Type type, const string& value) {
-    if(type.type_index == PrimitiveTypes::U_CHAR_T || type.type_index == PrimitiveTypes::CHAR_T){
-        if(type.ptr_level == 0){
-            global_variable_storage_map[var] = var;
-            string value_ascii = to_string((int)(value[0])); // Convert char to ASCII value
-            MIPSDataInstruction data_instr(var, MIPSDirective::BYTE, value_ascii); // char
-            mips_code_data.push_back(data_instr);
-        }
-        else if(type.ptr_level == 1){
-            global_variable_storage_map[var] = var;
-            MIPSDataInstruction data_instr(var, MIPSDirective::ASCIIZ, value); // string
-            mips_code_data.push_back(data_instr);
-        }
-    }
-    else if(type.type_index == PrimitiveTypes::U_SHORT_T || type.type_index == PrimitiveTypes::SHORT_T){
-        global_variable_storage_map[var] = var;
-        MIPSDataInstruction data_instr(var, MIPSDirective::HALF, value); // short
-        mips_code_data.push_back(data_instr);
-    }
-    else if(type.type_index >= PrimitiveTypes::U_INT_T && type.type_index <= PrimitiveTypes::LONG_T){
-        global_variable_storage_map[var] = var;
-        MIPSDataInstruction data_instr(var, MIPSDirective::WORD, value); // int
-        mips_code_data.push_back(data_instr);
-    }
-    else if(type.type_index == PrimitiveTypes::U_LONG_LONG_T || type.type_index == PrimitiveTypes::LONG_LONG_T){
-        string value_hi = to_string(stoll(value) >> 32);
-        string value_lo = to_string(stoll(value) & 0xFFFFFFFF);
-        global_variable_storage_map[var+"_hi"] = var + "_hi";
-        global_variable_storage_map[var+"_lo"] = var + "_lo";
-        // Store the upper and lower 32 bits of the long long value separately
-        MIPSDataInstruction data_instr1(var + "_hi", MIPSDirective::WORD, value_hi); // upper 32 bits of long long
-        MIPSDataInstruction data_instr2(var + "_lo", MIPSDirective::WORD, value_lo); // lower 32 bits of long long
-        mips_code_data.push_back(data_instr1);
-        mips_code_data.push_back(data_instr2);
-    }
-    else if(type.type_index == PrimitiveTypes::FLOAT_T){
-        global_variable_storage_map[var] = var;
-        MIPSDataInstruction data_instr(var, MIPSDirective::FLOAT, value); // float
-        mips_code_data.push_back(data_instr);
-    }
-    else if(type.type_index == PrimitiveTypes::DOUBLE_T || type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
-        global_variable_storage_map[var] = var;
-        MIPSDataInstruction data_instr(var, MIPSDirective::DOUBLE, value); // double
-        mips_code_data.push_back(data_instr);
-    }
-}
-
-void store_global_variable_bss(const string& var, Type type){
-    global_variable_storage_map[var] = var;
-    MIPSDataInstruction data_instr(var, MIPSDirective::SPACE, to_string(type.get_size())); // Allocate space for the variable
-    mips_code_bss.push_back(data_instr);
-}
-    
-bool check_global_variable(const string& var) {
-    if(global_variable_storage_map.find(var) == global_variable_storage_map.end()){
         return false;
     }
     return true;
