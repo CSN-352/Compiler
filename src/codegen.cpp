@@ -301,7 +301,7 @@ void spill_register(MIPSRegister reg) {
 }
 
 // Modify this so that register to be spilled is chosen cyclicly
-MIPSRegister get_register_for_operand(const std::string& var,bool for_result=false) {
+MIPSRegister get_register_for_operand(const std::string& var,bool for_result) {
 
     // 1. Already in a register
     if(var.size()>0 && (var[0]=='#' || var[0]=='0') && !for_result){
@@ -367,24 +367,24 @@ MIPSRegister get_register_for_operand(const std::string& var,bool for_result=fal
         return spill_reg;
 }
 
-// MIPSRegister get_float_register_for_operand(const std::string& var, bool for_result = false, bool is_double = false) {
-//     static int float_index = 0;
-//     static int double_index = 0;
+MIPSRegister get_float_register_for_operand(const std::string& var, bool for_result, bool is_double) {
+    static int float_index = 0;
+    static int double_index = 0;
 
-//     // Float: odd-numbered only
-//     static const std::vector<MIPSRegister> float_regs = {
-//         F1, F3, F5, F7, F9, F11, F13, F15,
-//         F17, F19, F21, F23, F25, F27, F29, F31
-//     };
+    // Float: odd-numbered only
+    static const std::vector<MIPSRegister> float_regs = {
+        F1, F3, F5, F7, F9, F11, F13, F15,
+        F17, F19, F21, F23, F25, F27, F29, F31
+    };
 
-//     // Double: even-numbered only (each one implies paired reg: fN and fN+1)
-//     static const std::vector<MIPSRegister> double_regs = {
-//         F0, F2, F4, F6, F8, F10, F12, F14,
-//         F16, F18, F20, F22, F24, F26, F28, F30
-//     };
+    // Double: even-numbered only (each one implies paired reg: fN and fN+1)
+    static const std::vector<MIPSRegister> double_regs = {
+        F0, F2, F4, F6, F8, F10, F12, F14,
+        F16, F18, F20, F22, F24, F26, F28, F30
+    };
 
-//     const std::vector<MIPSRegister>& regs = is_double ? double_regs : float_regs;
-//     int& index = is_double ? double_index : float_index;
+    const std::vector<MIPSRegister>& regs = is_double ? double_regs : float_regs;
+    int& index = is_double ? double_index : float_index;
 
 //     // 1. Already in a register
 //     if(var.size()>0 && (var[0]=='#' || var[0]=='0') && !for_result){
@@ -469,19 +469,19 @@ MIPSRegister get_register_for_operand(const std::string& var,bool for_result=fal
 //     }
 
 //     // 4. Spill cyclically
-//     MIPSRegister spill_reg = regs[index];
-//     index = (index + 1) % regs.size();
+    MIPSRegister spill_reg = regs[index];
+    index = (index + 1) % regs.size();
 
-//     if (is_double) {
-//         MIPSRegister next = static_cast<MIPSRegister>(static_cast<int>(spill_reg) + 1);
-//         spill_register(spill_reg);
-//         spill_register(next);
-//     } else {
-//         spill_register(spill_reg);
-//     }
+    if (is_double) {
+        MIPSRegister next = static_cast<MIPSRegister>(static_cast<int>(spill_reg) + 1);
+        spill_register(spill_reg);
+        spill_register(next);
+    } else {
+        spill_register(spill_reg);
+    }
 
-//     return spill_reg;
-// }
+    return spill_reg;
+}
 
 
 //=================== MIPS Instruction Class ===================//
@@ -514,10 +514,11 @@ MIPSInstruction::MIPSInstruction(const std::string& lbl)
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc)
     : opcode(opc), rd(MIPSRegister::ZERO), rs(MIPSRegister::ZERO), rt(MIPSRegister::ZERO), immediate(""), label("") {}
 
-
-
 // ===================== Global Variable Storage ===================//
 
+std::vector<MIPSDataInstruction> mips_code_data;
+std::vector<MIPSDataInstruction> mips_code_rodata;
+std::vector<MIPSDataInstruction> mips_code_bss;
 
 bool store_global_variable_data(const string& var, Type type, const string& value) {
     if(type.type_index == PrimitiveTypes::U_CHAR_T || type.type_index == PrimitiveTypes::CHAR_T){
@@ -580,6 +581,8 @@ bool check_global_variable(const string& var) {
 }
 
 //=================== MIPS Instruction Emission ===================//
+
+std::vector<MIPSInstruction> mips_code_text;
 
 void emit_instruction(string op, string dest, string src1, string src2){
     Symbol* dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);

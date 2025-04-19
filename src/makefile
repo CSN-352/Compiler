@@ -74,6 +74,10 @@ $(EXPRESSION_O_FILE): $(SRC_DIR)/expression.cpp $(SRC_DIR)/expression.h | $(BUIL
 $(STATEMENT_O_FILE): $(SRC_DIR)/statement.cpp $(SRC_DIR)/statement.h | $(BUILD_DIR)
 	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/statement.cpp -o $(STATEMENT_O_FILE) $(CFLAGS)
 
+# Compile codegen.cpp into codegen.o
+$(CODEGEN_O_FILE): $(SRC_DIR)/tac.cpp $(SRC_DIR)/tac.h | $(BUILD_DIR)
+	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/codegen.cpp -o $(CODEGEN_O_FILE) $(CFLAGS)
+
 # Compile lex.yy.c into lex.yy.o
 $(LEX_O_FILE): $(LEX_C_FILE)
 	$(CXX) -c $(LEX_C_FILE) -o $(LEX_O_FILE) $(CFLAGS)
@@ -83,8 +87,8 @@ $(YACC_O_FILE): $(YACC_C_FILE)
 	$(CXX) -c $(YACC_C_FILE) -o $(YACC_O_FILE)  $(CFLAGS) 
 
 # Link object files into the final executable
-$(EXECUTABLE): $(LEX_O_FILE) $(YACC_O_FILE) $(SYMBOL_TABLE_O_FILE) $(AST_O_FILE) $(EXPRESSION_O_FILE) $(STATEMENT_O_FILE) $(TAC_O_FILE) | $(BIN_DIR)
-	$(CXX) -o $(EXECUTABLE) $(LEX_O_FILE) $(YACC_O_FILE) $(SYMBOL_TABLE_O_FILE) $(AST_O_FILE) $(EXPRESSION_O_FILE) $(STATEMENT_O_FILE) $(TAC_O_FILE) $(CFLAGS)
+$(EXECUTABLE): $(LEX_O_FILE) $(YACC_O_FILE) $(SYMBOL_TABLE_O_FILE) $(AST_O_FILE) $(EXPRESSION_O_FILE) $(STATEMENT_O_FILE) $(TAC_O_FILE) $(CODEGEN_O_FILE)| $(BIN_DIR)
+	$(CXX) -o $(EXECUTABLE) $(LEX_O_FILE) $(YACC_O_FILE) $(SYMBOL_TABLE_O_FILE) $(AST_O_FILE) $(EXPRESSION_O_FILE) $(STATEMENT_O_FILE) $(TAC_O_FILE) $(CODEGEN_O_FILE) $(CFLAGS)
 
 clean:
 	rm -rf $(BUILD_DIR)
