@@ -129,10 +129,14 @@ std::string get_opcode_name(MIPSOpcode opcode) {
     switch (opcode) {
         case MIPSOpcode::ADD:      return "ADD";
         case MIPSOpcode::ADDU:     return "ADDU";
+        case MIPSOpcode::ADDIU:    return "ADDIU";
         case MIPSOpcode::ADD_S:    return "ADD.S";
         case MIPSOpcode::ADD_D:    return "ADD.D";
         case MIPSOpcode::SUB:      return "SUB";
         case MIPSOpcode::SUBU:     return "SUBU";
+        case MIPSOpcode::SUBIU:    return "SUBIU";
+        case MIPSOpcode::SUB_S:    return "SUB.S";
+        case MIPSOpcode::SUB_D:    return "SUB.D";
         case MIPSOpcode::MUL:      return "MUL";
         case MIPSOpcode::MULT:     return "MULT";
         case MIPSOpcode::MULTU:    return "MULTU";
@@ -1218,6 +1222,13 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(add_instr); // Emit add instruction
         }
     }
+    else if(op == "addi"){ // addi instruction
+        // only used for sp,fp,gp so no need to check for type
+        MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+        MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+        MIPSInstruction addi_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, src2); // Add immediate instruction
+        mips_code_text.push_back(addi_instr); // Emit add immediate instruction
+    }
     else if(op == "sub"){ // sub instruction
         dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
         src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
@@ -1273,6 +1284,13 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction sub_instr(MIPSOpcode::SUB_D, dest_reg, src1_reg, src2_reg); // Add the two registers
             mips_code_text.push_back(sub_instr); // Emit add instruction
         }
+    }
+    else if(op == "subi"){ //subi instruction
+        // only used for sp,fp,gp so no need to check for type
+        MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+        MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+        MIPSInstruction subi_instr(MIPSOpcode::SUBIU, dest_reg, src1_reg, src2); // Sub immediate instruction
+        mips_code_text.push_back(subi_instr); // Emit sub immediate instruction
     }
     else if(op == "mul"){ // mul instruction
         dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
