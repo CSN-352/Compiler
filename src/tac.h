@@ -60,8 +60,8 @@ TACOperand* new_string(string value);
 
 enum TACOperatorType {
     // Arithmetic Operators
-    TAC_OPERATOR_ADD = 0,        // +
-    TAC_OPERATOR_SUB,        // -
+    TAC_OPERATOR_ADD = 0,        // + #codegen done (add)
+    TAC_OPERATOR_SUB,        // - #codegen done (sub)
     TAC_OPERATOR_MUL,        // *
     TAC_OPERATOR_DIV,        // /
     TAC_OPERATOR_MOD,        // %
@@ -89,14 +89,14 @@ enum TACOperatorType {
     TAC_OPERATOR_BIT_NOT,    // ~
 
     // // Assignment Operators
-    TAC_OPERATOR_ASSIGN,     // =
+    TAC_OPERATOR_ASSIGN,     // = #codegen done (load)
 
     // Pointer and Memory Operators
-    TAC_OPERATOR_ADDR_OF,    // & (Address-of)
-    TAC_OPERATOR_DEREF,      // * (Dereference)
+    TAC_OPERATOR_ADDR_OF,    // & (Address-of) #codegen done (la)
+    TAC_OPERATOR_DEREF,      // * (Dereference) #codegen done (load)
 
     // Casting Operators
-    TAC_OPERATOR_CAST,       // Type casting (e.g., (int)x)
+    TAC_OPERATOR_CAST,       // Type casting (e.g., (int)x) #codegen done (cast)
 
     // Control Flow (Branching & Jumps)
     TAC_OPERATOR_GOTO,       // goto label
