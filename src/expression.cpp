@@ -780,8 +780,10 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
                 P->type.num_args = 0;
                 P->type.arg_types.clear();
                 P->result = new_temp_var(); // TAC
+                // x->result->type = sym->type;
+                x->result->value = sym->mangled_name;
                 TACInstruction* i1;
-                if(argument_expression_list != nullptr)P->code.insert(P->code.begin(),argument_expression_list->code.begin(),argument_expression_list->code.end()); // TAC
+                if (argument_expression_list != nullptr) P->code.insert(P->code.begin(), argument_expression_list->code.begin(), argument_expression_list->code.end()); // TAC
                 if (sym->type.type_index == PrimitiveTypes::VOID_T){
                     i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_constant(""), x->result, new_constant(to_string(arguments.size())), 0); // TAC
                 if(argument_expression_list != nullptr){
@@ -828,6 +830,9 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
                 P->jump_code.push_back(i3_); // TAC
 
                 symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
+                TAC_H::print_TAC();
+                
             }
         }
     }
