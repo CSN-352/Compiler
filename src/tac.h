@@ -65,7 +65,7 @@ enum TACOperatorType {
     TAC_OPERATOR_MUL,        // * #codegen done (mul)
     TAC_OPERATOR_DIV,        // / #codegen done (div)
     TAC_OPERATOR_MOD,        // % #codegen done (mod)
-    TAC_OPERATOR_UMINUS,     // Unary minus (-x)
+    TAC_OPERATOR_UMINUS,     // Unary minus (-x) #codegen done (neg)
 
     // Relational Operators
     TAC_OPERATOR_EQ,         // ==
@@ -78,15 +78,15 @@ enum TACOperatorType {
     // Logical Operators
     TAC_OPERATOR_AND,        // && 
     TAC_OPERATOR_OR,         // ||
-    TAC_OPERATOR_NOT,        // !
+    TAC_OPERATOR_NOT,        // ! 
 
     // Bitwise Operators
-    TAC_OPERATOR_BIT_AND,    // &
-    TAC_OPERATOR_BIT_OR,     // |
-    TAC_OPERATOR_BIT_XOR,    // ^
-    TAC_OPERATOR_LEFT_SHIFT, // <<
-    TAC_OPERATOR_RIGHT_SHIFT,// >>
-    TAC_OPERATOR_BIT_NOT,    // ~
+    TAC_OPERATOR_BIT_AND,    // & #codegen done (and)
+    TAC_OPERATOR_BIT_OR,     // | #codegen done (or)
+    TAC_OPERATOR_BIT_XOR,    // ^ #codegen done (xor)
+    TAC_OPERATOR_LEFT_SHIFT, // << // #codegen done (sllv)
+    TAC_OPERATOR_RIGHT_SHIFT,// >> // #codegen done (srlv, srav)
+    TAC_OPERATOR_BIT_NOT,    // ~ // #codegen done (not)
 
     // // Assignment Operators
     TAC_OPERATOR_ASSIGN,     // = #codegen done (load)
