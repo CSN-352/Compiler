@@ -525,37 +525,37 @@ MIPSRegister get_float_register_for_operand(const std::string& var, bool for_res
 
 //=================== MIPS Instruction Class ===================//
 
-// Constructor for normal 3-reg instruction (e.g., add rd, rs, rt)
+// Constructor for normal 3-reg instruction (e.g., add dest_reg, src1_reg, src2_reg)
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src1, MIPSRegister src2)
-    : opcode(opc), rd(dest), rs(src1), rt(src2), immediate(""), label("") {}
+    : opcode(opc), dest_reg(dest), src1_reg(src1), src2_reg(src2), immediate(""), label(""), instruction_type(_3_REG_TYPE) {}
 
-// Constructor for load/store: opcode rt, offset(rs)
+// Constructor for load/store: opcode src2_reg, offset(src1_reg)
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister reg, const std::string& offset, MIPSRegister base)
-    : opcode(opc), rt(reg), immediate(offset), rs(base), rd(MIPSRegister::ZERO), label("") {}
+    : opcode(opc), src2_reg(reg), immediate(offset), src1_reg(base), dest_reg(MIPSRegister::ZERO), label(""), instruction_type(_2_REG_OFFSET_TYPE) {}
 
 // Constructor for immediate instructions (e.g., li, lui)
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, const std::string& imm)
-    : opcode(opc), rd(dest), immediate(imm), rs(MIPSRegister::ZERO), rt(MIPSRegister::ZERO), label("") {}
+    : opcode(opc), dest_reg(dest), immediate(imm), src1_reg(MIPSRegister::ZERO), src2_reg(MIPSRegister::ZERO), label(""), instruction_type(_1_REG_TYPE_IMMEDIATE) {}
 
 // Constructor for immediate instructions with 2 registers (e.g., addi, andi, ori)
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src, const std::string& imm)
-    : opcode(opc), rd(dest), rs(src), immediate(imm), rt(MIPSRegister::ZERO), label("") {}
+    : opcode(opc), dest_reg(dest), src1_reg(src), immediate(imm), src2_reg(MIPSRegister::ZERO), label(""), instruction_type(_2_REG_IMMEDIATE_TYPE) {}
 
-// Constructor for move instructions (e.g., move rd, rs)
+// Constructor for move instructions (e.g., move dest_reg, src1_reg)
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src)
-    : opcode(opc), rd(dest), rs(src), rt(MIPSRegister::ZERO), immediate(""), label("") {}
+    : opcode(opc), dest_reg(dest), src1_reg(src), src2_reg(MIPSRegister::ZERO), immediate(""), label(""), instruction_type(_2_REG_TYPE) {}
 
 // Constructor for mflo, mfhi instructions
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest)
-    : opcode(opc), rd(dest) , rs(MIPSRegister::ZERO), rt(MIPSRegister::ZERO), immediate(""), label("") {}
+    : opcode(opc), dest_reg(dest) , src1_reg(MIPSRegister::ZERO), src2_reg(MIPSRegister::ZERO), immediate(""), label(""), instruction_type(_1_REG_TYPE) {}
 
 // Constructor for label-only instruction
 MIPSInstruction::MIPSInstruction(const std::string& lbl)
-    : label(lbl), opcode(MIPSOpcode::LABEL), rd(MIPSRegister::ZERO), rs(MIPSRegister::ZERO), rt(MIPSRegister::ZERO), immediate("") {}
+    : label(lbl), opcode(MIPSOpcode::LABEL), dest_reg(MIPSRegister::ZERO), src1_reg(MIPSRegister::ZERO), src2_reg(MIPSRegister::ZERO), immediate(""), instruction_type(_LABEL_TYPE) {}
 
 // Constructor for standalone ops like SYSCALL, NOP
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc)
-    : opcode(opc), rd(MIPSRegister::ZERO), rs(MIPSRegister::ZERO), rt(MIPSRegister::ZERO), immediate(""), label("") {}
+    : opcode(opc), dest_reg(MIPSRegister::ZERO), src1_reg(MIPSRegister::ZERO), src2_reg(MIPSRegister::ZERO), immediate(""), label(""), instruction_type(_NOP_TYPE) {}
 
 // ===================== Global Variable Storage ===================//
 
@@ -1610,21 +1610,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(or_instr_hi); // Emit and instruction
         }
     }
-    else if(op == "not"){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-
-        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
-            emit_instruction("load", src1, src1, ""); // Load the source value into a register
-            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
-            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction not_instr(MIPSOpcode::NOR, dest_reg, src1_reg, src1_reg); // Bitwise NOT the register
-            mips_code_text.push_back(not_instr); // Emit and instruction
-        }
-        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
-            // implement later if needed
-        }
-    }
     else if(op == "xor"){ // bitwise xor instruction
         dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
         src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
@@ -1656,6 +1641,21 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg_hi = get_register_for_operand(dest+"_hi", true); // Get a register for the destination hi
             MIPSInstruction xor_instr_hi(MIPSOpcode::XOR, dest_reg_hi, src1_reg_hi, src2_reg_hi); // Bitwise XOR the two registers
             mips_code_text.push_back(xor_instr_hi); // Emit and instruction
+        }
+    }
+    else if(op == "not"){
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
+
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction not_instr(MIPSOpcode::NOR, dest_reg, src1_reg, src1_reg); // Bitwise NOT the register
+            mips_code_text.push_back(not_instr); // Emit and instruction
+        }
+        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+            // implement later if needed
         }
     }
     else if(op == "sllv" ){
@@ -1750,7 +1750,98 @@ vector<string> parameters_emit_instrcution(TACInstruction* instr){
         emit_instruction_args[0] = "load";
         emit_instruction_args[1] = get_operand_string(instr->result);
         emit_instruction_args[2] = get_operand_string(instr->arg1);
-        // cout<<"emit args: "<<emit_instruction_args[0]<<" "<<emit_instruction_args[1]<<" "<<emit_instruction_args[2]<<endl;
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_ADDR_OF && instr->flag == 1){
+        emit_instruction_args[0] = "la";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_DEREF && instr->flag == 1){
+        emit_instruction_args[0] = "deref";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_CAST && instr->flag == 0){
+        emit_instruction_args[0] = "cast";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_ADD && instr->flag == 0){
+        emit_instruction_args[0] = "add";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_SUB && instr->flag == 0){
+        emit_instruction_args[0] = "sub";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_MUL && instr->flag == 0){
+        emit_instruction_args[0] = "mul";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_DIV && instr->flag == 0){
+        emit_instruction_args[0] = "div";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_MOD && instr->flag == 0){
+        emit_instruction_args[0] = "mod";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_BIT_AND && instr->flag == 0){
+        emit_instruction_args[0] = "and";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_BIT_OR && instr->flag == 0){
+        emit_instruction_args[0] = "or";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_BIT_XOR && instr->flag == 0){
+        emit_instruction_args[0] = "xor";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_BIT_NOT && instr->flag == 0){
+        emit_instruction_args[0] = "not";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_LEFT_SHIFT && instr->flag == 0){
+        emit_instruction_args[0] = "sllv";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_RIGHT_SHIFT && instr->flag == 0){
+        Symbol* dest_sym = current_symbol_table.get_symbol_using_mangled_name(instr->result->value);
+        if(dest_sym->type.isSigned()){
+            emit_instruction_args[0] = "srav";
+        }
+        else{
+            emit_instruction_args[0] = "srlv";
+        }
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
+        emit_instruction_args[3] = get_operand_string(instr->arg2);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_UMINUS && instr->flag == 0){
+        emit_instruction_args[0] = "neg";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+        emit_instruction_args[2] = get_operand_string(instr->arg1);
     }
     return emit_instruction_args;
 }
@@ -1771,6 +1862,33 @@ void print_mips_code() {
     for(int instr_no=0;instr_no<mips_code_data.size();instr_no++){
         MIPSDataInstruction instr = mips_code_data[instr_no];
         cout<<instr.label<<": "<<get_directive_name(instr.directive)<<" "<<instr.value<<endl;
+    }
+    // Printing text section
+    cout<< ".text" << endl;
+    for(int instr_no=0;instr_no<mips_code_text.size();instr_no++){
+        MIPSInstruction instr = mips_code_text[instr_no];
+        if(instr.label != "") cout<<instr.label<<": "<<endl;
+        switch(instr.instruction_type){
+            case(MIPSInstructionType::_3_REG_TYPE):
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<" "<<get_mips_register_name(instr.src1_reg)<<" "<<get_mips_register_name(instr.src2_reg);
+                break;
+            case(MIPSInstructionType::_2_REG_OFFSET_TYPE):
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<" "<<get_mips_register_name(instr.src1_reg)<<" "<<instr.immediate;
+                break;
+            case(MIPSInstructionType::_2_REG_IMMEDIATE_TYPE):
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<" "<<get_mips_register_name(instr.src1_reg)<<" "<<instr.immediate;
+                break;
+            case(MIPSInstructionType::_2_REG_TYPE):
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<" "<<get_mips_register_name(instr.src1_reg);
+                break;
+            case(MIPSInstructionType::_1_REG_TYPE):
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg);
+                break;
+            case(MIPSInstructionType::_NOP_TYPE):
+                cout<<get_opcode_name(instr.opcode);
+                break;
+        }
+        cout<<endl;
     }
     cout<<endl;
 }
