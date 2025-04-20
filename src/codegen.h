@@ -35,6 +35,9 @@ enum MIPSOpcode {
     ADD, ADDU, ADDIU, SUB, SUBU, SUBIU,
     MUL, MULU, MULT, MULTU, DIV, DIVU, ADD_S, ADD_D, SUB_S, SUB_D, MUL_S, MUL_D, DIV_S, DIV_D,
 
+    // Negation
+    NEG, NEG_S, NEG_D,
+
     // Logical
     AND, ANDI, OR, XOR, NOR,
 

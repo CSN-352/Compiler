@@ -149,6 +149,13 @@ std::string get_opcode_name(MIPSOpcode opcode) {
         case MIPSOpcode::SLL:      return "SLL";
         case MIPSOpcode::SRL:      return "SRL";
         case MIPSOpcode::SRA:      return "SRA";
+        case MIPSOpcode::SLLV:     return "SLLV";
+        case MIPSOpcode::SRLV:     return "SRLV";
+        case MIPSOpcode::SRAV:     return "SRAV";
+        case MIPSOpcode::ANDI:     return "ANDI";
+        case MIPSOpcode::NEG:      return "NEG";
+        case MIPSOpcode::NEG_S:    return "NEG.S";
+        case MIPSOpcode::NEG_D:    return "NEG.D";
         case MIPSOpcode::SLT:      return "SLT";
         case MIPSOpcode::SLTU:     return "SLTU";
         case MIPSOpcode::LW:       return "LW";
@@ -1557,6 +1564,19 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(and_instr_hi); // Emit and instruction
         }
     }
+    else if(op == "andi"){
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
+        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
+
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction andi_instr(MIPSOpcode::ANDI, dest_reg, src1_reg, src2); // Bitwise ANDI the register and immediate value
+            mips_code_text.push_back(andi_instr); // Emit andi instruction
+        }
+    }
     else if(op == "or"){ // bitwise or instruction
         dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
         src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
@@ -1588,6 +1608,21 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg_hi = get_register_for_operand(dest+"_hi", true); // Get a register for the destination hi
             MIPSInstruction or_instr_hi(MIPSOpcode::OR, dest_reg_hi, src1_reg_hi, src2_reg_hi); // Bitwise OR the two registers
             mips_code_text.push_back(or_instr_hi); // Emit and instruction
+        }
+    }
+    else if(op == "not"){
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
+
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction not_instr(MIPSOpcode::NOR, dest_reg, src1_reg, src1_reg); // Bitwise NOT the register
+            mips_code_text.push_back(not_instr); // Emit and instruction
+        }
+        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+            // implement later if needed
         }
     }
     else if(op == "xor"){ // bitwise xor instruction
@@ -1623,21 +1658,88 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(xor_instr_hi); // Emit and instruction
         }
     }
-    else if(op == "andi"){
+    else if(op == "sllv" ){
         dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
         src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
         src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
 
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister src2_reg = get_register_for_operand(src2); // Get a register for the source 2
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction andi_instr(MIPSOpcode::ANDI, dest_reg, src1_reg, src2); // Bitwise ANDI the register and immediate value
-            mips_code_text.push_back(andi_instr); // Emit andi instruction
+            MIPSInstruction sllv_instr(MIPSOpcode::SLLV, dest_reg, src1_reg, src2_reg); // Shift left logical variable instruction
+            mips_code_text.push_back(sllv_instr); // Emit sllv instruction
+        }
+        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+            // implement later if needed
         }
     }
-    else if(op == "" ){
+    else if(op == "srlv" ){
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
+        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
 
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            emit_instruction("load", src2, src2, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister src2_reg = get_register_for_operand(src2); // Get a register for the source 2
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction srlv_instr(MIPSOpcode::SRLV, dest_reg, src1_reg, src2_reg); // Shift right logical variable instruction
+            mips_code_text.push_back(srlv_instr); // Emit srlv instruction
+        }
+        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+            // implement later if needed
+        }
+    }
+    else if(op == "srav"){
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
+        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
+
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            emit_instruction("load", src2, src2, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister src2_reg = get_register_for_operand(src2); // Get a register for the source 2
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction srav_instr(MIPSOpcode::SRAV, dest_reg, src1_reg, src2_reg); // Shift right arithmetic instruction
+            mips_code_text.push_back(srav_instr); // Emit sra instruction
+        }
+        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+            // implement later if needed
+        }
+    }
+    else if(op == "neg"){
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
+
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction neg_instr(MIPSOpcode::NEG, dest_reg, src1_reg); // Negate the source register
+            mips_code_text.push_back(neg_instr); // Emit neg instruction
+        }
+        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+            // implement later if needed
+        }
+        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction neg_instr(MIPSOpcode::NEG_S, dest_reg, src1_reg); // Negate the source register
+            mips_code_text.push_back(neg_instr); // Emit neg instruction
+        }
+        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
+            MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
+            MIPSInstruction neg_instr(MIPSOpcode::NEG_D, dest_reg, src1_reg); // Negate the source register
+            mips_code_text.push_back(neg_instr); // Emit neg instruction
+        }
     }
 }
 
