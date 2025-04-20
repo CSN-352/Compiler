@@ -2567,19 +2567,21 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     Type t1 = Type(function->type.type_index, function->type.ptr_level, function->type.is_const_variable);
     Type t2 = Type(PrimitiveTypes::VOID_T, 0, false);
     if(!cs->return_type.empty()) t2 = cs->return_type[0];
+    Symbol* func_sym = symbolTable.getSymbol(declarator->direct_declarator->identifier->value);
+    string function_name = func_sym->mangled_name;
     if(cs_cast->declaration_statement_list != nullptr) fd->code.insert(fd->code.end(), cs_cast->declaration_statement_list->static_declaration_code.begin(), cs_cast->declaration_statement_list->static_declaration_code.end()); // TAC
-    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
+    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(function_name), new_empty_var(), new_empty_var(), 0); // TAC
     fd->code.push_back(i1); // TAC
-    if (declarator->direct_declarator->parameters != nullptr){
-        for (auto pd : declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
-            if (pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
-                fd->code.push_back(i2); // TAC
-            }
-        }
-    }
+    // if (declarator->direct_declarator->parameters != nullptr){
+    //     for (auto pd : declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
+    //         if (pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
+    //             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
+    //             fd->code.push_back(i2); // TAC
+    //         }
+    //     }
+    // }
 
-    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
+    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_identifier(function_name), new_empty_var(), new_empty_var(), 0); // TAC
     backpatch(cs_cast->next_list, i2->label); // TAC
     backpatch(cs_cast->break_list, i2->label); // TAC
     fd->code.insert(fd->code.end(), cs_cast->code.begin(), cs_cast->code.end()); // TAC
@@ -2760,6 +2762,10 @@ std::string create_mangled_name(std::string& name, Type& type, int scope,
     stringstream ss;
 
     ss << "0_";
+
+    if(name[0] == '#'){
+        return name;
+    }
 
     // Kind
     if (type.is_function)
