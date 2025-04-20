@@ -228,7 +228,9 @@ bool check_if_variable_in_register(const std::string& var){
     return false;
 }
 
-void update_for_load(MIPSRegister reg, const std::string& var) {
+// Aaditya complete implementation with is_double
+
+void update_for_load(MIPSRegister reg, const std::string& var, bool is_double) {
     register_descriptor[reg].clear();
     register_descriptor[reg].insert(var);
     address_descriptor[var].insert(get_mips_register_name(reg));
@@ -238,12 +240,12 @@ void update_for_load(MIPSRegister reg, const std::string& var) {
     }
 }
  
-void update_for_store(const std::string& var, MIPSRegister reg) {
+void update_for_store(const std::string& var, MIPSRegister reg, bool is_double) {
     address_descriptor[var].insert(get_mips_register_name(reg));
     address_descriptor[var].insert("mem");
 }
 
-void update_for_add(const std::string& x, MIPSRegister rx) {
+void update_for_add(const std::string& x, MIPSRegister rx, bool is_double) {
     register_descriptor[rx].clear();
     register_descriptor[rx].insert(x);
     address_descriptor[x].clear();
@@ -255,7 +257,7 @@ void update_for_add(const std::string& x, MIPSRegister rx) {
 }
 
 // x = y
-void update_for_assign(const std::string& x, const std::string& y, MIPSRegister ry) {
+void update_for_assign(const std::string& x, const std::string& y, MIPSRegister ry, bool is_double) {
     register_descriptor[ry].insert(x);
     address_descriptor[x].clear();
     address_descriptor[x].insert(get_mips_register_name(ry));
@@ -790,17 +792,17 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 update_for_load(dest_reg_hi, dest+"_hi"); // Update register descriptor and address descriptor
                 update_for_load(dest_reg_lo, dest+"_lo"); // Update register descriptor and address descriptor
             }
-            else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T || dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T){
+            else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
                 MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
                 MIPSInstruction load_instr(MIPSOpcode::LWC1, dest_reg, "0", addr_reg); // Load float from memory
                 mips_code_text.push_back(load_instr); // Emit load instruction for float
                 update_for_load(dest_reg, dest); // Update register descriptor and address descriptor
             }
-            else if(dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+            else if(dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T|| dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T){
                 MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
                 MIPSInstruction load_instr(MIPSOpcode::LDC1, dest_reg, "0", addr_reg); // Load long double from memory
                 mips_code_text.push_back(load_instr); // Emit load instruction for long double
-                update_for_load(dest_reg, dest); // Update register descriptor and address descriptor
+                update_for_load(dest_reg, dest, true); // Update register descriptor and address descriptor
             }
         }
         else if(src1_sym != nullptr){// local stack variable
@@ -854,17 +856,17 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 update_for_load(dest_reg_hi, dest+"_hi"); // Update register descriptor and address descriptor
                 update_for_load(dest_reg_lo, dest+"_lo"); // Update register descriptor and address descriptor
             }
-            else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T || dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T){
+            else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
                 MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
                 MIPSInstruction load_instr(MIPSOpcode::LWC1, dest_reg, "0", addr_reg); // Load float from memory
                 mips_code_text.push_back(load_instr); // Emit load instruction for float
                 update_for_load(dest_reg, dest); // Update register descriptor and address descriptor
             }
-            else if(dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+            else if(dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T){
                 MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
                 MIPSInstruction load_instr(MIPSOpcode::LDC1, dest_reg, "0", addr_reg); // Load long double from memory
                 mips_code_text.push_back(load_instr); // Emit load instruction for long double
-                update_for_load(dest_reg, dest); // Update register descriptor and address descriptor
+                update_for_load(dest_reg, dest, true); // Update register descriptor and address descriptor
             }
         }
     }
@@ -883,6 +885,9 @@ void emit_instruction(string op, string dest, string src1, string src2){
             // local stack variable initialization
         }
     }
+    else if(op == "deref"){
+        // same as load, but without la
+    }
     else if(op == "store"){ // store instruction (generated by spill register only)
         dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
         if(dest_sym->scope == 0){ // global variable storage
@@ -892,16 +897,19 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source
                 MIPSInstruction store_instr(MIPSOpcode::SB, src1_reg, "0", addr_reg); // Store byte to memory
                 mips_code_text.push_back(store_instr); // Emit store instruction
+                update_for_store(src1, src1_reg); // Update register descriptor and address descriptor
             }
             else if(dest_sym->type.type_index == PrimitiveTypes::U_SHORT_T || dest_sym->type.type_index == PrimitiveTypes::SHORT_T){
                 MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source
                 MIPSInstruction store_instr(MIPSOpcode::SH, src1_reg, "0", addr_reg); // Store halfword to memory
                 mips_code_text.push_back(store_instr); // Emit store instruction
+                update_for_store(src1, src1_reg); // Update register descriptor and address descriptor
             }
             else if(dest_sym->type.type_index >= PrimitiveTypes::U_INT_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_T){
                 MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source
                 MIPSInstruction store_instr(MIPSOpcode::SW, src1_reg, "0", addr_reg); // Store word to memory
                 mips_code_text.push_back(store_instr); // Emit store instruction
+                update_for_store(src1, src1_reg); // Update register descriptor and address descriptor
             }
             else if(dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T || dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T){
                 MIPSRegister src1_reg_hi = get_register_for_operand(src1+"_hi"); // Get a register for the upper 32 bits of the source
@@ -910,16 +918,20 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 MIPSInstruction store_instr_lo(MIPSOpcode::SW, src1_reg_lo, "4", addr_reg); // Store lower 32 bits of long long to memory
                 mips_code_text.push_back(store_instr_hi); // Emit store instruction for upper 32 bits
                 mips_code_text.push_back(store_instr_lo); // Emit store instruction for lower 32 bits
+                update_for_store(src1+"_hi", src1_reg_hi); // Update register descriptor and address descriptor
+                update_for_store(src1+"_lo", src1_reg_lo); // Update register descriptor and address descriptor
             }
             else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
                 MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source
                 MIPSInstruction store_instr(MIPSOpcode::SWC1, src1_reg, "0", addr_reg); // Store float to memory
                 mips_code_text.push_back(store_instr); // Emit store instruction for float
+                update_for_store(src1, src1_reg); // Update register descriptor and address descriptor
             }
             else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
                 MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source
                 MIPSInstruction store_instr(MIPSOpcode::SDC1, src1_reg, "0", addr_reg); // Store double to memory
                 mips_code_text.push_back(store_instr); // Emit store instruction for double
+                update_for_store(src1, src1_reg, true); // Update register descriptor and address descriptor
             }
         }
         else{
@@ -988,6 +1000,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_D, dest_reg, src_reg); // Convert double to float
             mips_code_text.push_back(cvt_instr); // Emit conversion instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if((dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src2_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) && src2_sym->type.type_index == PrimitiveTypes::FLOAT_T ){ // double to float
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -995,6 +1008,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_S, dest_reg, src_reg); // Convert float to double
             mips_code_text.push_back(cvt_instr); // Emit conversion instruction
+            update_for_add(dest, dest_reg, true); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T && src2_sym->type.type_index < PrimitiveTypes::U_INT_T){
             // Convert to 32 bit int first
@@ -1009,32 +1023,32 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 emit_instruction("sra", src2, src2, to_string(shift_size)); 
             }
             MIPSRegister src_reg = get_register_for_operand(src2, false); // Get a register for the source
-            MIPSRegister src_reg_float = get_float_register_for_operand(src2, true); // Get a float register for the source
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg_float, src_reg); // Move int to float register
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, dest_reg, src_reg_float); // Convert int to float
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg); // Move int to float register
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr); // Emit move instruction
             mips_code_text.push_back(cvt_instr); 
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T && src2_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src_reg = get_register_for_operand(src2, false); // Get a register for the source
-            MIPSRegister src_reg_float = get_float_register_for_operand(src2, true); // Get a float register for the source
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg_float, src_reg); // Move int to float register
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, dest_reg, src_reg_float); // Convert int to float
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg); // Move int to float register
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr); // Emit move instruction
             mips_code_text.push_back(cvt_instr); // Emit conversion instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T && src2_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             emit_instruction("load", src2+"_lo", src2+"_lo", ""); // Load the source value into a register
             MIPSRegister src_reg = get_register_for_operand(src2+"_lo", false); // Get a register for the source
-            MIPSRegister src_reg_float = get_float_register_for_operand(src2+"_lo", true); // Get a float register for the source
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg_float, src_reg); // Move int to float register
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, dest_reg, src_reg_float); // Convert int to float
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg); // Move int to float register
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr); // Emit move instruction
             mips_code_text.push_back(cvt_instr); // Emit conversion instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if((dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src2_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) && src2_sym->type.type_index < PrimitiveTypes::U_INT_T){
             // Convert to 32 bit int first
@@ -1049,43 +1063,43 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 emit_instruction("sra", src2, src2, to_string(shift_size)); 
             }
             MIPSRegister src_reg = get_register_for_operand(src2); // Get a register for the source
-            MIPSRegister src_reg_float = get_float_register_for_operand(src2, true); // Get a float register for the source
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg_float, src_reg); // Move int to float register
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, dest_reg, src_reg_float); // Convert int to float
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg); // Move int to float register
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr); // Emit move instruction
             mips_code_text.push_back(cvt_instr); 
+            update_for_add(dest, dest_reg, true); // Update register descriptor and address descriptor
         }
         else if((dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src2_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) && src2_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src_reg = get_register_for_operand(src2); // Get a register for the source
-            MIPSRegister src_reg_float = get_float_register_for_operand(src2, true, true); // Get a float register for the source
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg_float, src_reg); // Move int to float register
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, dest_reg, src_reg_float); // Convert int to float
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg); // Move int to float register
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr); // Emit move instruction
             mips_code_text.push_back(cvt_instr); // Emit conversion instruction
+            update_for_add(dest, dest_reg, true); // Update register descriptor and address descriptor
         }
         else if((dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src2_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) && src2_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             emit_instruction("load", src2+"_lo", src2+"_lo", ""); // Load the source value into a register
             MIPSRegister src_reg = get_register_for_operand(src2+"_lo"); // Get a register for the source
-            MIPSRegister src_reg_float = get_float_register_for_operand(src2+"_lo", true, true); // Get a float register for the source
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg_float, src_reg); // Move int to float register
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, dest_reg, src_reg_float); // Convert int to float
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg); // Move int to float register
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr); // Emit move instruction
             mips_code_text.push_back(cvt_instr); // Emit conversion instruction
+            update_for_add(dest, dest_reg, true); // Update register descriptor and address descriptor
         }
         else if(src2_sym->type.type_index == PrimitiveTypes::FLOAT_T && dest_sym->type.type_index < PrimitiveTypes::U_INT_T){
             // Convert to 32 bit int first
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src_reg = get_float_register_for_operand(src2); // Get a float register for the source
-            MIPSRegister dest_reg_float = get_float_register_for_operand(dest, true); // Get a float register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_S, dest_reg_float, src_reg); // Convert float to int
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination 
-            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_reg, dest_reg_float); // Move to int register
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_S, src_reg, src_reg); // Convert float to int
+            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_reg, src_reg); // Move to int register
             mips_code_text.push_back(cvt_instr); 
             mips_code_text.push_back(move_instr); // Emit move instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
             if(dest_sym->type.isUnsigned()){
                 int bit_size = 8 * dest_sym->type.get_size();
                 int mask = (1U << bit_size) - 1;
@@ -1100,20 +1114,22 @@ void emit_instruction(string op, string dest, string src1, string src2){
         else if(src2_sym->type.type_index == PrimitiveTypes::FLOAT_T && dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src_reg = get_float_register_for_operand(src2); // Get a float register for the source
-            MIPSRegister dest_reg_float = get_float_register_for_operand(dest, true); // Get a float register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_S, dest_reg_float, src_reg); // Convert float to int
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_S, src_reg, src_reg); // Convert float to int
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination 
-            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_reg, dest_reg_float); // Move to int register
+            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_reg, src_reg); // Move to int register
             mips_code_text.push_back(cvt_instr); 
             mips_code_text.push_back(move_instr); // Emit move instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(src2_sym->type.type_index == PrimitiveTypes::FLOAT_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src_reg = get_float_register_for_operand(src2); // Get a float register for the source
-            MIPSRegister dest_lo_reg_float = get_float_register_for_operand(dest+"_lo", true); // Get a float register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_S, dest_lo_reg_float, src_reg); // Convert float to int
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_S, src_reg, src_reg); // Convert float to int
             MIPSRegister dest_lo_reg = get_register_for_operand(dest+"_lo", true); // Get a register for the destination 
-            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_lo_reg, dest_lo_reg_float); // Move to int register
+            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_lo_reg, src_reg); // Move to int register
+            mips_code_text.push_back(cvt_instr); 
+            mips_code_text.push_back(move_instr); // Emit move instruction
+            update_for_add(dest+"_lo", dest_lo_reg); // Update register descriptor and address descriptor
             if(dest_sym->type.isUnsigned()){
                 emit_instruction("andi", dest+"_hi", dest+"_lo", "0"); // emit instruction dest_hi = 0
             }
@@ -1121,19 +1137,17 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 emit_instruction("sra", dest+"_hi", dest+"_lo", "31"); // emit instruction dest_hi = dest_lo >> 32
             }
 
-            mips_code_text.push_back(cvt_instr); 
-            mips_code_text.push_back(move_instr); // Emit move instruction
         }
         else if((dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src2_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) && src2_sym->type.type_index < PrimitiveTypes::U_INT_T){
             // Convert to 32 bit int first
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src_reg = get_float_register_for_operand(src2, false, true); // Get a float register for the source
-            MIPSRegister dest_reg_float = get_float_register_for_operand(dest, true); // Get a float register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_D, dest_reg_float, src_reg); // Convert float to int
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_D, src_reg, src_reg); // Convert float to int
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination 
-            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_reg, dest_reg_float); // Move to int register
+            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_reg, src_reg); // Move to int register
             mips_code_text.push_back(cvt_instr); 
             mips_code_text.push_back(move_instr); // Emit move instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
             if(dest_sym->type.isUnsigned()){
                 int bit_size = 8 * dest_sym->type.get_size();
                 int mask = (1U << bit_size) - 1;
@@ -1148,29 +1162,28 @@ void emit_instruction(string op, string dest, string src1, string src2){
         else if((dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src2_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) && src2_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src_reg = get_float_register_for_operand(src2, false, true); // Get a float register for the source
-            MIPSRegister dest_reg_float = get_float_register_for_operand(dest, true); // Get a float register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_D, dest_reg_float, src_reg); // Convert float to int
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_D, src_reg, src_reg); // Convert float to int
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination 
-            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_reg, dest_reg_float); // Move to int register
+            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_reg, src_reg); // Move to int register
             mips_code_text.push_back(cvt_instr); 
             mips_code_text.push_back(move_instr); // Emit move instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if((dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src2_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) && src2_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src_reg = get_float_register_for_operand(src2, false, true); // Get a float register for the source
-            MIPSRegister dest_lo_reg_float = get_float_register_for_operand(dest+"_lo", true); // Get a float register for the destination
-            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_D, dest_lo_reg_float, src_reg); // Convert float to int
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_W_D, src_reg, src_reg); // Convert float to int
             MIPSRegister dest_lo_reg = get_register_for_operand(dest+"_lo", true); // Get a register for the destination 
-            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_lo_reg, dest_lo_reg_float); // Move to int register
+            MIPSInstruction move_instr(MIPSOpcode::MFC1, dest_lo_reg, src_reg); // Move to int register
+            mips_code_text.push_back(cvt_instr); 
+            mips_code_text.push_back(move_instr); // Emit move instruction
+            update_for_add(dest+"_lo", dest_lo_reg); // Update register descriptor and address descriptor
             if(dest_sym->type.isUnsigned()){
                 emit_instruction("andi", dest+"_hi", dest+"_lo", "0"); // emit instruction dest_hi = 0
             }
             else{ 
                 emit_instruction("sra", dest+"_hi", dest+"_lo", "31"); // emit instruction dest_hi = dest_lo >> 32
             }
-
-            mips_code_text.push_back(cvt_instr); 
-            mips_code_text.push_back(move_instr); // Emit move instruction
         }
     }
     else if(op == "add"){ // add instruction
@@ -1186,6 +1199,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction add_instr(MIPSOpcode::ADDU, dest_reg, src1_reg, src2_reg); // Add the two registers
             mips_code_text.push_back(add_instr); // Emit add instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T || dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T){
             // Add lo parts first
@@ -1196,6 +1210,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg_lo = get_register_for_operand(dest+"_lo", true); // Get a register for the destination lo
             MIPSInstruction add_instr_lo(MIPSOpcode::ADDU, dest_reg_lo, src1_reg_lo, src2_reg_lo); // Add the two registers lo
             mips_code_text.push_back(add_instr_lo); // Emit add instruction for lo
+            update_for_add(dest+"_lo", dest_reg_lo); // Update register descriptor and address descriptor for lo
             // Set carry if overflow occurs
             emit_instruction("sltu", "carry", dest+"_lo", src1+"_lo"); // Set carry register if overflow occurs
             MIPSRegister carry_reg = get_register_for_operand("carry"); // Get a register for the carry
@@ -1209,6 +1224,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction add_carry_instr(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, carry_reg); // Add the carry to the hi register
             mips_code_text.push_back(add_instr_hi); // Emit add instruction for hi
             mips_code_text.push_back(add_carry_instr); // Emit add instruction for carry
+            update_for_add(dest+"_hi", dest_reg_hi); // Update register descriptor and address descriptor for hi
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1218,6 +1234,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction add_instr(MIPSOpcode::ADD_S, dest_reg, src1_reg, src2_reg); // Add the two registers
             mips_code_text.push_back(add_instr); // Emit add instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1227,6 +1244,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
             MIPSInstruction add_instr(MIPSOpcode::ADD_D, dest_reg, src1_reg, src2_reg); // Add the two registers
             mips_code_text.push_back(add_instr); // Emit add instruction
+            update_for_add(dest, dest_reg, true); // Update register descriptor and address descriptor
         }
     }
     else if(op == "addi"){ // addi instruction
@@ -1235,6 +1253,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
         MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
         MIPSInstruction addi_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, src2); // Add immediate instruction
         mips_code_text.push_back(addi_instr); // Emit add immediate instruction
+        update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
     }
     else if(op == "sub"){ // sub instruction
         dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
@@ -1249,6 +1268,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction sub_instr(MIPSOpcode::SUBU, dest_reg, src1_reg, src2_reg); // Subtract the two registers
             mips_code_text.push_back(sub_instr); // Emit sub instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if (dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T || dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T) {
             emit_instruction("load", src1+"_lo", src1+"_lo", ""); // Load the source value into a register
@@ -1259,6 +1279,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             // Subtract low parts
             MIPSInstruction sub_instr_lo(MIPSOpcode::SUBU, dest_reg_lo, src1_reg_lo, src2_reg_lo);
             mips_code_text.push_back(sub_instr_lo);
+            update_for_add(dest+"_lo", dest_reg_lo); // Update register descriptor and address descriptor for lo
             // Set borrow if src1_lo < src2_lo
             emit_instruction("sltu", "borrow", src1+"_lo", src2+"_lo");
             MIPSRegister borrow_reg = get_register_for_operand("borrow");
@@ -1272,6 +1293,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction sub_borrow_instr(MIPSOpcode::SUBU, dest_reg_hi, dest_reg_hi, borrow_reg);
             mips_code_text.push_back(sub_instr_hi);
             mips_code_text.push_back(sub_borrow_instr);
+            update_for_add(dest+"_hi", dest_reg_hi); // Update register descriptor and address descriptor for hi
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1281,6 +1303,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction sub_instr(MIPSOpcode::SUB_S, dest_reg, src1_reg, src2_reg); // Add the two registers
             mips_code_text.push_back(sub_instr); // Emit add instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1290,14 +1313,18 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
             MIPSInstruction sub_instr(MIPSOpcode::SUB_D, dest_reg, src1_reg, src2_reg); // Add the two registers
             mips_code_text.push_back(sub_instr); // Emit add instruction
+            update_for_add(dest, dest_reg, true); // Update register descriptor and address descriptor
         }
     }
     else if(op == "subi"){ //subi instruction
         // only used for sp,fp,gp so no need to check for type
         MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
         MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
-        MIPSInstruction subi_instr(MIPSOpcode::SUBIU, dest_reg, src1_reg, src2); // Sub immediate instruction
-        mips_code_text.push_back(subi_instr); // Emit sub immediate instruction
+        MIPSInstruction neg_instr(MIPSOpcode::NEG, dest_reg, src1_reg); // Negate the source register
+        mips_code_text.push_back(neg_instr); // Emit neg instruction
+        MIPSInstruction add_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, src2); // Sub immediate instruction
+        mips_code_text.push_back(add_instr); // Emit sub immediate instruction
+        update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
     }
     else if(op == "mul"){ // mul instruction
         dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
@@ -1312,6 +1339,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction mul_instr(MIPSOpcode::MULU, src1_reg, src2_reg); // Multiply the two registers
             mips_code_text.push_back(mul_instr); // Emit mul instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.isUnsigned()){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1321,6 +1349,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction mul_instr(MIPSOpcode::MUL, src1_reg, src2_reg); // Multiply the two registers
             mips_code_text.push_back(mul_instr); // Emit mul instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T ){
             emit_instruction("load", src1+"_lo", src1+"_lo", ""); // Load the source value into a register
@@ -1344,6 +1373,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(mul_instr_1); // Emit mul instruction
             MIPSInstruction mflo_instr_1(MIPSOpcode::MFLO, dest_reg_lo); // Move the result to the destination lo register
             mips_code_text.push_back(mflo_instr_1); // Emit move instruction
+            update_for_add(dest+"_lo", dest_reg_lo); // Update register descriptor and address descriptor for lo
             MIPSInstruction mfhi_instr_1(MIPSOpcode::MFHI, temp_reg); // Move Carry from src1_lo * src2_lo to temp register
             mips_code_text.push_back(mfhi_instr_1); // Emit move instruction
             MIPSInstruction add_to_carry_instr_1(MIPSOpcode::ADDU, carry_reg, carry_reg, temp_reg); // Add the carry from src1_lo * src2_lo to the carry register
@@ -1373,6 +1403,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             // add carry to dest_hi
             MIPSInstruction add_carry_instr(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, carry_reg); // Add the carry to the hi register
             mips_code_text.push_back(add_carry_instr); // Emit add instruction for carry
+            update_for_add(dest+"_hi", dest_reg_hi); // Update register descriptor and address descriptor for hi
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T){
             emit_instruction("load", src1+"_lo", src1+"_lo", ""); // Load the source value into a register
@@ -1396,6 +1427,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(mul_instr_1); // Emit mul instruction
             MIPSInstruction mflo_instr_1(MIPSOpcode::MFLO, dest_reg_lo); // Move the result to the destination lo register
             mips_code_text.push_back(mflo_instr_1); // Emit move instruction
+            update_for_add(dest+"_lo", dest_reg_lo); // Update register descriptor and address descriptor for lo
             MIPSInstruction mfhi_instr_1(MIPSOpcode::MFHI, temp_reg); // Move Carry from src1_lo * src2_lo to temp register
             mips_code_text.push_back(mfhi_instr_1); // Emit move instruction
             MIPSInstruction add_to_carry_instr_1(MIPSOpcode::ADDU, carry_reg, carry_reg, temp_reg); // Add the carry from src1_lo * src2_lo to the carry register
@@ -1425,6 +1457,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             // add carry to dest_hi
             MIPSInstruction add_carry_instr(MIPSOpcode::ADDU, dest_reg_hi, dest_reg_hi, carry_reg); // Add the carry to the hi register
             mips_code_text.push_back(add_carry_instr); // Emit add instruction for carry
+            update_for_add(dest+"_hi", dest_reg_hi); // Update register descriptor and address descriptor for hi
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1434,6 +1467,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction mul_instr(MIPSOpcode::MUL_S, dest_reg, src1_reg, src2_reg); // Multiply the two registers
             mips_code_text.push_back(mul_instr); // Emit mul instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1443,6 +1477,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
             MIPSInstruction mul_instr(MIPSOpcode::MUL_D, dest_reg, src1_reg, src2_reg); // Multiply the two registers
             mips_code_text.push_back(mul_instr); // Emit mul instruction
+            update_for_add(dest, dest_reg, true); // Update register descriptor and address descriptor
         }
     }
     else if(op == "div"){
@@ -1460,6 +1495,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(div_instr); // Emit mul instruction
             MIPSInstruction mflo_instr(MIPSOpcode::MFLO, dest_reg); // Move the result to the destination register
             mips_code_text.push_back(mflo_instr); // Emit move instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.isSigned()){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1471,6 +1507,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(div_instr); // Emit mul instruction
             MIPSInstruction mflo_instr(MIPSOpcode::MFLO, dest_reg); // Move the result to the destination register
             mips_code_text.push_back(mflo_instr); // Emit move instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T ){
             // function call to helper function __udivdi3
@@ -1486,6 +1523,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction div_instr(MIPSOpcode::DIV_S, dest_reg, src1_reg, src2_reg); // Multiply the two registers
             mips_code_text.push_back(div_instr); // Emit mul instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1495,6 +1533,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
             MIPSInstruction div_instr(MIPSOpcode::DIV_D, dest_reg, src1_reg, src2_reg); // Multiply the two registers
             mips_code_text.push_back(div_instr); // Emit mul instruction
+            update_for_add(dest, dest_reg, true); // Update register descriptor and address descriptor
         }
     }
     else if(op == "mod"){
@@ -1512,6 +1551,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(div_instr); // Emit mul instruction
             MIPSInstruction mfhi_instr(MIPSOpcode::MFHI, dest_reg); // Move the result to the destination register
             mips_code_text.push_back(mfhi_instr); // Emit move instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.isSigned()){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1523,6 +1563,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(div_instr); // Emit mul instruction
             MIPSInstruction mfhi_instr(MIPSOpcode::MFHI, dest_reg); // Move the result to the destination register
             mips_code_text.push_back(mfhi_instr); // Emit move instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T ){
             // function call to helper function __umoddi3
@@ -1544,6 +1585,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction and_instr(MIPSOpcode::AND, dest_reg, src1_reg, src2_reg); // Bitwise AND the two registers
             mips_code_text.push_back(and_instr); // Emit and instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // AND low parts
@@ -1554,6 +1596,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg_lo = get_register_for_operand(dest+"_lo", true); // Get a register for the destination lo
             MIPSInstruction and_instr_lo(MIPSOpcode::AND, dest_reg_lo, src1_reg_lo, src2_reg_lo); // Bitwise AND the two registers
             mips_code_text.push_back(and_instr_lo); // Emit and instruction
+            update_for_add(dest+"_lo", dest_reg_lo); // Update register descriptor and address descriptor for lo
             // AND high parts
             emit_instruction("load", src1+"_hi", src1+"_hi", ""); // Load the source value into a register
             emit_instruction("load", src2+"_hi", src2+"_hi", ""); // Load the source value into a register
@@ -1562,6 +1605,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg_hi = get_register_for_operand(dest+"_hi", true); // Get a register for the destination hi
             MIPSInstruction and_instr_hi(MIPSOpcode::AND, dest_reg_hi, src1_reg_hi, src2_reg_hi); // Bitwise AND the two registers
             mips_code_text.push_back(and_instr_hi); // Emit and instruction
+            update_for_add(dest+"_hi", dest_reg_hi); // Update register descriptor and address descriptor for hi
         }
     }
     else if(op == "andi"){
@@ -1575,6 +1619,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction andi_instr(MIPSOpcode::ANDI, dest_reg, src1_reg, src2); // Bitwise ANDI the register and immediate value
             mips_code_text.push_back(andi_instr); // Emit andi instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
     }
     else if(op == "or"){ // bitwise or instruction
@@ -1590,6 +1635,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction or_instr(MIPSOpcode::OR, dest_reg, src1_reg, src2_reg); // Bitwise OR the two registers
             mips_code_text.push_back(or_instr); // Emit and instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // OR low parts
@@ -1600,6 +1646,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg_lo = get_register_for_operand(dest+"_lo", true); // Get a register for the destination lo
             MIPSInstruction or_instr_lo(MIPSOpcode::OR, dest_reg_lo, src1_reg_lo, src2_reg_lo); // Bitwise OR the two registers
             mips_code_text.push_back(or_instr_lo); // Emit and instruction
+            update_for_add(dest+"_lo", dest_reg_lo); // Update register descriptor and address descriptor for lo
             // OR high parts
             emit_instruction("load", src1+"_hi", src1+"_hi", ""); // Load the source value into a register
             emit_instruction("load", src2+"_hi", src2+"_hi", ""); // Load the source value into a register
@@ -1608,6 +1655,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg_hi = get_register_for_operand(dest+"_hi", true); // Get a register for the destination hi
             MIPSInstruction or_instr_hi(MIPSOpcode::OR, dest_reg_hi, src1_reg_hi, src2_reg_hi); // Bitwise OR the two registers
             mips_code_text.push_back(or_instr_hi); // Emit and instruction
+            update_for_add(dest+"_hi", dest_reg_hi); // Update register descriptor and address descriptor for hi
         }
     }
     else if(op == "xor"){ // bitwise xor instruction
@@ -1623,6 +1671,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction xor_instr(MIPSOpcode::XOR, dest_reg, src1_reg, src2_reg); // Bitwise XOR the two registers
             mips_code_text.push_back(xor_instr); // Emit and instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // XOR low parts
@@ -1633,6 +1682,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg_lo = get_register_for_operand(dest+"_lo", true); // Get a register for the destination lo
             MIPSInstruction xor_instr_lo(MIPSOpcode::XOR, dest_reg_lo, src1_reg_lo, src2_reg_lo); // Bitwise XOR the two registers
             mips_code_text.push_back(xor_instr_lo); // Emit and instruction
+            update_for_add(dest+"_lo", dest_reg_lo); // Update register descriptor and address descriptor for lo
             // xor high parts
             emit_instruction("load", src1+"_hi", src1+"_hi", ""); // Load the source value into a register
             emit_instruction("load", src2+"_hi", src2+"_hi", ""); // Load the source value into a register
@@ -1641,6 +1691,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg_hi = get_register_for_operand(dest+"_hi", true); // Get a register for the destination hi
             MIPSInstruction xor_instr_hi(MIPSOpcode::XOR, dest_reg_hi, src1_reg_hi, src2_reg_hi); // Bitwise XOR the two registers
             mips_code_text.push_back(xor_instr_hi); // Emit and instruction
+            update_for_add(dest+"_hi", dest_reg_hi); // Update register descriptor and address descriptor for hi
         }
     }
     else if(op == "not"){
@@ -1653,6 +1704,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction not_instr(MIPSOpcode::NOR, dest_reg, src1_reg, src1_reg); // Bitwise NOT the register
             mips_code_text.push_back(not_instr); // Emit and instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
@@ -1671,9 +1723,22 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction sllv_instr(MIPSOpcode::SLLV, dest_reg, src1_reg, src2_reg); // Shift left logical variable instruction
             mips_code_text.push_back(sllv_instr); // Emit sllv instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
+        }
+    }
+    else if(op == "sll"){
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction sll_instr(MIPSOpcode::SLL, dest_reg, src1_reg, src2); // Shift left logical instruction
+            mips_code_text.push_back(sll_instr); // Emit sll instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
     }
     else if(op == "srlv" ){
@@ -1689,6 +1754,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction srlv_instr(MIPSOpcode::SRLV, dest_reg, src1_reg, src2_reg); // Shift right logical variable instruction
             mips_code_text.push_back(srlv_instr); // Emit srlv instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
@@ -1707,9 +1773,22 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction srav_instr(MIPSOpcode::SRAV, dest_reg, src1_reg, src2_reg); // Shift right arithmetic instruction
             mips_code_text.push_back(srav_instr); // Emit sra instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
+        }
+    }
+    else if(op == "sra"){
+        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+
+        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+            emit_instruction("load", src1, src1, ""); // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            MIPSInstruction sra_instr(MIPSOpcode::SRA, dest_reg, src1_reg, src2); // Shift right arithmetic instruction
+            mips_code_text.push_back(sra_instr); // Emit sra instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
     }
     else if(op == "neg"){
@@ -1722,6 +1801,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction neg_instr(MIPSOpcode::NEG, dest_reg, src1_reg); // Negate the source register
             mips_code_text.push_back(neg_instr); // Emit neg instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
@@ -1732,6 +1812,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
             MIPSInstruction neg_instr(MIPSOpcode::NEG_S, dest_reg, src1_reg); // Negate the source register
             mips_code_text.push_back(neg_instr); // Emit neg instruction
+            update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
@@ -1739,6 +1820,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
             MIPSInstruction neg_instr(MIPSOpcode::NEG_D, dest_reg, src1_reg); // Negate the source register
             mips_code_text.push_back(neg_instr); // Emit neg instruction
+            update_for_add(dest, dest_reg, true); // Update register descriptor and address descriptor
         }
     }
 }

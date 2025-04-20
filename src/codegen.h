@@ -86,10 +86,10 @@ extern std::unordered_map<std::string, std::unordered_set<std::string> > address
 void init_descriptors();
 bool check_if_variable_in_register(const std::string& var);
 
-void update_for_load(MIPSRegister reg, const std::string& var);
-void update_for_store(const std::string& var, MIPSRegister reg);
-void update_for_add(const std::string& x, MIPSRegister rx);
-void update_for_assign(const std::string& x, const std::string& y, MIPSRegister ry);
+void update_for_load(MIPSRegister reg, const std::string& var, bool is_double = false);
+void update_for_store(const std::string& var, MIPSRegister reg, bool is_double = false);
+void update_for_add(const std::string& x, MIPSRegister rx, bool is_double = false);
+void update_for_assign(const std::string& x, const std::string& y, MIPSRegister ry, bool is_double = false);
 
 void clear_register(MIPSRegister reg);
 void print_descriptors(); 
