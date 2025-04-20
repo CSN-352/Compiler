@@ -108,12 +108,24 @@ void spill_register(MIPSRegister reg);
 
 //=================== MIPS Instruction Class ===================//
 
+enum MIPSInstructionType {
+    _3_REG_TYPE,
+    _2_REG_OFFSET_TYPE,
+    _1_REG_TYPE_IMMEDIATE,
+    _2_REG_IMMEDIATE_TYPE,
+    _2_REG_TYPE,
+    _1_REG_TYPE,
+    _LABEL_TYPE,
+    _NOP_TYPE,
+};
+
 class MIPSInstruction {
 public:
     std::string label;         // Optional label
     MIPSOpcode opcode;         // Enum opcode
-    MIPSRegister rd, rs, rt;   // Registers
+    MIPSRegister dest_reg, src1_reg, src2_reg;   // Registers
     std::string immediate;     // Immediate value or offset (12- bits size allowed only)
+    int instruction_type; 
 
     // Constructor for normal 3-reg instruction (e.g., add rd, rs, rt)
     MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src1, MIPSRegister src2);
