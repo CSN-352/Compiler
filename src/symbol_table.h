@@ -963,6 +963,7 @@ public:
     SymbolTable function_symbol_table;
     vector<TACInstruction*> code;
     int relative_offset = 0;
+    int size = 0;
     FunctionDefinition();
 };
 
