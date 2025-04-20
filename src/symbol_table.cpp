@@ -2544,6 +2544,7 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers* ds, Declar
                 {
                     ParameterDeclaration* pd = d->direct_declarator->parameters->paramater_list->parameter_declarations[i];
                     symbolTable.insert(pd->declarator->direct_declarator->identifier->value, pd->type, pd->type.get_size(), 0);
+                    P->size -= pd->type.get_size();
                 }
             }
         }
@@ -2569,7 +2570,7 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     if(cs_cast->declaration_statement_list != nullptr) fd->code.insert(fd->code.end(), cs_cast->declaration_statement_list->static_declaration_code.begin(), cs_cast->declaration_statement_list->static_declaration_code.end()); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
     fd->code.push_back(i1); // TAC
-    if (declarator->direct_declarator->parameters != nullptr) {
+    if (declarator->direct_declarator->parameters != nullptr){
         for (auto pd : declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
             if (pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
                 TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
@@ -2837,8 +2838,6 @@ void SymbolTable::exitScope()
 {
     if (currentScope == 0)
         return;
-    
-    FunctionDefinition* fd = scope_stack.top().function_definition;
 
     // for(auto entry: fd->function_symbol_table.table) {
     //     for(auto sym: entry.second) {
@@ -2986,6 +2985,7 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
         Symbol* sym_f = new Symbol(name, type, currentScope, func->function_symbol_table.currAddress);
         func->function_symbol_table.table[sym->name].push_front(sym_f);
         func->function_symbol_table.currAddress += size;
+        func->size += size;
     }
     else if (top.type.is_defined_type)
     {
@@ -3506,6 +3506,7 @@ void SymbolTable::print()
                 
             if (symbol->function_definition != nullptr){
                 cout<<"Printing function definition for: " << symbol->name << endl;
+                cout<<"Function Size: " << symbol->function_definition->size << endl;
                 cout << "------------------------------------------------------------------------------------------------------------------------\n";
                 for(const auto& entry : symbol->function_definition->function_symbol_table.table){
                     for(const auto symbol : entry.second){

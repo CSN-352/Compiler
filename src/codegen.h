@@ -39,7 +39,7 @@ enum MIPSOpcode {
     AND, ANDI, OR, XOR, NOR,
 
     // Shifts
-    SLL, SRL, SRA,
+    SLL, SRL, SRA, SLLV, SRLV, SRAV,
 
     // Set
     SLT, SLTU,
