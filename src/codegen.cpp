@@ -844,6 +844,9 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction load_instr(MIPSOpcode::LW, dest_reg, src2, src1_reg);
             mips_code_text.push_back(load_instr);
         }
+        else if(src1_sym != nullptr){ // local stack variable
+
+        }
         else{
             // Load large immediate value
             if(!check_immediate(src1)){
@@ -978,17 +981,17 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 update_for_store(src1, src1_reg, true); // Update register descriptor and address descriptor
             }
         }
-        else{ // storing local variables of functions
+        else{ 
+            // storing local variables of functions
             if(dest == "SP" || dest == "RA" || dest == "FP"){
                 MIPSRegister dest_reg = get_register_for_operand(dest);
-                
                 MIPSRegister base_reg = get_register_for_operand(src1);
                 string offset = src2;
                 MIPSInstruction store_instr(MIPSOpcode::SW, dest_reg, offset, base_reg);
                 mips_code_text.push_back(store_instr);
             }
             else {
-
+                cout<<"NOT YET IMPLEMENTED"<<endl;
             }
         }
     }
@@ -1231,7 +1234,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             mips_code_text.push_back(move_instr); // Emit move instruction
             update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
             if(dest_sym->type.isUnsigned()){
-                int bit_size = 8 * dest_sym->type.get_size();
+                int bit_size = 8 * dest_sym->type.get_size(); 
                 int mask = (1U << bit_size) - 1;
                 emit_instruction("andi", dest, dest, to_string(mask));
             }
