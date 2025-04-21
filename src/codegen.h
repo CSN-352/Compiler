@@ -111,7 +111,7 @@ void spill_register(MIPSRegister reg);
 enum MIPSInstructionType {
     _3_REG_TYPE,
     _2_REG_OFFSET_TYPE,
-    _1_REG_TYPE_IMMEDIATE,
+    _1_REG_iMMEDIATE_TYPE,
     _2_REG_IMMEDIATE_TYPE,
     _2_REG_TYPE,
     _1_REG_TYPE,

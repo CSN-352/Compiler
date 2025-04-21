@@ -138,6 +138,7 @@ std::string get_opcode_name(MIPSOpcode opcode) {
         case MIPSOpcode::SUB_S:    return "SUB.S";
         case MIPSOpcode::SUB_D:    return "SUB.D";
         case MIPSOpcode::MUL:      return "MUL";
+        case MIPSOpcode::MULU:     return "MULU";
         case MIPSOpcode::MULT:     return "MULT";
         case MIPSOpcode::MULTU:    return "MULTU";
         case MIPSOpcode::DIV:      return "DIV";
@@ -286,6 +287,8 @@ void print_descriptors() {
         std::cout << "\n";
     }
 }
+
+
 //=================== Leader Detection ===================//
 
 std::unordered_map<int, std::string> leader_labels_map;
@@ -352,14 +355,32 @@ MIPSRegister get_register_for_operand(const std::string& var,bool for_result) {
     if(var == "RA") return MIPSRegister::RA;
 
     // 1. Already in a register
-    if(var.size()>0 && (var[0]=='#' || var[0]=='0') && !for_result){
+    // if(var.size()>0 && (var[0]=='#' || var[0]=='0') && !for_result){
+    //     for (const auto& [reg, vars] : register_descriptor) {
+    //         if (vars.count(var)){
+    //             if(address_descriptor[var].count(get_mips_register_name(reg)))
+    //                 return reg;
+    //         } 
+    //     }
+    // } 
+    // else if((var[0]=='#' || var[0]=='0') && for_result){
+    //     for (const auto& [reg, vars] : register_descriptor) {
+    //         if (vars.count(var) && vars.size() == 1){
+    //             if(address_descriptor[var].count(get_mips_register_name(reg)))
+    //                 return reg;
+    //         } 
+    //     }
+    // }
+
+    if(var.size()>0 && !for_result){
         for (const auto& [reg, vars] : register_descriptor) {
             if (vars.count(var)){
                 if(address_descriptor[var].count(get_mips_register_name(reg)))
                     return reg;
             } 
         }
-    } else if((var[0]=='#' || var[0]=='0') && for_result){
+    } 
+    else if(for_result){
         for (const auto& [reg, vars] : register_descriptor) {
             if (vars.count(var) && vars.size() == 1){
                 if(address_descriptor[var].count(get_mips_register_name(reg)))
@@ -367,6 +388,7 @@ MIPSRegister get_register_for_operand(const std::string& var,bool for_result) {
             } 
         }
     }
+
         // 2. Empty register
         for (int r = T0; r <= T9; ++r) {
             MIPSRegister reg = static_cast<MIPSRegister>(r);
@@ -544,7 +566,7 @@ MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister reg, const std::st
 
 // Constructor for immediate instructions (e.g., li, lui)
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, const std::string& imm)
-    : opcode(opc), dest_reg(dest), immediate(imm), src1_reg(MIPSRegister::ZERO), src2_reg(MIPSRegister::ZERO), label(""), instruction_type(_1_REG_TYPE_IMMEDIATE) {}
+    : opcode(opc), dest_reg(dest), immediate(imm), src1_reg(MIPSRegister::ZERO), src2_reg(MIPSRegister::ZERO), label(""), instruction_type(_1_REG_iMMEDIATE_TYPE) {}
 
 // Constructor for immediate instructions with 2 registers (e.g., addi, andi, ori)
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc, MIPSRegister dest, MIPSRegister src, const std::string& imm)
@@ -740,7 +762,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
     Symbol* src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
 
     // Return for inavalid destination
-    if(dest != "SP" && dest != "GP" && dest != "RA" && dest!="FP" && dest_sym == nullptr) return;
+    // if(dest != "SP" && dest != "GP" && dest != "RA" && dest!="FP" && dest_sym == nullptr) return;
 
     if(op == "load"){ // assignment instruction
         if(dest_sym != nullptr && dest_sym->scope == 0){ // global variable
@@ -816,19 +838,18 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 update_for_load(dest_reg, dest, true); // Update register descriptor and address descriptor
             }
         }
-        else if(src1 == "FP" || src1 == "SP" || src1 == "GP"){// local stack variable
+        else if(src1 == "FP" || src1 == "SP" || src1 == "GP"){ // local stack variable
             MIPSRegister dest_reg = get_register_for_operand(dest);
             MIPSRegister src1_reg = get_register_for_operand(src1);
             MIPSInstruction load_instr(MIPSOpcode::LW, dest_reg, src2, src1_reg);
             mips_code_text.push_back(load_instr);
-            
         }
         else{
             // Load large immediate value
             if(!check_immediate(src1)){
                 store_immediate(src1, dest_sym->type); // Store immediate value in immediate storage map
             }
-            emit_instruction("la", "addr", dest, ""); // Load address of dest
+            emit_instruction("la", "addr", src1, ""); // Load address of dest
             MIPSRegister addr_reg = get_register_for_operand("addr"); // Get a register for the address
 
             if(dest_sym->type.type_index == PrimitiveTypes::U_CHAR_T){
@@ -889,14 +910,21 @@ void emit_instruction(string op, string dest, string src1, string src2){
        
     }
     else if(op == "la"){ // load address instruction
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        if(src1_sym->scope == 0){ // global variable
+        if(check_immediate(src1)){
+            MIPSRegister addr_reg = get_register_for_operand(dest, true); // Get a register for the address
+            string src1_var = immediate_storage_map[src1]; // Get the variable name from immediate storage map
+            MIPSInstruction load_addr_instr(MIPSOpcode::LA, addr_reg, src1_var); // Load address of dest
+            mips_code_text.push_back(load_addr_instr); // Emit load address instruction
+            update_for_load(addr_reg, dest); // Update register descriptor and address descriptor
+        }
+        else if(src1_sym != nullptr && src1_sym->scope == 0){ // global variable
             MIPSRegister addr_reg = get_register_for_operand(dest, true); // Get a register for the address
             MIPSInstruction load_addr_instr(MIPSOpcode::LA, addr_reg, src1); // Load address of dest
             mips_code_text.push_back(load_addr_instr); // Emit load address instruction
             update_for_load(addr_reg, dest); // Update register descriptor and address descriptor
         }
         else {
+            cout<<"NOT YET IMPLEMENTED"<<endl;
             // local stack variable initialization
         }
     }
@@ -972,6 +1000,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
     }
     else if(op == "function_begin"){
         Symbol* func = current_symbol_table.get_symbol_using_mangled_name(dest);
+        insert_function_symbol_table(dest);
         int offset = func->function_definition->size + 8;
         MIPSInstruction func_instr(dest);
         mips_code_text.push_back(func_instr);
@@ -982,6 +1011,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
     }
     else if(op == "function_end"){
         Symbol* func = current_symbol_table.get_symbol_using_mangled_name(dest);
+        erase_function_symbol_table(dest);
         int offset = func->function_definition->size + 8;
         emit_instruction("load", "FP", "SP", to_string(offset-8)); // Adjust stack pointer for function frame
         emit_instruction("load", "RA", "SP", to_string(offset-4)); // Store return address
@@ -994,9 +1024,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         mips_code_text.push_back(jump_instr);
     }
     else if(op == "cast"){ // cast instruction
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type == src2_sym->type){ // same type
             emit_instruction("load", dest, src2, ""); // emit instruction dest = src2
         }
@@ -1013,7 +1040,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             emit_instruction("andi", dest+"_lo", src2, to_string(mask)); // emit instruction dest = src2 & mask
         }
         else if(dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T && src2_sym->type.isInt() && src2_sym->type.isSigned()){ // sign extend signed
-            int shift_size = 8 * (32 - min(dest_sym->type.get_size(),src2_sym->type.get_size()));
+            int shift_size = 8 * (4 - min(dest_sym->type.get_size(),src2_sym->type.get_size()));
             emit_instruction("sll", dest+"_lo", src2, to_string(shift_size)); // emit instruction dest_lo = src2 << shift_size
             emit_instruction("sra", dest+"_lo", dest+"_lo", to_string(shift_size)); // emit instruction dest_lo = dest_lo >> shift_size
             emit_instruction("sra", dest+"_hi", dest+"_lo", to_string(31)); // emit instruction dest_hi = dest_lo >> 32
@@ -1030,7 +1057,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             emit_instruction("andi", dest, src2+"_lo", to_string(mask)); // emit instruction dest = src2_lo & mask
         }
         else if((src2_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T || src2_sym->type.type_index == PrimitiveTypes::LONG_LONG_T) && dest_sym->type.isSigned()){ // sign extend signed
-            int shift_size = 8 * (32 - min(dest_sym->type.get_size(),src2_sym->type.get_size()));
+            int shift_size = 8 * (4 - min(dest_sym->type.get_size(),src2_sym->type.get_size()));
             emit_instruction("sll", dest, src2+"_lo", to_string(shift_size)); // emit instruction dest = src2_lo << shift_size
             emit_instruction("sra", dest, dest, to_string(shift_size)); // emit instruction dest = dest >> shift_size
         }
@@ -1040,7 +1067,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             emit_instruction("andi", dest, src2, to_string(mask)); // emit instruction dest = src2 & mask
         }
         else if(dest_sym->type.isSigned() && src2_sym->type.isSigned()){ // sign extend signed
-            int shift_size = 8 * (32 - min(dest_sym->type.get_size(),src2_sym->type.get_size()));
+            int shift_size = 8 * (4 - min(dest_sym->type.get_size(),src2_sym->type.get_size()));
             emit_instruction("sll", dest, src2, to_string(shift_size)); // emit instruction dest = src2 << shift_size
             emit_instruction("sra", dest, dest, to_string(shift_size)); // emit instruction dest = dest >> shift_size
         }   
@@ -1073,7 +1100,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 emit_instruction("andi", src2, src2, to_string(mask));
             }
             else{
-                int shift_size = 8 * (32 - src2_sym->type.get_size());
+                int shift_size = 8 * (4 - src2_sym->type.get_size());
                 emit_instruction("sll", src2, src2, to_string(shift_size)); 
                 emit_instruction("sra", src2, src2, to_string(shift_size)); 
             }
@@ -1113,7 +1140,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 emit_instruction("andi", src2, src2, to_string(mask));
             }
             else{
-                int shift_size = 8 * (32 - src2_sym->type.get_size());
+                int shift_size = 8 * (4 - src2_sym->type.get_size());
                 emit_instruction("sll", src2, src2, to_string(shift_size)); 
                 emit_instruction("sra", src2, src2, to_string(shift_size)); 
             }
@@ -1161,7 +1188,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 emit_instruction("andi", dest, dest, to_string(mask));
             }
             else{
-                int shift_size = 8 * (32 - dest_sym->type.get_size());
+                int shift_size = 8 * (4 - dest_sym->type.get_size());
                 emit_instruction("sll", dest, dest, to_string(shift_size)); 
                 emit_instruction("sra", dest, dest, to_string(shift_size)); 
             }
@@ -1209,7 +1236,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
                 emit_instruction("andi", dest, dest, to_string(mask));
             }
             else{
-                int shift_size = 8 * (32 - dest_sym->type.get_size());
+                int shift_size = 8 * (4 - dest_sym->type.get_size());
                 emit_instruction("sll", dest, dest, to_string(shift_size)); 
                 emit_instruction("sra", dest, dest, to_string(shift_size)); 
             }
@@ -1242,10 +1269,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "add"){ // add instruction
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1311,10 +1334,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
     }
     else if(op == "sub"){ // sub instruction
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if (dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T) {
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1383,27 +1402,23 @@ void emit_instruction(string op, string dest, string src1, string src2){
         update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
     }
     else if(op == "mul"){ // mul instruction
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.isUnsigned()){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
             MIPSRegister src2_reg = get_register_for_operand(src2); // Get a register for the source 2
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction mul_instr(MIPSOpcode::MULU, src1_reg, src2_reg); // Multiply the two registers
+            MIPSInstruction mul_instr(MIPSOpcode::MULU, dest_reg, src1_reg, src2_reg); // Multiply the two registers
             mips_code_text.push_back(mul_instr); // Emit mul instruction
             update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
-        else if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.isUnsigned()){
+        else if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.isSigned()){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
             MIPSRegister src2_reg = get_register_for_operand(src2); // Get a register for the source 2
             MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction mul_instr(MIPSOpcode::MUL, src1_reg, src2_reg); // Multiply the two registers
+            MIPSInstruction mul_instr(MIPSOpcode::MUL, dest_reg, src1_reg, src2_reg); // Multiply the two registers
             mips_code_text.push_back(mul_instr); // Emit mul instruction
             update_for_add(dest, dest_reg); // Update register descriptor and address descriptor
         }
@@ -1537,10 +1552,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "div"){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.isUnsigned()){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1593,10 +1604,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "mod"){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.isUnsigned()){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1629,10 +1636,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "and"){ // bitwise and instruction
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1665,10 +1668,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "andi"){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -1679,10 +1678,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "or"){ // bitwise or instruction
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1715,10 +1710,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "xor"){ // bitwise xor instruction
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1751,9 +1742,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "not"){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -1767,10 +1755,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "sllv" ){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1786,8 +1770,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "sll"){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -1798,10 +1780,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "srlv" ){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1817,10 +1795,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "srav"){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-        src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
@@ -1836,8 +1810,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "sra"){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -1848,9 +1820,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "neg"){
-        dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
-        src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
-
         if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -1906,13 +1875,15 @@ vector<string> parameters_emit_instrcution(TACInstruction* instr){
         emit_instruction_args[3] = get_operand_string(instr->arg2);
     }
     else if(instr->op.type == TACOperatorType::TAC_OPERATOR_ADD && instr->flag == 0){
-        emit_instruction_args[0] = "add";
+        if(instr->arg2->type == TACOperandType::TAC_OPERAND_CONSTANT) emit_instruction_args[0] = "addi";
+        else emit_instruction_args[0] = "add";
         emit_instruction_args[1] = get_operand_string(instr->result);
         emit_instruction_args[2] = get_operand_string(instr->arg1);
         emit_instruction_args[3] = get_operand_string(instr->arg2);
     }
     else if(instr->op.type == TACOperatorType::TAC_OPERATOR_SUB && instr->flag == 0){
-        emit_instruction_args[0] = "sub";
+        if(instr->arg2->type == TACOperandType::TAC_OPERAND_CONSTANT) emit_instruction_args[0] = "subi";
+        else emit_instruction_args[0] = "sub";
         emit_instruction_args[1] = get_operand_string(instr->result);
         emit_instruction_args[2] = get_operand_string(instr->arg1);
         emit_instruction_args[3] = get_operand_string(instr->arg2);
@@ -1965,7 +1936,11 @@ vector<string> parameters_emit_instrcution(TACInstruction* instr){
         emit_instruction_args[3] = get_operand_string(instr->arg2);
     }
     else if(instr->op.type == TACOperatorType::TAC_OPERATOR_RIGHT_SHIFT && instr->flag == 0){
-        Symbol* dest_sym = current_symbol_table.get_symbol_using_mangled_name(instr->result->value);
+        Symbol* dest_sym;
+        if(instr->result->value[0] == '#') dest_sym = current_symbol_table.get_symbol_using_mangled_name(instr->result->value.substr(1));
+        else dest_sym = current_symbol_table.get_symbol_using_mangled_name(instr->result->value);
+        cout<<dest_sym->mangled_name<<endl;
+        cout<<dest_sym->type.type_index<<endl;
         if(dest_sym->type.isSigned()){
             emit_instruction_args[0] = "srav";
         }
@@ -1991,7 +1966,15 @@ vector<string> parameters_emit_instrcution(TACInstruction* instr){
         emit_instruction_args[0] = "function_end";
         emit_instruction_args[1] = get_operand_string(instr->result);
     }
-    
+    if(emit_instruction_args[1] != "" && emit_instruction_args[1][0] == '#'){
+        emit_instruction_args[1] = emit_instruction_args[1].substr(1); // Remove the '#' character from the label
+    }
+    if(emit_instruction_args[2] != "" && emit_instruction_args[2][0] == '#'){
+        emit_instruction_args[2] = emit_instruction_args[2].substr(1); // Remove the '#' character from the label
+    }
+    if(emit_instruction_args[3] != "" && emit_instruction_args[3][0] == '#'){
+        emit_instruction_args[3] = emit_instruction_args[3].substr(1); // Remove the '#' character from the label
+    }
     return emit_instruction_args;
 }
 
@@ -2013,22 +1996,35 @@ void print_mips_code() {
         cout<<instr.label<<": "<<get_directive_name(instr.directive)<<" "<<instr.value<<endl;
     }
     // Printing text section
-    cout<< ".text" << endl;
+    Symbol* main = current_symbol_table.getSymbol("main"); // Get the main function symbol
+    if(main != nullptr) {
+        // Set the main function as the entry point if it exists
+        cout<< ".text" << endl;
+        cout<< ".global _start"<<endl;
+        cout<< "_start:" << endl;
+        cout<< "jal "<<main->mangled_name<<endl; // Jump to main function
+        cout<< "li $v0, 10" << endl; // Load exit syscall code into $v0
+        cout<< "syscall" << endl; // Exit syscall
+        cout<< endl;
+    }
     for(int instr_no=0;instr_no<mips_code_text.size();instr_no++){
         MIPSInstruction instr = mips_code_text[instr_no];
         // if(instr.label != "") cout<<instr.label<<": "<<endl;
         switch(instr.instruction_type){
             case(MIPSInstructionType::_3_REG_TYPE):
-                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<" "<<get_mips_register_name(instr.src1_reg)<<" "<<get_mips_register_name(instr.src2_reg);
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<", "<<get_mips_register_name(instr.src1_reg)<<", "<<get_mips_register_name(instr.src2_reg);
                 break;
             case(MIPSInstructionType::_2_REG_OFFSET_TYPE):
-                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<" "<<instr.immediate<<"("<<get_mips_register_name(instr.src1_reg)<<")";
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<", "<<instr.immediate<<"("<<get_mips_register_name(instr.src1_reg)<<")";
+                break;
+            case(MIPSInstructionType::_1_REG_iMMEDIATE_TYPE):
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<", "<<instr.immediate;
                 break;
             case(MIPSInstructionType::_2_REG_IMMEDIATE_TYPE):
-                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<" "<<get_mips_register_name(instr.src1_reg)<<" "<<instr.immediate;
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<", "<<get_mips_register_name(instr.src1_reg)<<", "<<instr.immediate;
                 break;
             case(MIPSInstructionType::_2_REG_TYPE):
-                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<" "<<get_mips_register_name(instr.src1_reg);
+                cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg)<<", "<<get_mips_register_name(instr.src1_reg);
                 break;
             case(MIPSInstructionType::_1_REG_TYPE):
                 cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg);

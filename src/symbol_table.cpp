@@ -2761,11 +2761,15 @@ std::string create_mangled_name(std::string& name, Type& type, int scope,
 {
     stringstream ss;
 
-    ss << "0_";
-
+    
     if(name[0] == '#'){
-        return name;
+        for(int i = 1;i<name.size();i++){
+            ss << name[i];
+        }
+        return ss.str();
     }
+
+    ss << "0_";
 
     // Kind
     if (type.is_function)
