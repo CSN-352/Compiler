@@ -2770,7 +2770,7 @@ std::string create_mangled_name(std::string& name, Type& type, int scope,
         return ss.str();
     }
 
-    ss << "0_";
+    ss << "_";
 
     // Kind
     if (type.is_function)
@@ -2781,7 +2781,7 @@ std::string create_mangled_name(std::string& name, Type& type, int scope,
         ss << "v_";
 
     // Base name + scope
-    ss << name << "@S" << scope;
+    ss << name << "_S" << scope;
 
     // pair<int, pair<Type, string>> top = { 0, {Type(), name} };
     // if (!scope_stack.empty())
