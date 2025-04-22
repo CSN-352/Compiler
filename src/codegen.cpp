@@ -397,6 +397,7 @@ std::string get_opcode_name(MIPSOpcode opcode)
 
 std::unordered_map<MIPSRegister, std::unordered_set<std::string>> register_descriptor;
 std::unordered_map<std::string, std::unordered_set<std::string>> address_descriptor;
+std::unordered_map<std::string, std::string > stack_address_descriptor;
 
 void debug_register_descriptor() {
     debug("\n🔧 Register Descriptor", BLUE);
@@ -1194,6 +1195,15 @@ bool check_immediate(const string &immediate)
     return true;
 }
 
+void initialize_stack_offset_for_local_variables(Symbol* func){
+
+}
+
+std::string get_stack_offset_for_local_variable(std::string var){
+    if(address_descriptor[var].count("mem") && stack_address_descriptor.find(var)!=stack_address_descriptor.end()){
+        return stack_address_descriptor[var];
+    }
+}
 //=================== MIPS Instruction Emission ===================//
 
 std::vector<MIPSInstruction> mips_code_text;
@@ -1447,6 +1457,9 @@ void emit_instruction(string op, string dest, string src1, string src2){
         Symbol* func = current_symbol_table.get_symbol_using_mangled_name(dest);
         insert_function_symbol_table(dest);
         int offset = func->function_definition->size + 8;
+        MIPSInstruction func_instr(dest);
+        mips_code_text.push_back(func_instr);
+        initialize_stack_offset_for_local_variables(func);
         emit_instruction("subi", "SP", "SP", to_string(offset)); // Adjust stack pointer for function frame
         emit_instruction("store", "RA", "SP", to_string(offset-4)); // Store return address
         emit_instruction("store", "FP", "SP", to_string(offset-8)); // Store old frame pointer
@@ -1460,6 +1473,9 @@ void emit_instruction(string op, string dest, string src1, string src2){
         emit_instruction("load", "RA", "SP", to_string(offset-4)); // Store return address
         emit_instruction("addi", "SP", "SP", to_string(offset));
         emit_instruction("jr", "RA", "", ""); 
+    }
+    else if(op == "function_param"){
+        
     }
     else if(op == "jr"){
         MIPSRegister dest_reg = MIPSRegister::RA;
@@ -2677,8 +2693,13 @@ vector<string> parameters_emit_instrcution(TACInstruction *instr)
         emit_instruction_args[0] = "function_begin";
         emit_instruction_args[1] = get_operand_string(instr->result);
     }
-    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_FUNC_END){
+    else if (instr->op.type == TACOperatorType::TAC_OPERATOR_FUNC_END)
+    {
         emit_instruction_args[0] = "function_end";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_PARAM){
+        emit_instruction_args[0] = "function_param";
         emit_instruction_args[1] = get_operand_string(instr->result);
     }
     else if(instr->flag == 1){

@@ -15,6 +15,7 @@ void initialize_global_symbol_table();
 void insert_function_symbol_table(const string& function_name);
 void erase_function_symbol_table(const string& function_name);
 
+
 //=================== MIPS Register Definitions ===================//
 
 enum MIPSRegister {
@@ -83,6 +84,9 @@ std::string get_opcode_name(MIPSOpcode opcode);
 
 extern std::unordered_map<MIPSRegister, std::unordered_set<std::string> > register_descriptor;
 extern std::unordered_map<std::string, std::unordered_set<std::string> > address_descriptor;
+extern std::unordered_map<std::string, std::string > stack_address_descriptor;
+void initialize_stack_offset_for_local_variables(Symbol* func);
+std::string get_stack_offset_for_local_variable(std::string var);
 
 void debug_register_descriptor();
 void debug_address_descriptor();
