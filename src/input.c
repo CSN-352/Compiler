@@ -278,12 +278,12 @@
 //     int l = a >> b; // tested and working
 // }
 
+int add(int a, int b) {
+    return a + b;
+}
+
 int main(){
-    int a = 1;
-    for(int i = 0; i < 5; i++){
-        if(i == 2) break;
-        a++;
-    }
-    a = 3;
+    int sum = add(1,2);
+    return 0;
 }
 
