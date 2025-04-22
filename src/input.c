@@ -280,8 +280,9 @@
 
 int main(){
     int a = 1;
-    if(a == 1){
-        a = 2;
+    for(int i = 0; i < 5; i++){
+        if(i == 2) break;
+        a++;
     }
     a = 3;
 }
