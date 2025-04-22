@@ -61,7 +61,7 @@ enum MIPSOpcode {
     MOVE, MFHI, MFLO, MTHI, MTLO, MOVS, MOVD, MTC1, MFC1,
 
     // Branches
-    BEQ, BNE, BGTZ, BLEZ, BLTZ, BGEZ,
+    BEQ, BNE, BNEZ, BGTZ, BLEZ, BLTZ, BGEZ, BLT, BGT, BGE, BLE, C_EQ_S, BC1T, C_EQ_D, BC1F, C_LT_S, C_LT_D, C_LE_S, C_LE_D,
 
     // Jumps
     J, JR, JAL, JALR,
@@ -97,7 +97,7 @@ void print_descriptors();
 //=================== Leader Labels ===================//
 
 extern std::unordered_map<int, std::string> leader_labels_map;
-void set_leader_labels(vector<TACInstruction*> TAC_CODE);
+void set_leader_labels();
 
 //=================== Register Allocation ===================//
 
@@ -115,13 +115,14 @@ enum MIPSInstructionType {
     _2_REG_IMMEDIATE_TYPE,
     _2_REG_TYPE,
     _1_REG_TYPE,
+    _JUMP_LABEL_TYPE,
     _LABEL_TYPE,
     _NOP_TYPE,
 };
 
 class MIPSInstruction {
 public:
-    std::string label;         // Optional label
+    std::string label;         // label for the instruction (if any)
     MIPSOpcode opcode;         // Enum opcode
     MIPSRegister dest_reg, src1_reg, src2_reg;   // Registers
     std::string immediate;     // Immediate value or offset (12- bits size allowed only)
@@ -144,6 +145,9 @@ public:
 
     // Constructor for mflo, mfhi instructions
     MIPSInstruction(MIPSOpcode opc, MIPSRegister dest);
+
+    // Construct for jump instructions (e.g., j, jal)
+    MIPSInstruction(MIPSOpcode opc, const std::string& jmp_label);
 
     // Constructor for label-only instruction
     MIPSInstruction(const std::string& lbl);
