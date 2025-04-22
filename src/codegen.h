@@ -104,7 +104,10 @@ void set_leader_labels();
 MIPSRegister get_register_for_operand(const string& var, bool for_result = false);
 MIPSRegister get_float_register_for_operand(const string& var, bool for_result = false, bool is_double = false);
 
+
+
 void spill_register(MIPSRegister reg);
+void spill_float_register(MIPSRegister reg, bool is_double = false);
 
 //=================== MIPS Instruction Class ===================//
 
