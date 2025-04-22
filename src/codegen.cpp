@@ -398,6 +398,34 @@ std::string get_opcode_name(MIPSOpcode opcode)
 std::unordered_map<MIPSRegister, std::unordered_set<std::string>> register_descriptor;
 std::unordered_map<std::string, std::unordered_set<std::string>> address_descriptor;
 
+void debug_register_descriptor() {
+    debug("\n🔧 Register Descriptor", BLUE);
+    for (const auto& [reg, vars] : register_descriptor) {
+        std::ostringstream oss;
+        debug("Register: " + get_mips_register_name(reg), RED);
+        oss << " → { ";
+        for (const auto& var : vars) {
+            oss << var << " ";
+        }
+        oss << "}";
+        debug(oss.str(), WHITE);
+    }
+}
+
+void debug_address_descriptor() {
+    debug("\n📦 Address Descriptor", BLUE);
+    for (const auto& [var, locs] : address_descriptor) {
+        std::ostringstream oss;
+        debug("Address: " + var, RED);
+        oss << " → { ";
+        for (const auto& loc : locs) {
+            oss << loc << " ";
+        }
+        oss << "}";
+        debug(oss.str(), WHITE);
+    }
+}
+
 //=================== Descriptor Functions ===================//
 
 void init_descriptors()
@@ -530,26 +558,6 @@ void clear_register(MIPSRegister reg)
     }
 }
 
-void print_descriptors()
-{
-    std::cout << "=== Register Descriptor ===\n";
-    for (auto &[reg, vars] : register_descriptor)
-    {
-        std::cout << get_mips_register_name(reg) << ": ";
-        for (const auto &v : vars)
-            std::cout << v << " ";
-        std::cout << "\n";
-    }
-
-    std::cout << "\n=== Address Descriptor ===\n";
-    for (auto &[var, locs] : address_descriptor)
-    {
-        std::cout << var << ": ";
-        for (const auto &l : locs)
-            std::cout << l << " ";
-        std::cout << "\n";
-    }
-}
 
 //=================== Leader Detection ===================//
 
@@ -2752,7 +2760,10 @@ void initalize_mips_code_vectors()
 void print_mips_code() {
     set_leader_labels(); // Set leader labels for the MIPS code
     initialize_global_symbol_table(); // Initialize global symbol table
-    initalize_mips_code_vectors();    // Initialize MIPS code vectors
+    initalize_mips_code_vectors(); // Initialize MIPS code vectors
+
+    debug_address_descriptor();
+    debug_register_descriptor();
     // Printing data section
     cout << ".data" << endl;
     for (int instr_no = 0; instr_no < mips_code_data.size(); instr_no++)
