@@ -6,6 +6,7 @@
 #include <sstream>
 #include <set>
 SymbolTable current_symbol_table; // Symbol Table for current scope (global scope + current function scope)
+int function_args_size = 0;
 
 using namespace std;
 
@@ -790,7 +791,7 @@ MIPSRegister get_float_register_for_operand(const std::string &var, bool for_res
 {
     static int reg_index = 0;
     static const std::vector<MIPSRegister> allocatableFloatRegs = {
-        F0, F2, F4, F6, F8, F10, F12, F14, F16, F18, F20, F22, F24, F26, F28, F30};
+        F2, F4, F6, F8, F10, F12, F14, F16, F18, F20, F22, F24, F26, F28, F30};
 
     if (!is_double)
     {
@@ -1435,16 +1436,12 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
         else{ 
             // storing local variables of functions
-            if(dest == "SP" || dest == "RA" || dest == "FP"){
-                MIPSRegister dest_reg = get_register_for_operand(dest);
-                MIPSRegister base_reg = get_register_for_operand(src1);
-                string offset = src2;
-                MIPSInstruction store_instr(MIPSOpcode::SW, dest_reg, offset, base_reg);
-                mips_code_text.push_back(store_instr);
-            }
-            else {
-                cout<<"NOT YET IMPLEMENTED"<<endl;
-            }
+            MIPSRegister base_reg = get_register_for_operand(src1);
+            MIPSRegister dest_reg = get_register_for_operand(dest,true);
+            string offset = src2;
+            MIPSInstruction store_instr(MIPSOpcode::SW, dest_reg, offset, base_reg);
+            mips_code_text.push_back(store_instr);
+            
         }
     }
     else if(op == "move"){
@@ -1475,7 +1472,58 @@ void emit_instruction(string op, string dest, string src1, string src2){
         emit_instruction("jr", "RA", "", ""); 
     }
     else if(op == "function_param"){
-        
+        Symbol* dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        if(dest_sym->type.type_index>=PrimitiveTypes::U_CHAR_T && dest_sym->type.type_index<=PrimitiveTypes::LONG_T){
+            // Integers
+            function_args_size+=4;
+            emit_instruction("subi","SP","SP",to_string(4));
+            MIPSRegister dest_reg = get_register_for_operand(dest);
+            emit_instruction("store",get_mips_register_name(dest_reg),"SP","0");
+        } else if(dest_sym->type.type_index>=PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.type_index<=PrimitiveTypes::LONG_LONG_T){
+            // long long
+            function_args_size+=8;
+            emit_instruction("subi","SP","SP",to_string(8));
+            MIPSRegister dest_reg = get_register_for_operand(dest+"_hi");
+            emit_instruction("store",get_mips_register_name(dest_reg),"SP","4");
+            dest_reg = get_register_for_operand(dest+"_lo");
+            emit_instruction("store",get_mips_register_name(dest_reg),"SP","0");
+        } else if(dest_sym->type.type_index==PrimitiveTypes::FLOAT_T){
+            // float
+            function_args_size+=4;
+            emit_instruction("subi","SP","SP",to_string(4));
+            MIPSRegister dest_reg = get_float_register_for_operand(dest);
+            emit_instruction("store",get_mips_register_name(dest_reg),"SP","0");
+        } else if(dest_sym->type.type_index>=PrimitiveTypes::DOUBLE_T && dest_sym->type.type_index<=PrimitiveTypes::LONG_DOUBLE_T){
+            function_args_size+=8;
+            emit_instruction("subi","SP","SP",to_string(8));
+            MIPSRegister dest_reg = get_float_register_for_operand(dest);
+            emit_instruction("store",get_mips_register_name(dest_reg),"SP","0");
+        }
+    }
+    else if(op == "function_call"){
+        emit_instruction("jal",dest,"","");
+        emit_instruction("addi","SP","SP",to_string(function_args_size));
+    }
+    else if(op == "function_return"){
+        Symbol* dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+        if(dest_sym->type.type_index>=PrimitiveTypes::U_CHAR_T && dest_sym->type.type_index<=PrimitiveTypes::LONG_T){
+            // Integers
+            MIPSRegister dest_reg = get_register_for_operand(dest);
+            emit_instruction("move",get_mips_register_name(MIPSRegister::V0),get_mips_register_name(dest_reg),"");
+        } else if(dest_sym->type.type_index>=PrimitiveTypes::U_LONG_LONG_T && dest_sym->type.type_index<=PrimitiveTypes::LONG_LONG_T){
+            // long long
+            MIPSRegister dest_reg = get_register_for_operand(dest+"_hi");
+            emit_instruction("move",get_mips_register_name(MIPSRegister::V0),get_mips_register_name(dest_reg),"");
+            dest_reg = get_register_for_operand(dest+"_lo");
+            emit_instruction("move",get_mips_register_name(MIPSRegister::V1),get_mips_register_name(dest_reg),"");
+        } else if(dest_sym->type.type_index==PrimitiveTypes::FLOAT_T){
+            // float
+            MIPSRegister dest_reg = get_float_register_for_operand(dest);
+            emit_instruction("move",get_mips_register_name(MIPSRegister::F0),get_mips_register_name(dest_reg),"");
+        } else if(dest_sym->type.type_index>=PrimitiveTypes::DOUBLE_T && dest_sym->type.type_index<=PrimitiveTypes::LONG_DOUBLE_T){
+            MIPSRegister dest_reg = get_float_register_for_operand(dest);
+            emit_instruction("move",get_mips_register_name(MIPSRegister::F0),get_mips_register_name(dest_reg),"");
+        }
     }
     else if(op == "jr"){
         MIPSRegister dest_reg = MIPSRegister::RA;
@@ -2700,6 +2748,14 @@ vector<string> parameters_emit_instrcution(TACInstruction *instr)
     }
     else if(instr->op.type == TACOperatorType::TAC_OPERATOR_PARAM){
         emit_instruction_args[0] = "function_param";
+        emit_instruction_args[1] = get_operand_string(instr->result);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_CALL){
+        emit_instruction_args[0] = "function_call";
+        emit_instruction_args[1] = get_operand_string(instr->arg1);
+    }
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_RETURN){
+        emit_instruction_args[0] = "function_return";
         emit_instruction_args[1] = get_operand_string(instr->result);
     }
     else if(instr->flag == 1){
