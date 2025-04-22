@@ -232,6 +232,14 @@ std::string get_opcode_name(MIPSOpcode opcode)
         return "MULT";
     case MIPSOpcode::MULTU:
         return "MULTU";
+    case MIPSOpcode::MUL_S:
+        return "MUL.S";
+    case MIPSOpcode::MUL_D:
+        return "MUL.D";
+    case MIPSOpcode::DIV_S:
+        return "DIV.S";
+    case MIPSOpcode::DIV_D:
+        return "DIV.D";
     case MIPSOpcode::DIV:
         return "DIV";
     case MIPSOpcode::DIVU:
@@ -330,6 +338,8 @@ std::string get_opcode_name(MIPSOpcode opcode)
         return "BEQ";
     case MIPSOpcode::BNE:
         return "BNE";
+    case MIPSOpcode::BNEZ:
+        return "BNEZ";
     case MIPSOpcode::BGTZ:
         return "BGTZ";
     case MIPSOpcode::BLEZ:
@@ -338,6 +348,30 @@ std::string get_opcode_name(MIPSOpcode opcode)
         return "BLTZ";
     case MIPSOpcode::BGEZ:
         return "BGEZ";
+    case MIPSOpcode::BLT:
+        return "BLT";
+    case MIPSOpcode::BGT:
+        return "BGT";
+    case MIPSOpcode::BGE:
+        return "BGE";
+    case MIPSOpcode::BLE:
+        return "BLE";
+    case MIPSOpcode::C_EQ_S:
+        return "C_EQ_S";
+    case MIPSOpcode::BC1T:
+        return "BC1T";
+    case MIPSOpcode::C_EQ_D:
+        return "C_EQ_D";
+    case MIPSOpcode::BC1F:
+        return "BC1F";
+    case MIPSOpcode::C_LT_S:
+        return "C_LT_S";
+    case MIPSOpcode::C_LT_D:
+        return "C_LT_D";
+    case MIPSOpcode::C_LE_S:
+        return "C_LE_S";
+    case MIPSOpcode::C_LE_D:
+        return "C_LE_D";
     case MIPSOpcode::J:
         return "J";
     case MIPSOpcode::JR:
@@ -519,40 +553,43 @@ void print_descriptors()
 
 //=================== Leader Detection ===================//
 
-std::unordered_map<int, std::string> leader_labels_map;
+std::unordered_map<string, std::string> leader_labels_map;
 void set_leader_labels() {
-    std::set<int> leader_lines;
+    int label_counter = 1;
 
     if(TAC_CODE.empty()) return;
 
-    leader_lines.insert(1); // Add the first instruction as a leader
-
     for(int instr_no = 0; instr_no<TAC_CODE.size();instr_no++){
         TACInstruction* instr = TAC_CODE[instr_no];
+        if(instr_no == 0){
+            std::string label = get_operand_string(instr->label);
+            if(instr->op.type == TAC_OPERATOR_FUNC_BEGIN){
+                leader_labels_map[label] = instr->result->value; // Add the function name as the leader label
+            }
+            else{
+                leader_labels_map[label] = "L" + std::to_string(label_counter++); // Add the first instruction as a leader label
+            }
+        }
         if(instr->flag == 1){
             std::string label = get_operand_string(instr->result);
-            int num = std::stoi(label.substr(1));
-            leader_lines.insert(num); // Add the target label of goto as a leader
-            if(instr_no + 1 < TAC_CODE.size()) leader_lines.insert(instr_no + 2); // Add the next instruction as a leader
+            cout<<"Label: "<<label<<"\n";
+            if(leader_labels_map.find(label) == leader_labels_map.end()) leader_labels_map[label] = "L" + std::to_string(label_counter++); // Add the label of goto as a leader label
+            if(instr_no + 1 < TAC_CODE.size()) if(leader_labels_map.find(get_operand_string(TAC_CODE[instr_no + 1]->label)) == leader_labels_map.end()) leader_labels_map[TAC_CODE[instr_no + 1]->label->value] = "L" + std::to_string(label_counter++); // Add the next instruction as a leader label
         }
         else if(instr->flag == 2){
             std::string label = get_operand_string(instr->result);
-            int num = std::stoi(label.substr(1));
-            leader_lines.insert(num); // Add the target label of if_goto as a leader
+            if(leader_labels_map.find(label) == leader_labels_map.end()) leader_labels_map[label] = "L" + std::to_string(label_counter++); // Add the label of if goto as a leader label
         }
         else if(instr->op.type == TAC_OPERATOR_FUNC_BEGIN){
-            leader_lines.insert(instr_no + 1); // Add the instruction as a leader
+            std::string label = get_operand_string(instr->label);
+            if(leader_labels_map.find(label) == leader_labels_map.end()) leader_labels_map[label] = instr->result->value; // Add the function name as the leader label
         }
     }
 
-    int label_counter = 0;
-    for(auto line_num : leader_lines) {
-        leader_labels_map[line_num] = "L" + std::to_string(label_counter++);
+    cout<<"Printing leader labels map\n";
+    for(auto x: leader_labels_map) {
+        std::cout << x.first << " : " << x.second << "\n";
     }
-
-    // for(auto x: leader_labels_map) {
-    //     std::cout << x.first << " : " << x.second << "\n";
-    // }
 
     return;
 }
@@ -929,7 +966,7 @@ MIPSInstruction::MIPSInstruction(MIPSOpcode opc, const std::string& jump_lbl)
 
 // Constructor for label-only instruction
 MIPSInstruction::MIPSInstruction(const std::string& lbl)
-    : opcode(MIPSOpcode::LABEL), dest_reg(MIPSRegister::ZERO), src1_reg(MIPSRegister::ZERO), src2_reg(MIPSRegister::ZERO), immediate(""), label(lbl), instruction_type(_NOP_TYPE) {}
+    : opcode(MIPSOpcode::LABEL), dest_reg(MIPSRegister::ZERO), src1_reg(MIPSRegister::ZERO), src2_reg(MIPSRegister::ZERO), immediate(""), label(lbl), instruction_type(_LABEL_TYPE) {}
 
 // Constructor for standalone ops like SYSCALL, NOP
 MIPSInstruction::MIPSInstruction(MIPSOpcode opc)
@@ -1402,8 +1439,6 @@ void emit_instruction(string op, string dest, string src1, string src2){
         Symbol* func = current_symbol_table.get_symbol_using_mangled_name(dest);
         insert_function_symbol_table(dest);
         int offset = func->function_definition->size + 8;
-        MIPSInstruction func_instr(dest);
-        mips_code_text.push_back(func_instr);
         emit_instruction("subi", "SP", "SP", to_string(offset)); // Adjust stack pointer for function frame
         emit_instruction("store", "RA", "SP", to_string(offset-4)); // Store return address
         emit_instruction("store", "FP", "SP", to_string(offset-8)); // Store old frame pointer
@@ -2250,6 +2285,8 @@ void emit_instruction(string op, string dest, string src1, string src2){
     }
     else if(op == "j"){
         MIPSInstruction jump_instr(MIPSOpcode::J, dest); // Unconditional jump instruction
+        cout<<"Inside j instruction"<<endl;
+        cout<<"Jumping to "<<dest<<endl;
         mips_code_text.push_back(jump_instr); // Emit jump instruction
     }
     else if(op == "jal"){
@@ -2265,7 +2302,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
         MIPSInstruction sltu_instr(MIPSOpcode::SLTU, dest_reg, src1_reg, src2_reg); // Set less than unsigned instruction
     }
     else if(op == "beq"){
-        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+        if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -2273,10 +2310,10 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction beq_instr(MIPSOpcode::BEQ, src1_reg, src2_reg, dest); // Branch if equal instruction
             mips_code_text.push_back(beq_instr); // Emit beq instruction
         }
-        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+        else if(src1_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
@@ -2286,7 +2323,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction jump_instr(MIPSOpcode::BC1T, dest); // Branch if equal instruction
             mips_code_text.push_back(jump_instr); // Emit jump instruction
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
@@ -2298,16 +2335,16 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "bnez"){
-        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+        if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
             MIPSInstruction bnez_instr(MIPSOpcode::BNEZ, src1_reg, dest); // Branch if not equal to zero instruction
             mips_code_text.push_back(bnez_instr); // Emit bnez instruction
         }
-        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+        else if(src1_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", "temp", "0", ""); // Load the zero value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
@@ -2317,7 +2354,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest); // Branch if not equal to zero instruction
             mips_code_text.push_back(jump_instr); // Emit jump instruction
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", "temp", "0", ""); // Load the zero value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
@@ -2329,7 +2366,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "bne"){
-        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+        if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -2337,10 +2374,10 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction bne_instr(MIPSOpcode::BNE, src1_reg, src2_reg, dest); // Branch if not equal instruction
             mips_code_text.push_back(bne_instr); // Emit bne instruction
         }
-        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+        else if(src1_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
@@ -2350,7 +2387,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest); // Branch if not equal instruction
             mips_code_text.push_back(jump_instr); // Emit jump instruction
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
@@ -2362,7 +2399,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "blt"){
-        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+        if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -2370,10 +2407,10 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction blt_instr(MIPSOpcode::BLT, src1_reg, src2_reg, dest); // Branch if less than instruction
             mips_code_text.push_back(blt_instr); // Emit blt instruction
         }
-        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+        else if(src1_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
@@ -2383,7 +2420,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction jump_instr(MIPSOpcode::BC1T, dest); // Branch if less than instruction
             mips_code_text.push_back(jump_instr); // Emit jump instruction
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
@@ -2395,7 +2432,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "ble"){
-        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+        if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -2403,10 +2440,10 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction ble_instr(MIPSOpcode::BLE, src1_reg, src2_reg, dest); // Branch if less than or equal to instruction
             mips_code_text.push_back(ble_instr); // Emit ble instruction
         }
-        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+        else if(src1_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
@@ -2416,7 +2453,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction jump_instr(MIPSOpcode::BC1T, dest); // Branch if less than or equal to instruction
             mips_code_text.push_back(jump_instr); // Emit jump instruction
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
@@ -2428,7 +2465,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "bgt"){
-        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+        if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -2436,10 +2473,10 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction bgt_instr(MIPSOpcode::BGT, src1_reg, src2_reg, dest); // Branch if greater than instruction
             mips_code_text.push_back(bgt_instr); // Emit bgt instruction
         }
-        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+        else if(src1_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
@@ -2449,7 +2486,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest); // Branch if greater than instruction
             mips_code_text.push_back(jump_instr); // Emit jump instruction
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
@@ -2461,7 +2498,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
         }
     }
     else if(op == "bge"){
-        if(dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
+        if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source 1
@@ -2469,10 +2506,10 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction bge_instr(MIPSOpcode::BGE, src1_reg, src2_reg, dest); // Branch if greater than or equal to instruction
             mips_code_text.push_back(bge_instr); // Emit bge instruction
         }
-        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
+        else if(src1_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T){
             // implement later if needed
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::FLOAT_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1); // Get a register for the source 1
@@ -2482,7 +2519,7 @@ void emit_instruction(string op, string dest, string src1, string src2){
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest); // Branch if greater than or equal to instruction
             mips_code_text.push_back(jump_instr); // Emit jump instruction
         }
-        else if(dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+        else if(src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
             emit_instruction("load", src1, src1, ""); // Load the source value into a register
             emit_instruction("load", src2, src2, ""); // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source 1
@@ -2632,14 +2669,57 @@ vector<string> parameters_emit_instrcution(TACInstruction *instr)
         emit_instruction_args[0] = "function_begin";
         emit_instruction_args[1] = get_operand_string(instr->result);
     }
-    else if (instr->op.type == TACOperatorType::TAC_OPERATOR_FUNC_END)
-    {
-
+    else if(instr->op.type == TACOperatorType::TAC_OPERATOR_FUNC_END){
         emit_instruction_args[0] = "function_end";
         emit_instruction_args[1] = get_operand_string(instr->result);
     }
     else if(instr->flag == 1){
-
+        emit_instruction_args[0] = "j";
+        emit_instruction_args[1] = leader_labels_map[get_operand_string(instr->result)]; // The first argument is the label to jump to
+        cout<<"Jumping to label: " << emit_instruction_args[1] << endl;
+    }
+    else if(instr->flag == 2){
+        if(instr->op.type == TACOperatorType::TAC_OPERATOR_NOP){
+            emit_instruction_args[0] = "bnez"; // Branch if not equal to zero if there is only one argument
+            emit_instruction_args[1] = leader_labels_map[get_operand_string(instr->result)]; // The first argument is the label to jump to
+            emit_instruction_args[2] = get_operand_string(instr->arg1); // The second argument is the operand to check
+        }
+        else if(instr->op.type == TACOperatorType::TAC_OPERATOR_EQ){
+            emit_instruction_args[0] = "beq"; // Branch if equal if there are two arguments
+            emit_instruction_args[1] = leader_labels_map[get_operand_string(instr->result)]; // The first argument is the label to jump to
+            emit_instruction_args[2] = get_operand_string(instr->arg1); // The second argument is the first operand
+            emit_instruction_args[3] = get_operand_string(instr->arg2); // The third argument is the second operand
+        }
+        else if(instr->op.type == TACOperatorType::TAC_OPERATOR_NE){
+            emit_instruction_args[0] = "bne"; // Branch if not equal if there are two arguments
+            emit_instruction_args[1] = leader_labels_map[get_operand_string(instr->result)]; // The first argument is the label to jump to
+            emit_instruction_args[2] = get_operand_string(instr->arg1); // The second argument is the first operand
+            emit_instruction_args[3] = get_operand_string(instr->arg2); // The third argument is the second operand
+        }
+        else if(instr->op.type == TACOperatorType::TAC_OPERATOR_LT){
+            emit_instruction_args[0] = "blt"; // Branch if less than if there are two arguments
+            emit_instruction_args[1] = leader_labels_map[get_operand_string(instr->result)]; // The first argument is the label to jump to
+            emit_instruction_args[2] = get_operand_string(instr->arg1); // The second argument is the first operand
+            emit_instruction_args[3] = get_operand_string(instr->arg2); // The third argument is the second operand
+        }
+        else if(instr->op.type == TACOperatorType::TAC_OPERATOR_LE){
+            emit_instruction_args[0] = "ble"; // Branch if less than or equal to if there are two arguments
+            emit_instruction_args[1] = leader_labels_map[get_operand_string(instr->result)]; // The first argument is the label to jump to
+            emit_instruction_args[2] = get_operand_string(instr->arg1); // The second argument is the first operand
+            emit_instruction_args[3] = get_operand_string(instr->arg2); // The third argument is the second operand
+        }
+        else if(instr->op.type == TACOperatorType::TAC_OPERATOR_GT){
+            emit_instruction_args[0] = "bgt"; // Branch if greater than if there are two arguments
+            emit_instruction_args[1] = leader_labels_map[get_operand_string(instr->result)]; // The first argument is the label to jump to
+            emit_instruction_args[2] = get_operand_string(instr->arg1); // The second argument is the first operand
+            emit_instruction_args[3] = get_operand_string(instr->arg2); // The third argument is the second operand
+        }
+        else if(instr->op.type == TACOperatorType::TAC_OPERATOR_GE){
+            emit_instruction_args[0] = "bge"; // Branch if greater than or equal to if there are two arguments
+            emit_instruction_args[1] = leader_labels_map[get_operand_string(instr->result)]; // The first argument is the label to jump to
+            emit_instruction_args[2] = get_operand_string(instr->arg1); // The second argument is the first operand
+            emit_instruction_args[3] = get_operand_string(instr->arg2); // The third argument is the second operand
+        }
     }
     if(emit_instruction_args[1] != "" && emit_instruction_args[1][0] == '#'){
         emit_instruction_args[1] = emit_instruction_args[1].substr(1); // Remove the '#' character from the label
@@ -2661,6 +2741,10 @@ void initalize_mips_code_vectors()
     {
         TACInstruction *instr = TAC_CODE[instr_no];
         vector<string> emit_instruction_args = parameters_emit_instrcution(instr);
+        if(leader_labels_map.find(get_operand_string(instr->label)) != leader_labels_map.end()){
+            MIPSInstruction label_instr(leader_labels_map[get_operand_string(instr->label)]); // Create a label instruction
+            mips_code_text.push_back(label_instr); // Emit the label instruction
+        }
         emit_instruction(emit_instruction_args[0], emit_instruction_args[1], emit_instruction_args[2], emit_instruction_args[3]);
     }
 }
@@ -2713,7 +2797,7 @@ void print_mips_code() {
                 cout<<get_opcode_name(instr.opcode)<<" "<<get_mips_register_name(instr.dest_reg);
                 break;
             case(MIPSInstructionType::_JUMP_LABEL_TYPE):
-                cout<<get_opcode_name(instr.opcode)<<" "<<instr.label;
+                cout<<get_opcode_name(instr.opcode)<<" "<<instr.immediate;
                 break;
             case(MIPSInstructionType::_LABEL_TYPE):
                 cout<<instr.label<<":";

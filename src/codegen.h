@@ -96,7 +96,7 @@ void print_descriptors();
 
 //=================== Leader Labels ===================//
 
-extern std::unordered_map<int, std::string> leader_labels_map;
+extern std::unordered_map<string, std::string> leader_labels_map;
 void set_leader_labels();
 
 //=================== Register Allocation ===================//
