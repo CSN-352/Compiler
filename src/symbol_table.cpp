@@ -2923,7 +2923,6 @@ void SymbolTable::exitScope()
             if ((*symIt)->scope == currentScope)
             {
                 symIt = it->second.erase(symIt);
-                currAddress -= (*symIt)->type.get_size();
             }
             else
             {
