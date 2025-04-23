@@ -312,6 +312,7 @@ public:
     Symbol* getSymbol(std::string name);
     Symbol* getSymbolFromMangledName(std::string mangled_name);
     Symbol* getFunction(std::string name, vector<Type> arg_types);
+    Symbol* getExactFunction(std::string name, vector<Type> arg_types);
     Symbol* getSameTypeFunction(std::string name, vector<Type> arg_types);
     // Symbol* getClosestFunction(std::string name, vector<Type> arg_types);
     Symbol *getTypedef(std::string name);

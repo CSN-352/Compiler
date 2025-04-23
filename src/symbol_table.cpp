@@ -242,6 +242,8 @@ bool Type::is_convertible_to(Type t)
     }
 
     if (isPrimitive() && !is_pointer){
+        debug(t.type_index);
+        debug((*this).type_index);
         return true;
     }
     if (is_pointer && t.is_pointer && ptr_level == t.ptr_level)
@@ -299,7 +301,7 @@ bool Type::is_same_type(Type t)
     {
         return true;
     }
-        return false;
+    return false;
 }
 
 int getTypeGroup(int type)
@@ -1029,8 +1031,6 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
         }
         if (init_declarator_list->init_declarator_list[index]->initializer != nullptr)
         {
-            debug(init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.type_index); 
-            debug(t.type_index);
             bool compatible = init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.is_convertible_to(t);
             if (!compatible)
             {
@@ -2672,14 +2672,43 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     if(cs_cast->declaration_statement_list != nullptr) fd->code.insert(fd->code.end(), cs_cast->declaration_statement_list->static_declaration_code.begin(), cs_cast->declaration_statement_list->static_declaration_code.end()); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(function_name), new_empty_var(), new_empty_var(), 0); // TAC
     fd->code.push_back(i1); // TAC
-    // if (declarator->direct_declarator->parameters != nullptr){
-    //     for (auto pd : declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
-    //         if (pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
-    //             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
-    //             fd->code.push_back(i2); // TAC
-    //         }
-    //     }
-    // }
+    if (declarator->direct_declarator->parameters != nullptr) {
+        auto pl = declarator->direct_declarator->parameters->paramater_list;
+        auto pdl = pl->parameter_declarations;
+        auto ss = symbolTable.scope_stack;
+        if (!ss.empty())
+        {
+            auto top = ss.top();
+            debug(top.type.type_index);
+            if (top.type.is_defined_type) {
+                Identifier *class_identifier = new Identifier(top.name, fd->line_no, 0);
+                Pointer *p = create_pointer(nullptr);
+                Identifier *id = new Identifier("this", 0, 0); // Need to update the line adn column number
+                DirectDeclarator *dd = create_dir_declarator_id(id);
+                Declarator *d = create_declarator(p, dd);
+                ClassSpecifier *class_specifier = new ClassSpecifier();
+                class_specifier->identifier = class_identifier;
+                auto ts = create_type_specifier(class_specifier);
+                auto sql = create_specifier_qualifier_list(ts);
+                auto ds = create_declaration_specifiers(sql);
+                auto pd = create_parameter_declaration(ds, d);
+                pl = create_parameter_list(pl, pd);
+                auto ptl = create_parameter_type_list(pl, false);
+                declarator->direct_declarator->parameters = ptl; 
+                string val = fd->declarator->direct_declarator->identifier->value;
+                Symbol *function = symbolTable.getSymbol(declarator->direct_declarator->identifier->value);
+                function->type.arg_types.push_back(pd->type);
+                // symbolTable(function, fd);
+            }
+        }
+        for (auto pd : declarator->direct_declarator->parameters->paramater_list->parameter_declarations)
+        {
+            if (pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
+                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
+                fd->code.push_back(i2); // TAC
+            }
+        }
+    }
 
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_identifier(function_name), new_empty_var(), new_empty_var(), 0); // TAC
     backpatch(cs_cast->next_list, i2->label); // TAC
@@ -2687,6 +2716,8 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     fd->code.insert(fd->code.end(), cs_cast->code.begin(), cs_cast->code.end()); // TAC
     fd->code.push_back(i2); // TAC
 
+    debug(t1.type_index);
+    debug(t2.type_index);
     if (!(t1.is_convertible_to(t2))) {
         string error_msg = "Function is returning incorrect data type " + to_string(declarator->direct_declarator->identifier->line_no) + ", column " + to_string(declarator->direct_declarator->identifier->column_no);
         yyerror(error_msg.c_str());
@@ -3286,6 +3317,9 @@ bool SymbolTable::lookup_function(std::string name, vector<Type> arg_types)
     {
         if (sym->scope <= currentScope && arg_types.size() == sym->type.arg_types.size()) {
             for (int i = 0; i < arg_types.size(); i++) {
+                debug(sym->type.arg_types[i].type_index);
+                debug(arg_types[i].type_index);
+                debug(arg_types[i].is_convertible_to(sym->type.arg_types[i]));
                 if (arg_types[i].is_convertible_to(sym->type.arg_types[i]) == false) {
                     return false;
                 }
@@ -3545,14 +3579,115 @@ Symbol* SymbolTable::getFunction(std::string name, vector<Type> arg_types)
     }
     else
     {
+        debug("checking for equal args");
         for (Symbol *_sym : it->second)
         {
+            debug(arg_types.size());
+            debug(_sym->name); 
             if (_sym->scope <= currentScope && (int)_sym->type.arg_types.size() == (int)arg_types.size())
             {
                 int count = 0;
                 for (int i = 0; i < arg_types.size(); i++)
                 {
+                    debug(arg_types[i].type_index);
+                    debug(_sym->type.arg_types[i].type_index); 
                     if (arg_types[i] == _sym->type.arg_types[i])
+                    {
+                        count++;
+                    }
+                }
+                if (count == arg_types.size())
+                {
+                    return _sym;
+                }
+            }
+        }
+        return nullptr;
+    }
+}
+
+Symbol *SymbolTable::getExactFunction(std::string name, vector<Type> arg_types)
+{
+    auto it = table.find(name);
+    if (it == table.end() || it->second.empty())
+        return nullptr;
+
+    // for (Symbol* _sym : it->second)
+    // {
+    //     if (_sym->scope <= currentScope && (int)_sym->type.arg_types.size() == (int)arg_types.size())
+    //     {
+    //         for (int i = 0; i < arg_types.size(); i++)
+    //         {
+    //             if(arg_types[i] != _sym->type.arg_types[i])
+    //             // if (arg_types[i].is_convertible_to(_sym->type.arg_types[i]) == false)
+    //             {
+    //                 break;
+    //                 // return nullptr;
+
+    //             }
+    //         }
+
+    //     }
+    //     else if (arg_types.size() > 0 && _sym->type.arg_types.size() > 0 && arg_types[arg_types.size() - 1].is_variadic && arg_types.size() >= _sym->type.arg_types.size()) {
+
+    // for (int i = 0;i < _sym->type.arg_types.size();i++) {
+    //     if (arg_types[i] != _sym->type.arg_types[i])
+    //     {
+    //         return nullptr;
+    //     }
+    // }
+    // for (int i = _sym->type.arg_types.size();i < arg_types.size();i++) {
+    //     if (arg_types[i] != _sym->type.arg_types[_sym->type.arg_types.size() - 1]) {
+    //         return nullptr;
+    //     }
+    // }
+    //         if (sym == nullptr || _sym->scope > sym->scope)
+    //         {
+    //             sym = _sym;
+    //         }
+    //     }
+    // }
+    if (arg_types.size() > 0 && arg_types[arg_types.size() - 1].is_variadic)
+    {
+        for (Symbol *_sym : it->second)
+        {
+            int count = 0;
+            for (int i = 0; i < _sym->type.arg_types.size(); i++)
+            {
+                if (arg_types[i].is_convertible_to(_sym->type.arg_types[i]))
+                {
+                    count++;
+                }
+            }
+            for (int i = _sym->type.arg_types.size(); i < arg_types.size(); i++)
+            {
+                if (arg_types[i].is_convertible_to( _sym->type.arg_types[_sym->type.arg_types.size() - 1]))
+                {
+                    count++;
+                }
+            }
+            if (count == arg_types.size())
+            {
+                return _sym;
+            }
+        }
+        return nullptr;
+    }
+    else
+    {
+        debug("checking for equal args");
+        for (Symbol *_sym : it->second)
+        {
+            debug(arg_types.size());
+            debug(_sym->name);
+            if (_sym->scope <= currentScope && (int)_sym->type.arg_types.size() == (int)arg_types.size())
+            {
+                int count = 0;
+                for (int i = 0; i < arg_types.size(); i++)
+                {
+                    debug(arg_types[i].type_index);
+                    debug(_sym->type.arg_types[i].type_index);
+                    if (arg_types[i].is_convertible_to( _sym->type.arg_types[i]))
                     {
                         count++;
                     }

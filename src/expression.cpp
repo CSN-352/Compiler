@@ -698,6 +698,32 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
         P->jump_code.erase(remove(P->jump_code.begin(), P->jump_code.end(), i), P->jump_code.end()); // TAC
     }
 
+    if (P->base_expression->op != nullptr && P->base_expression->op->name == "DOT")
+    {
+        Identifier *object_identifier = P->primary_expression->identifier;
+        auto pe = create_primary_expression(object_identifier);
+        auto  postfix_exp = create_postfix_expression(pe);
+        auto ue = create_unary_expression(postfix_exp);
+        auto ce = create_cast_expression(ue);
+        Terminal *t = new Terminal("BITWISE_AND", "BITWISE_AND");
+        auto uexp = create_unary_expression_cast(ce, t);
+        auto cexp = create_cast_expression(uexp);
+        auto mexp = create_multiplicative_expression(cexp);
+        auto aexp = create_additive_expression(mexp);
+        auto sexp = create_shift_expression(aexp);
+        auto rexp = create_relational_expression(sexp);
+        auto eexp = create_equality_expression(rexp);
+        auto aaexp = create_and_expression(eexp);
+        auto xexp = create_xor_expression(aaexp);
+        auto oexp = create_or_expression(xexp);
+        auto laexp = create_logical_and_expression(oexp);
+        auto loexp = create_logical_or_expression(laexp);
+        auto condexp = create_conditional_expression(loexp);
+        auto assexp = create_assignment_expression(condexp);
+        P->argument_expression_list = create_argument_expression_list(P->argument_expression_list, assexp);
+        argument_expression_list = P->argument_expression_list;
+    }
+
     vector<Type> arguments;
     if (argument_expression_list != nullptr)
     { // for function call with no args
@@ -716,8 +742,7 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
         symbolTable.set_error();
         return P;
     }
-    else
-    {
+    else {
         if (!symbolTable.lookup_function(P->primary_expression->identifier->value, arguments) && (P->base_expression->member_name == nullptr || !symbolTable.check_member_variable(P->base_expression->base_expression->type.defined_type_name, P->base_expression->member_name->value)))
         {
             P->type = ERROR_TYPE;
@@ -751,7 +776,7 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
                 {
                     debug(a.type_index);
                 }
-                sym = symbolTable.getFunction(P->primary_expression->identifier->value, arguments);
+                sym = symbolTable.getExactFunction(P->primary_expression->identifier->value, arguments);
                 if (sym == nullptr)
                     sym = symbolTable.getSameTypeFunction(P->primary_expression->identifier->value, arguments);
             }
@@ -773,9 +798,6 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
             }
             else {
                 P->type = sym->type;
-            else
-            {
-                P->type = x->type;
                 P->type.is_function = false;
                 P->type.num_args = 0;
                 P->type.arg_types.clear();
