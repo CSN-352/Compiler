@@ -261,29 +261,29 @@
 
 // breakpoint_global;
 
-int main(){
-    int a = 1; // tested and working
-    // int b = a++; // tested and working
-    // int b = a--; // tested and working
-    int b = 2;
-    int c = a + b; // tested and working
-    int d = a - b; // tested and working
-    int e = a * b; // tested and working
-    int f = a / b; // tested and working
-    int g = a % b; // tested and working
-    int h = a & b; // tested and working
-    int i = a | b; // tested and working
-    int j = a ^ b; // tested and working
-    int k = a << b; // tested and working
-    int l = a >> b; // tested and working
+// int main(){
+//     int a = 1; // tested and working
+//     // int b = a++; // tested and working
+//     // int b = a--; // tested and working
+//     int b = 2;
+//     int c = a + b; // tested and working
+//     int d = a - b; // tested and working
+//     int e = a * b; // tested and working
+//     int f = a / b; // tested and working
+//     int g = a % b; // tested and working
+//     int h = a & b; // tested and working
+//     int i = a | b; // tested and working
+//     int j = a ^ b; // tested and working
+//     int k = a << b; // tested and working
+//     int l = a >> b; // tested and working
+// }
+
+int add(int a, int b) {
+    return a + b;
 }
 
-// int add(int a, int b) {
-//     return a + b;
-// }
-
-// int main(){
-//     int sum = add(1,2);
-//     return 0;
-// }
+int main(){
+    int sum = add(1,2);
+    return 0;
+}
 
