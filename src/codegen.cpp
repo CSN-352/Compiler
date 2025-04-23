@@ -1246,9 +1246,8 @@ bool check_immediate(const string &immediate)
 
 std::string get_stack_offset_for_local_variable(std::string var)
 {
-    if (address_descriptor[var].count("mem") && stack_address_descriptor.find(var) != stack_address_descriptor.end())
+    if (stack_address_descriptor.find(var) != stack_address_descriptor.end())
     {
-        cout<<"HELLO\n";
         cout<<"Stack address descriptor: " << var << " : " << stack_address_descriptor[var] << "\n";
         return stack_address_descriptor[var];
     }
@@ -1687,6 +1686,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
         }
         else if (dest_sym != nullptr)
         { // local stack variable storage
+            cout<<"Store to local variable "<<dest<<endl;
             if (dest_sym->type.type_index == PrimitiveTypes::U_CHAR_T || dest_sym->type.type_index == PrimitiveTypes::CHAR_T)
             {
                 MIPSRegister src1_reg = get_register_for_operand(src1);                               // Get a register for the source
@@ -1707,6 +1707,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             {
                 MIPSRegister src1_reg = get_register_for_operand(src1);                               // Get a register for the source
                 string dest_offset = get_stack_offset_for_local_variable(dest);                       // Get the offset for the destination variable
+                cout<<"Dest offset "<<dest_offset<<endl;
                 MIPSInstruction store_instr(MIPSOpcode::SW, src1_reg, dest_offset, MIPSRegister::FP); // Store word to memory
                 mips_code_text.push_back(store_instr);                                                // Emit store instruction
                 update_for_store(src1, src1_reg);                                                     // Update register descriptor and address descriptor
