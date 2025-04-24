@@ -87,6 +87,7 @@ extern std::unordered_map<MIPSRegister, std::unordered_set<std::string> > regist
 extern std::unordered_map<std::string, std::unordered_set<std::string> > address_descriptor;
 extern std::unordered_map<std::string, std::string > stack_address_descriptor;
 void initialize_stack_offset_for_local_variables(Symbol* func);
+void set_offset_for_function_args(string func);
 std::string get_stack_offset_for_local_variable(std::string var);
 
 void debug_register_descriptor();
