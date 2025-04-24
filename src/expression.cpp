@@ -922,6 +922,17 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
     else if (op->name == "NOT") U->name = "UNARY EXPRESSION NOT";
     else U->name = "UNARY EXPRESSION BITWISE_NOT";
 
+    CastExpression* cast_expr = dynamic_cast<CastExpression*>(x);
+
+    string result_str = "";
+    string constant_type_str = "";
+    string constant_value_str = "";
+    bool is_const_folding = x->type.is_const_literal;
+
+    if(is_const_folding){
+        constant_value_str = cast_expr->unary_expression->postfix_expression->primary_expression->constant->value;
+    }
+
     if (op->name == "BITWISE_AND")
     {
         if (x->type.is_const_literal) {
@@ -1012,29 +1023,84 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         }
         U->type = x->type;
         U->type.make_signed();
-        U->result = new_temp_var(); // TAC
-        TACInstruction* i1 = emit(TACOperator(op->name == "MINUS" ? TAC_OPERATOR_UMINUS : TAC_OPERATOR_ADD), U->result, x->result, new_empty_var(), 0); // TAC
-        backpatch(x->next_list, i1->label); // TAC
-        backpatch(x->jump_next_list, i1->label); // TAC
-        backpatch(x->true_list, i1->label); // TAC
-        backpatch(x->false_list, i1->label); // TAC
-        backpatch(x->jump_true_list, i1->label); // TAC
-        backpatch(x->jump_false_list, i1->label); // TAC
-        U->code.push_back(i1); // TAC
 
-        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
-        TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
-        TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-        U->true_list.insert(i2_); // TAC
-        U->false_list.insert(i3_); // TAC
-        U->jump_true_list.insert(i2); // TAC
-        U->jump_false_list.insert(i3); // TAC
-        U->jump_code.push_back(i1); // TAC
-        U->jump_code.push_back(i2); // TAC
-        U->jump_code.push_back(i3); // TAC
-        U->jump_code.push_back(i2_); // TAC
-        U->jump_code.push_back(i3_); // TAC
+        if(!is_const_folding){
+            U->result = new_temp_var(); // TAC
+            TACInstruction* i1 = emit(TACOperator(op->name == "MINUS" ? TAC_OPERATOR_UMINUS : TAC_OPERATOR_ADD), U->result, x->result, new_empty_var(), 0); // TAC
+            backpatch(x->next_list, i1->label); // TAC
+            backpatch(x->jump_next_list, i1->label); // TAC
+            backpatch(x->true_list, i1->label); // TAC
+            backpatch(x->false_list, i1->label); // TAC
+            backpatch(x->jump_true_list, i1->label); // TAC
+            backpatch(x->jump_false_list, i1->label); // TAC
+            U->code.push_back(i1); // TAC
+    
+            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
+            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), U->result, new_empty_var(), 2); // TAC
+            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            U->true_list.insert(i2_); // TAC
+            U->false_list.insert(i3_); // TAC
+            U->jump_true_list.insert(i2); // TAC
+            U->jump_false_list.insert(i3); // TAC
+            U->jump_code.push_back(i1); // TAC
+            U->jump_code.push_back(i2); // TAC
+            U->jump_code.push_back(i3); // TAC
+            U->jump_code.push_back(i2_); // TAC
+            U->jump_code.push_back(i3_); // TAC
+        } else {
+            if(U->type.isFloat()){
+                constant_type_str = "F_CONSTANT";
+                if (U->type.type_index == PrimitiveTypes::DOUBLE_T) {
+                    double constant_double_value = stod(constant_value_str);
+                    double result = (op->name == "PLUS") ? constant_double_value : - constant_double_value;
+                    result_str = to_string(result);
+                }
+                else if (U->type.type_index == PrimitiveTypes::FLOAT_T) {
+                    double constant_float_value = stof(constant_value_str);
+                    double result = (op->name == "PLUS") ? constant_float_value : - constant_float_value;
+                    result_str = to_string(result);
+                }
+                else if (U->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) {
+                    long double constant_long_double_value = stod(constant_value_str);
+                    long double result = (op->name == "PLUS") ? constant_long_double_value : - constant_long_double_value;
+                    result_str = to_string(result);
+                }
+                else {
+                    U->type = ERROR_TYPE;
+                    string error_msg = "Operands of '" + op->name + "' are invalid at line " +
+                        to_string(U->line_no) + ", column " + to_string(U->column_no);
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return U;
+                }
+            } else if(U->type.isInt()){
+                constant_type_str = "I_CONSTANT";
+                if (U->type.type_index == PrimitiveTypes::INT_T ||  U->type.type_index == PrimitiveTypes::SHORT_T) {
+                    int constant_int_value = stoi(constant_value_str);
+                    int result = (op->name == "PLUS") ? constant_int_value : - constant_int_value;
+                    result_str = to_string(result);
+                }
+                else if (U->type.type_index == PrimitiveTypes::LONG_T) {
+                    long constant_long_value = stol(constant_value_str);
+                    long result = (op->name == "PLUS") ? constant_long_value : - constant_long_value;
+                    result_str = to_string(result);
+                }
+                else if (U->type.type_index == PrimitiveTypes::LONG_LONG_T) {
+                    long long constant_long_long_value = stoll(constant_value_str);
+                    long long result = (op->name == "PLUS") ? constant_long_long_value : - constant_long_long_value;
+                    result_str = to_string(result);
+                }
+                else {
+                    U->type = ERROR_TYPE;
+                    string error_msg = "Operands of '" + op->name + "' are invalid at line " +
+                        to_string(U->line_no) + ", column " + to_string(U->column_no);
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return U;
+                }
+            }
+        }
     }
     else if (op->name == "NOT")
     {
@@ -1127,6 +1193,15 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         U->jump_code.push_back(i3); // TAC
         U->jump_code.push_back(i2_); // TAC
         U->jump_code.push_back(i3_); // TAC
+    }
+
+    if(is_const_folding) {
+        U->code.clear(); // Clear the code list for constant folding
+        Constant* result = new Constant(constant_type_str, result_str, U->line_no, U->column_no); // TAC
+        Expression* constant_expr = create_primary_expression(result); // TAC
+        constant_expr = create_postfix_expression(constant_expr); // TAC
+        constant_expr = create_unary_expression(constant_expr); // TAC
+        return constant_expr; // TAC
     }
     U->type.is_const_literal = false;
     symbolTable.insert(U->result->value, U->type, U->type.get_size(), 0); // Insert temp into symbol table
