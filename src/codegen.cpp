@@ -1099,6 +1099,14 @@ void store_global_variable_data(const string &var, Type type, const string &valu
             mips_code_data.push_back(data_instr);
         }
     }
+    else if (type.type_index > PrimitiveTypes::LONG_DOUBLE_T || type.is_pointer)
+    {
+        global_variable_storage_map[var] = var;
+        MIPSDataInstruction data_instr(var, MIPSDirective::SPACE, to_string(type.get_size())); // pointer
+        mips_code_data.push_back(data_instr);
+    }
+    else if(type.is_function)
+        return; // Do not store function names in data section
     else if (type.type_index == PrimitiveTypes::U_SHORT_T || type.type_index == PrimitiveTypes::SHORT_T)
     {
         global_variable_storage_map[var] = var;
@@ -1272,9 +1280,6 @@ void emit_instruction(string op, string dest, string src1, string src2)
                 return;
             }
         }
-        int size = 0;
-        if (dest_sym != nullptr)
-            size = dest_sym->type.get_size();
         if (check_if_variable_in_register(src1))
         {
             // No instruction needed, only change register descriptor and address descriptor
@@ -1283,9 +1288,13 @@ void emit_instruction(string op, string dest, string src1, string src2)
         else if (src1_sym != nullptr && src1_sym->scope == 0)
         { // global variable
             // Load variable from memory
+
+            if(dest_sym->type.is_pointer || dest_sym->type.is_function){ // load address of pointer variable/object/function
+                emit_instruction("la", dest, src1, ""); // Load address of src1 into dest
+                return;
+            }
             emit_instruction("la", "addr", src1, "");                 // Load address of src1
             MIPSRegister addr_reg = get_register_for_operand("addr"); // Get a register for the address
-
             if (dest_sym->type.type_index == PrimitiveTypes::U_CHAR_T)
             {
                 MIPSRegister dest_reg = get_register_for_operand(dest, true);         // Get a register for the destination
@@ -1356,6 +1365,10 @@ void emit_instruction(string op, string dest, string src1, string src2)
         }
         else if (src1_sym != nullptr)
         { // local stack variable
+            if(dest_sym->type.is_pointer || dest_sym->type.is_function){ // load address of pointer variable/object/function
+                emit_instruction("la", dest, src1, ""); // Load address of src1 into dest
+                return;
+            }
             if (dest_sym->type.type_index == PrimitiveTypes::U_CHAR_T)
             {
                 MIPSRegister dest_reg = get_register_for_operand(dest, true);                         // Get a register for the destination
@@ -1432,6 +1445,12 @@ void emit_instruction(string op, string dest, string src1, string src2)
             {
                 store_immediate(src1, dest_sym->type); // Store immediate value in immediate storage map
             }
+
+            if(dest_sym->type.is_pointer || dest_sym->type.is_function){ // load address of pointer variable/object/function
+                emit_instruction("la", dest, src1, ""); // Load address of src1 into dest
+                return;
+            }
+
             emit_instruction("la", "addr", src1, "");                 // Load address of dest
             MIPSRegister addr_reg = get_register_for_operand("addr"); // Get a register for the address
 
@@ -1499,6 +1518,10 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "li")
     { // load immediate instruction
+        MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+        MIPSInstruction load_instr(MIPSOpcode::LI, dest_reg, src1); // Load immediate value into destination register
+        mips_code_text.push_back(load_instr);                       // Emit load instruction
+        update_for_load(dest_reg, dest);                            // Update register descriptor and address descriptor
     }
     else if (op == "la")
     { // load address instruction
@@ -1622,6 +1645,14 @@ void emit_instruction(string op, string dest, string src1, string src2)
 
         if (dest_sym != nullptr && dest_sym->scope == 0)
         {                                                             // global variable storage
+            if(dest_sym->type.is_pointer || dest_sym->type.is_function){ // store address of pointer variable/object/function
+                MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source
+                MIPSRegister dest_reg = get_register_for_operand(dest);     // Get a register for the destination
+                MIPSInstruction store_instr(MIPSOpcode::SW, src1_reg, "0", dest_reg); // Store word to memory
+                mips_code_text.push_back(store_instr);                                // Emit store instruction
+                update_for_store(src1, src1_reg);                                     // Update register descriptor and address descriptor
+                return;
+            }
             emit_instruction("la", "addr", dest, "");                 // Load address of dest
             MIPSRegister addr_reg = get_register_for_operand("addr"); // Get a register for the address
             if (dest_sym->type.type_index == PrimitiveTypes::U_CHAR_T || dest_sym->type.type_index == PrimitiveTypes::CHAR_T)
@@ -1681,6 +1712,14 @@ void emit_instruction(string op, string dest, string src1, string src2)
         }
         else if (dest_sym != nullptr)
         { // local stack variable storage
+            if(dest_sym->type.is_pointer || dest_sym->type.is_function){ // store address of pointer variable/object/function
+                MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source
+                string dest_offset = get_stack_offset_for_local_variable(dest); // Get a register for the destination
+                MIPSInstruction store_instr(MIPSOpcode::SW, src1_reg, dest_offset, MIPSRegister::FP); // Store word to memory
+                mips_code_text.push_back(store_instr); // Emit store instruction
+                update_for_store(src1, src1_reg); // Update register descriptor and address descriptor
+                return;
+            }
             if (dest_sym->type.type_index == PrimitiveTypes::U_CHAR_T || dest_sym->type.type_index == PrimitiveTypes::CHAR_T)
             {
                 MIPSRegister src1_reg = get_register_for_operand(src1);                               // Get a register for the source
@@ -1737,7 +1776,6 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "move")
     {
-        cout<<"Move instruction "<<endl;
         if (dest_sym != nullptr)
         {
             if (dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T)
@@ -1779,7 +1817,6 @@ void emit_instruction(string op, string dest, string src1, string src2)
             }
         }
         else if(dest == "V0" || dest == "V1"){
-            cout<<"Move to V0 or V1 "<<endl;
             MIPSRegister src1_reg = get_register_for_operand(src1);           // Get a register for the source
             MIPSRegister dest_reg;
             if(dest == "V0")
@@ -1806,12 +1843,19 @@ void emit_instruction(string op, string dest, string src1, string src2)
                 update_for_load(dest_reg, dest);                                    // Update register descriptor and address descriptor
             }                                 
         } 
+        else if(dest == "FP"){
+            MIPSRegister src1_reg = MIPSRegister::SP; // Get a register for the source
+            MIPSRegister dest_reg = MIPSRegister::FP; // Get a register for the destination
+            MIPSInstruction move_instr(MIPSOpcode::MOVE, dest_reg, src1_reg); // Move instruction
+            mips_code_text.push_back(move_instr);                             // Emit move instruction
+        }
     }
     else if (op == "function_begin")
     {
         Symbol *func = current_symbol_table.get_symbol_using_mangled_name(dest);
         insert_function_symbol_table(dest);
         int offset = func->function_definition->size + 8;
+        cout<<"Function args size: "<<function_args_size<<endl;
         update_descriptors_for_function_call(dest); // Update register descriptor and address descriptor for function call
         emit_instruction("subi", "SP", "SP", to_string(offset));      // Adjust stack pointer for function frame
         emit_instruction("store", "RA", "SP", to_string(offset - 4)); // Store return address
@@ -1872,10 +1916,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "function_return")
     {
-        cout<<"Function return "<<dest<<endl;
         if (dest_sym->type.type_index <= PrimitiveTypes::LONG_T)
         {
-            cout<<"returning int "<<endl;
             // Integers
             emit_instruction("move", "V0", dest, "");
         }
@@ -2319,11 +2361,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "subi")
     { // subi instructio
-        // only used for sp,fp,gp so no need to check for type
         MIPSRegister src1_reg = get_register_for_operand(src1);       // Get a register for the source 1
         MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
-        // MIPSInstruction neg_instr(MIPSOpcode::NEG, dest_reg, src1_reg); // Negate the source register
-        // mips_code_text.push_back(neg_instr); // Emit neg instruction
         string neg_offset = "-" + src2;
         MIPSInstruction add_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, neg_offset); // Sub immediate instruction
         mips_code_text.push_back(add_instr);                                          // Emit sub immediate instruction
@@ -2485,6 +2524,15 @@ void emit_instruction(string op, string dest, string src1, string src2)
             mips_code_text.push_back(mul_instr);                                        // Emit mul instruction
             update_for_add(dest, dest_reg, true);                                       // Update register descriptor and address descriptor
         }
+    }
+    else if(op == "muli"){
+        MIPSRegister src1_reg = get_register_for_operand(src1);                  // Get a register for the source 1
+        emit_instruction("li", src2, src2, "");                                  // Load the immediate value into a register
+        MIPSRegister src2_reg = get_register_for_operand(src2);                  // Get a register for the source 2
+        MIPSRegister dest_reg = get_register_for_operand(dest, true);            // Get a register for the destination
+        MIPSInstruction mul_instr(MIPSOpcode::MUL, dest_reg, src1_reg, src2_reg); // Multiply the two registers
+        mips_code_text.push_back(mul_instr);                                       // Emit mul instruction
+        update_for_add(dest, dest_reg);                                            // Update register descriptor and address descriptor
     }
     else if (op == "div")
     {
@@ -2900,9 +2948,12 @@ void emit_instruction(string op, string dest, string src1, string src2)
         else if (src1_sym->type.type_index == PrimitiveTypes::FLOAT_T)
         {
             emit_instruction("load", src1, src1, "");                           // Load the source value into a register
-            emit_instruction("load", "temp", "0", "");                          // Load the zero value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1);       // Get a register for the source 1
-            MIPSRegister temp_reg = get_float_register_for_operand("temp");     // Get a register for the zero value
+            MIPSRegister temp_reg = get_float_register_for_operand("temp", true);     // Get a register for the zero value
+            MIPSInstruction move_zero_instr(MIPSOpcode::MTC1, temp_reg, MIPSRegister::ZERO); // Move zero to the temp register
+            mips_code_text.push_back(move_zero_instr);                               // Emit move zero instruction
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, temp_reg, temp_reg);         // Convert the zero value to float
+            mips_code_text.push_back(cvt_instr);                                       // Emit convert instruction
             MIPSInstruction comp_instr(MIPSOpcode::C_EQ_S, src1_reg, temp_reg); // Compare the register with zero
             mips_code_text.push_back(comp_instr);                               // Emit compare instruction
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest);                 // Branch if not equal to zero instruction
@@ -2911,9 +2962,12 @@ void emit_instruction(string op, string dest, string src1, string src2)
         else if (src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T)
         {
             emit_instruction("load", src1, src1, "");                                    // Load the source value into a register
-            emit_instruction("load", "temp", "0", "");                                   // Load the zero value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true);   // Get a register for the source 1
-            MIPSRegister temp_reg = get_float_register_for_operand("temp", false, true); // Get a register for the zero value
+            MIPSRegister temp_reg = get_float_register_for_operand("temp", true, true); // Get a register for the zero value
+            MIPSInstruction move_zero_instr(MIPSOpcode::MTC1, temp_reg, MIPSRegister::ZERO); // Move zero to the temp register
+            mips_code_text.push_back(move_zero_instr);                                    // Emit move zero instruction
+            MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, temp_reg, temp_reg);            // Convert the zero value to double
+            mips_code_text.push_back(cvt_instr);                                          // Emit convert instruction
             MIPSInstruction comp_instr(MIPSOpcode::C_EQ_D, src1_reg, temp_reg);          // Compare the register with zero
             mips_code_text.push_back(comp_instr);                                        // Emit compare instruction
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest);                          // Branch if not equal to zero instruction
@@ -3122,13 +3176,13 @@ vector<string> parameters_emit_instrcution(TACInstruction *instr)
         emit_instruction_args[1] = get_operand_string(instr->result);
         emit_instruction_args[2] = get_operand_string(instr->arg1);
     }
-    else if (instr->op.type == TACOperatorType::TAC_OPERATOR_ADDR_OF && instr->flag == 1)
+    else if (instr->op.type == TACOperatorType::TAC_OPERATOR_ADDR_OF && instr->flag == 0)
     {
         emit_instruction_args[0] = "la";
         emit_instruction_args[1] = get_operand_string(instr->result);
         emit_instruction_args[2] = get_operand_string(instr->arg1);
     }
-    else if (instr->op.type == TACOperatorType::TAC_OPERATOR_DEREF && instr->flag == 1)
+    else if (instr->op.type == TACOperatorType::TAC_OPERATOR_DEREF && instr->flag == 0)
     {
         emit_instruction_args[0] = "deref";
         emit_instruction_args[1] = get_operand_string(instr->result);
@@ -3143,30 +3197,66 @@ vector<string> parameters_emit_instrcution(TACInstruction *instr)
     }
     else if (instr->op.type == TACOperatorType::TAC_OPERATOR_ADD && instr->flag == 0)
     {
-        if (instr->arg2->type == TACOperandType::TAC_OPERAND_CONSTANT)
+        if (instr->arg2->type == TACOperandType::TAC_OPERAND_CONSTANT){
             emit_instruction_args[0] = "addi";
-        else
+            emit_instruction_args[1] = get_operand_string(instr->result);
+            emit_instruction_args[2] = get_operand_string(instr->arg1);
+            emit_instruction_args[3] = get_operand_string(instr->arg2);
+        }
+        else if(instr->arg1->type == TACOperandType::TAC_OPERAND_CONSTANT){
+            emit_instruction_args[0] = "addi";
+            emit_instruction_args[1] = get_operand_string(instr->result);
+            emit_instruction_args[2] = get_operand_string(instr->arg2);
+            emit_instruction_args[3] = get_operand_string(instr->arg1);
+        }
+        else{
             emit_instruction_args[0] = "add";
-        emit_instruction_args[1] = get_operand_string(instr->result);
-        emit_instruction_args[2] = get_operand_string(instr->arg1);
-        emit_instruction_args[3] = get_operand_string(instr->arg2);
+            emit_instruction_args[1] = get_operand_string(instr->result);
+            emit_instruction_args[2] = get_operand_string(instr->arg1);
+            emit_instruction_args[3] = get_operand_string(instr->arg2);
+        }
     }
     else if (instr->op.type == TACOperatorType::TAC_OPERATOR_SUB && instr->flag == 0)
     {
-        if (instr->arg2->type == TACOperandType::TAC_OPERAND_CONSTANT)
+        if (instr->arg2->type == TACOperandType::TAC_OPERAND_CONSTANT){
             emit_instruction_args[0] = "subi";
-        else
+            emit_instruction_args[1] = get_operand_string(instr->result);
+            emit_instruction_args[2] = get_operand_string(instr->arg1);
+            emit_instruction_args[3] = get_operand_string(instr->arg2);
+        }
+        else if(instr->arg1->type == TACOperandType::TAC_OPERAND_CONSTANT){
+            emit_instruction_args[0] = "subi";
+            emit_instruction_args[1] = get_operand_string(instr->result);
+            emit_instruction_args[2] = get_operand_string(instr->arg2);
+            emit_instruction_args[3] = get_operand_string(instr->arg1);
+        }
+        else{
             emit_instruction_args[0] = "sub";
-        emit_instruction_args[1] = get_operand_string(instr->result);
-        emit_instruction_args[2] = get_operand_string(instr->arg1);
-        emit_instruction_args[3] = get_operand_string(instr->arg2);
+            emit_instruction_args[1] = get_operand_string(instr->result);
+            emit_instruction_args[2] = get_operand_string(instr->arg1);
+            emit_instruction_args[3] = get_operand_string(instr->arg2);
+        }
     }
     else if (instr->op.type == TACOperatorType::TAC_OPERATOR_MUL && instr->flag == 0)
     {
-        emit_instruction_args[0] = "mul";
-        emit_instruction_args[1] = get_operand_string(instr->result);
-        emit_instruction_args[2] = get_operand_string(instr->arg1);
-        emit_instruction_args[3] = get_operand_string(instr->arg2);
+        if (instr->arg2->type == TACOperandType::TAC_OPERAND_CONSTANT){
+            emit_instruction_args[0] = "muli";
+            emit_instruction_args[1] = get_operand_string(instr->result);
+            emit_instruction_args[2] = get_operand_string(instr->arg1);
+            emit_instruction_args[3] = get_operand_string(instr->arg2);
+        }
+        else if(instr->arg1->type == TACOperandType::TAC_OPERAND_CONSTANT){
+            emit_instruction_args[0] = "muli";
+            emit_instruction_args[1] = get_operand_string(instr->result);
+            emit_instruction_args[2] = get_operand_string(instr->arg2);
+            emit_instruction_args[3] = get_operand_string(instr->arg1);
+        }
+        else{
+            emit_instruction_args[0] = "mul";
+            emit_instruction_args[1] = get_operand_string(instr->result);
+            emit_instruction_args[2] = get_operand_string(instr->arg1);
+            emit_instruction_args[3] = get_operand_string(instr->arg2);
+        }
     }
     else if (instr->op.type == TACOperatorType::TAC_OPERATOR_DIV && instr->flag == 0)
     {
@@ -3387,7 +3477,6 @@ void print_mips_code()
     for (int instr_no = 0; instr_no < mips_code_text.size(); instr_no++)
     {
         MIPSInstruction instr = mips_code_text[instr_no];
-        // if(instr.label != "") cout<<instr.label<<": "<<endl;
         switch (instr.instruction_type)
         {
         case (MIPSInstructionType::_3_REG_TYPE):

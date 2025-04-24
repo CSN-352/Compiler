@@ -110,7 +110,6 @@ Expression* create_primary_expression(StringLiteral* x) {
     TACOperand* t1 = new_temp_var(); // TAC
     P->result = new_temp_var(); // TAC
     TACInstruction* i = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_string(x->value), new_empty_var(), 0); // TAC
-    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), P->result, t1, new_empty_var(), 0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     TACInstruction* i1_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
@@ -120,15 +119,13 @@ Expression* create_primary_expression(StringLiteral* x) {
     P->true_list.insert(i1_);
     P->false_list.insert(i2_); // TAC
     P->code.push_back(i); // TAC
-    P->code.push_back(i0); // TAC
     P->jump_code.push_back(i); // TAC
-    P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     P->jump_code.push_back(i1_); // TAC
     P->jump_code.push_back(i2_); // TAC
 
-    symbolTable.insert(t1->value, Type(CHAR_T, 2, true), 4, 0); // Insert temp into symbol table
+    symbolTable.insert(t1->value, Type(CHAR_T, 1, true), 4, 0); // Insert temp into symbol table
     symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
 
     return P;

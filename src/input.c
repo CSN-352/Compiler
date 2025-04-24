@@ -263,8 +263,8 @@
 
 // int main(){
 //     int a = 1; // tested and working
-//     // int b = a++; // tested and working
-//     // int b = a--; // tested and working
+//     a++; // tested and working
+//     --a; // tested and working
 //     int b = 2;
 //     int c = a + b; // tested and working
 //     int d = a - b; // tested and working
@@ -278,12 +278,65 @@
 //     int l = a >> b; // tested and working
 // }
 
+// int add(int a, int b) {
+//     return a + b;
+// }
+
+// int main(){
+//     int sum = add(1,2);
+//     return 0;
+// }
+
+// class A{
+//     public:
+//     int x;
+//     int y;
+// };
+
+// class B{
+//     public:
+//     int x;
+//     int y;
+// };
+
+// class A obj;
+// class B obj2;
+
+// int main(){
+//     obj.x = 1;
+//     obj.y = 2;
+//     return 0;
+// }
+
+// class A{
+//     public:
+//     int x;
+//     int y;
+// };
+
+// int main(){
+//     class A obj;
+//     obj.x = 1;
+//     return 0;
+// }
+
+// int main(){
+//     int arr[5];
+//     arr[2] = 10;
+//     return 0;
+// }
+
+// int main(){
+//     char* c = "hello";
+//     char* d = c;
+// }
+
+// int main(){
+//     int* x;
+//     int* y = x+1;
+// }
+
 int add(int a, int b) {
     return a + b;
-}
-
-int main(){
-    int sum = add(1,2);
-    return 0;
 }
 
