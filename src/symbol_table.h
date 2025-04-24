@@ -124,7 +124,7 @@ static unordered_map<int, int> primitive_type_size = {
     {LONG_LONG_T, 8},
     {FLOAT_T, 4},
     {DOUBLE_T, 8},
-    {LONG_DOUBLE_T, 16},
+    {LONG_DOUBLE_T, 8},
 };
 
 enum TypeCategory {
@@ -223,6 +223,7 @@ public:
     bool isFloat();
     bool isIntorFloat();
     bool isUnsigned();
+    bool isSigned();
     bool isPointer();
     bool is_error();
     void make_signed();
@@ -265,6 +266,7 @@ public:
     int offset;
     std::string mangled_name;
     FunctionDefinition* function_definition;
+    bool is_temp;
 
     Symbol(string n, Type t, int s, int o);
     Symbol();
@@ -295,7 +297,7 @@ public:
     void insert_defined_type(std::string name, DefinedTypes* type);
     void insert_typedef(std::string name, Type type, int offset);
     bool lookup(std::string name);
-    bool lookup_mangled_name(std::string mangled_name);
+    bool lookup_symbol_using_mangled_name(std::string name);
     bool lookup_exact_function_match(std::string name, const std::vector<Type>& arg_types);
     bool lookup_function(std::string name, vector<Type> arg_types);
     bool lookup_defined_type(string name);
@@ -305,6 +307,7 @@ public:
     void add_member_variable(string name, string member, Type type, MemberKind kind, AccessSpecifiers access_specifier);
     Type get_type_of_member_variable(string name, string member);
     Type get_type_of_member_variable(string name, string member, vector<Type> arg_types);
+    Symbol* get_symbol_using_mangled_name(std::string mangled_name);
     Symbol* getSymbol(std::string name);
     Symbol* getSymbolFromMangledName(std::string mangled_name);
     Symbol* getFunction(std::string name, vector<Type> arg_types);
@@ -960,6 +963,7 @@ public:
     SymbolTable function_symbol_table;
     vector<TACInstruction*> code;
     int relative_offset = 0;
+    int size = 0;
     FunctionDefinition();
 };
 

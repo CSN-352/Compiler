@@ -10,6 +10,7 @@
 #include <vector>
 #include <utility>
 #include <iterator>
+#include <string>
 
 #include "parser.tab.h"
 #include "symbol_table.h"
@@ -157,6 +158,18 @@ bool Type::isUnsigned()
     }
 }
 
+bool Type::isSigned()
+{
+    if (type_index == 1 || type_index == 3 || type_index == 5 || type_index == 7 || type_index == 9)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 bool Type::isPointer()
 {
     if (ptr_level)
@@ -281,6 +294,8 @@ int Type::get_size()
     }
     else if (ptr_level > 0 || is_function)
         return WORD_SIZE;
+    else if(isVoid())
+        return 0;
     else if (!isPrimitive())
     {
         DefinedTypes* dt = symbolTable.get_defined_type(defined_type_name);
@@ -538,9 +553,9 @@ TypeDefinition* create_type_definition(TypeDefinition* P, StructDeclarationSet* 
                 {
                     t.is_array = true;
                     t.is_pointer = true;
-                    pointer_level++;
                     t.array_dim = d->declarator->direct_declarator->array_dimensions.size();
                     t.array_dims = d->declarator->direct_declarator->array_dimensions;
+                    pointer_level += t.array_dim;
                 }
                 else if (d->declarator->direct_declarator->is_function)
                 {
@@ -631,6 +646,7 @@ TypeDefinition* create_type_definition(TypeDefinition* P, ClassDeclaratorList* i
                         t.is_pointer = true;
                         t.array_dim = dec->direct_declarator->array_dimensions.size();
                         t.array_dims = dec->direct_declarator->array_dimensions;
+                        t.ptr_level += t.array_dim;
                     }
 
                     MemberInfo member_info;
@@ -885,9 +901,9 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
         {
             t.is_array = true;
             t.is_pointer = true;
-            t.ptr_level++;
             t.array_dim = variable->direct_declarator->array_dimensions.size();
             t.array_dims = variable->direct_declarator->array_dimensions;
+            t.ptr_level += t.array_dim;
         }
         if (variable->direct_declarator->is_function)
         {
@@ -909,6 +925,11 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
         //     symbolTable.set_error();
         //     return P;
         // }
+        if (declaration_specifiers->is_typedef)
+            symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
+        else {
+            symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
+        }
         if (init_declarator_list->init_declarator_list[index]->initializer != nullptr)
         {
             bool compatible = init_declarator_list->init_declarator_list[index]->initializer->assignment_expression->type.is_convertible_to(t);
@@ -921,16 +942,15 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
             }
             else {
                 auto i = init_declarator_list->init_declarator_list[index]->initializer;
-                TACOperand* id = new_identifier(variable->direct_declarator->identifier->value); // TAC
-                init_declarator_list->init_declarator_list[index]->code.insert(init_declarator_list->init_declarator_list[index]->code.end(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
-                if (i->assignment_expression->result->type != TAC_OPERAND_TEMP_VAR) {
-                    TACOperand* t1 = new_temp_var(); // TAC
-                    TACInstruction* i0;
-                    if (t.type_index != i->assignment_expression->type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
-                    else i0 = emit(TACOperator(TAC_OPERATOR_NOP), t1, i->assignment_expression->result, new_empty_var(), 0); // TAC
-                    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+                Symbol* sym = symbolTable.getSymbol(variable->direct_declarator->identifier->value);
+                TACOperand* id = new_identifier(sym->mangled_name); // TAC
+                if (symbolTable.currentScope == 0) {
+                    string value="";
+                    PrimaryExpression* p = i->assignment_expression->conditional_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression;
+                    if(p->constant != nullptr) value = p->constant->value; // TAC
+                    else if (p->string_literal != nullptr) value = p->string_literal->value; // TAC
+                    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_NOP), id, new_constant(value), new_empty_var(), 0); // TAC
                     init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
-                    init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
                     for (auto l : i->assignment_expression->jump_next_list) {
                         init_declarator_list->init_declarator_list[index]->code.erase(remove(init_declarator_list->init_declarator_list[index]->code.begin(), init_declarator_list->init_declarator_list[index]->code.end(), l), init_declarator_list->init_declarator_list[index]->code.end()); // TAC
                     }
@@ -942,6 +962,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                     backpatch(i->assignment_expression->jump_false_list, i0->label); // TAC
                 }
                 else {
+                    init_declarator_list->init_declarator_list[index]->code.insert(init_declarator_list->init_declarator_list[index]->code.end(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
                     TACInstruction* i1;
                     if (t.type_index != i->assignment_expression->type.type_index)i1 = emit(TACOperator(TAC_OPERATOR_CAST), id, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
                     else i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, i->assignment_expression->result, new_empty_var(), 0); // TAC
@@ -959,20 +980,11 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
             }
         }
         else if (symbolTable.currentScope == 0) {
-            TACOperand* id = new_identifier(variable->direct_declarator->identifier->value); // TAC
-            TACOperand* t1 = new_temp_var(); // TAC
+            Symbol* sym = symbolTable.getSymbol(variable->direct_declarator->identifier->value);
+            TACOperand* id = new_identifier(sym->mangled_name); // TAC
             Constant* c = new Constant("I_CONSTANT", "0", init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->line_no, init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->column_no); // TAC
-            TACInstruction* i0;
-            if (t.type_index != c->constant_type.type_index) i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(t.to_string()), new_constant("0"), 0); // TAC
-            else i0 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant("0"), new_empty_var(), 0); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
+            TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_NOP), id, new_constant("0"), new_empty_var(), 0); // TAC
             init_declarator_list->init_declarator_list[index]->code.push_back(i0); // TAC
-            init_declarator_list->init_declarator_list[index]->code.push_back(i1); // TAC
-        }
-        if (declaration_specifiers->is_typedef)
-            symbolTable.insert_typedef(variable->direct_declarator->identifier->value, t, t.get_size());
-        else {
-            symbolTable.insert(variable->direct_declarator->identifier->value, t, t.get_size(), overloaded);
         }
     }
     return P;
@@ -1401,7 +1413,7 @@ ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, Ab
     if (ad->pointer != nullptr)
         pointer_level = ad->pointer->pointer_level;
     if (ad->direct_abstract_declarator->is_array)
-        pointer_level++;
+        pointer_level+= ad->direct_abstract_declarator->array_dimensions.size();
     P->type = Type(ds->type_index, pointer_level, ds->is_const_variable);
     return P;
 }
@@ -1414,8 +1426,8 @@ ParameterDeclaration* create_parameter_declaration(DeclarationSpecifiers* ds, De
     int pointer_level = 0;
     if (d->pointer != nullptr)
         pointer_level = d->pointer->pointer_level;
-    if (d->direct_declarator->is_array)
-        pointer_level++;
+    if(d->direct_declarator->is_array)
+        pointer_level+= d->direct_declarator->array_dimensions.size();
     P->type = Type(ds->type_index, pointer_level, ds->is_const_variable);
     return P;
 }
@@ -1946,26 +1958,6 @@ EnumeratorList::EnumeratorList() : NonTerminal("ENUMERATOR LIST") {}
 EnumeratorList* create_enumerator_list(Enumerator* e)
 {
     EnumeratorList* P = new EnumeratorList();
-    TACOperand* id = new_identifier(e->identifier->value); // TAC
-    TACOperand* t1 = new_temp_var();
-    if (e->initializer_expression == nullptr) {
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant("0"), new_empty_var(), 0); // TAC
-        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
-        P->last_constant_value = "0"; // TAC
-        P->code.push_back(i1); // TAC
-        P->code.push_back(i2); // TAC
-    }
-    else {
-        string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(value), new_empty_var(), 0); // TAC
-        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type("int"), new_constant(value), 0); // TAC
-        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
-        P->last_constant_value = value; // TAC
-        P->code.push_back(i1); // TAC
-        P->code.push_back(i0); // TAC
-        P->code.push_back(i2); // TAC
-        backpatch(e->initializer_expression->next_list, i1->label); // TAC
-    }
     P->enumerator_list.push_back(e);
     return P;
 }
@@ -1973,26 +1965,6 @@ EnumeratorList* create_enumerator_list(Enumerator* e)
 EnumeratorList* create_enumerator_list(EnumeratorList* el, Enumerator* e)
 {
     el->enumerator_list.push_back(e);
-    TACOperand* id = new_identifier(e->identifier->value); // TAC
-    TACOperand* t1 = new_temp_var();
-    if (e->initializer_expression == nullptr) {
-        el->last_constant_value = to_string(stoi(el->last_constant_value) + 1); // TAC
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(el->last_constant_value), new_empty_var(), 0); // TAC
-        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
-        el->code.push_back(i1); // TAC
-        el->code.push_back(i2); // TAC
-    }
-    else {
-        string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
-        TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_constant(value), new_empty_var(), 0); // TAC
-        TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type("int"), new_constant(value), 0); // TAC
-        TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), id, t1, new_empty_var(), 0); // TAC
-        el->last_constant_value = value; // TAC
-        el->code.push_back(i1); // TAC
-        el->code.push_back(i0); // TAC
-        el->code.push_back(i2); // TAC
-        backpatch(e->initializer_expression->next_list, i1->label); // TAC
-    }
     return el;
 }
 
@@ -2014,8 +1986,23 @@ EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el)
     if (el != nullptr)
     {
         Type type(PrimitiveTypes::INT_T, 0, true);
-        for (Enumerator* e : el->enumerator_list)
+        for (Enumerator* e : el->enumerator_list){
             symbolTable.insert(e->identifier->value, type, 4, 0);
+            Symbol* sym = symbolTable.getSymbol(e->identifier->value);
+            TACOperand* id = new_identifier(sym->mangled_name); // TAC
+            if (e->initializer_expression == nullptr) {
+                el->last_constant_value = to_string(stoi(el->last_constant_value) + 1); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, new_constant(el->last_constant_value), new_empty_var(), 0); // TAC
+                el->code.push_back(i1); // TAC
+            }
+            else {
+                string value = e->initializer_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, new_constant(value), new_empty_var(), 0); // TAC
+                el->last_constant_value = value; // TAC
+                el->code.push_back(i1); // TAC
+                backpatch(e->initializer_expression->next_list, i1->label); // TAC
+            }
+        }
     }
     return P;
 }
@@ -2387,7 +2374,7 @@ TypeName* create_type_name(SpecifierQualifierList* sql, AbstractDeclarator* ad)
             if (dad->is_array)
             {
                 P->type.is_array = true;
-                P->type.ptr_level++;
+                P->type.ptr_level+=dad->array_dimensions.size();
                 P->type.array_dim = dad->array_dimensions.size();
                 P->type.array_dims.insert(P->type.array_dims.begin(), dad->array_dimensions.begin(), dad->array_dimensions.end());
             }
@@ -2558,6 +2545,7 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers* ds, Declar
                 {
                     ParameterDeclaration* pd = d->direct_declarator->parameters->paramater_list->parameter_declarations[i];
                     symbolTable.insert(pd->declarator->direct_declarator->identifier->value, pd->type, pd->type.get_size(), 0);
+                    P->size -= pd->type.get_size();
                 }
             }
         }
@@ -2580,19 +2568,21 @@ FunctionDefinition* create_function_definition(Declarator* declarator, FunctionD
     Type t1 = Type(function->type.type_index, function->type.ptr_level, function->type.is_const_variable);
     Type t2 = Type(PrimitiveTypes::VOID_T, 0, false);
     if(!cs->return_type.empty()) t2 = cs->return_type[0];
+    Symbol* func_sym = symbolTable.getSymbol(declarator->direct_declarator->identifier->value);
+    string function_name = func_sym->mangled_name;
     if(cs_cast->declaration_statement_list != nullptr) fd->code.insert(fd->code.end(), cs_cast->declaration_statement_list->static_declaration_code.begin(), cs_cast->declaration_statement_list->static_declaration_code.end()); // TAC
-    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
+    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_FUNC_BEGIN), new_identifier(function_name), new_empty_var(), new_empty_var(), 0); // TAC
     fd->code.push_back(i1); // TAC
-    if (declarator->direct_declarator->parameters != nullptr) {
-        for (auto pd : declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
-            if (pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
-                fd->code.push_back(i2); // TAC
-            }
-        }
-    }
+    // if (declarator->direct_declarator->parameters != nullptr){
+    //     for (auto pd : declarator->direct_declarator->parameters->paramater_list->parameter_declarations) {
+    //         if (pd->declarator != nullptr && pd->declarator->direct_declarator != nullptr) {
+    //             TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_PARAM), new_identifier(pd->declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
+    //             fd->code.push_back(i2); // TAC
+    //         }
+    //     }
+    // }
 
-    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_identifier(declarator->direct_declarator->identifier->value), new_empty_var(), new_empty_var(), 0); // TAC
+    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_FUNC_END), new_identifier(function_name), new_empty_var(), new_empty_var(), 0); // TAC
     backpatch(cs_cast->next_list, i2->label); // TAC
     backpatch(cs_cast->break_list, i2->label); // TAC
     fd->code.insert(fd->code.end(), cs_cast->code.begin(), cs_cast->code.end()); // TAC
@@ -2626,6 +2616,15 @@ Constant::Constant(string name, string value, unsigned int line_no, unsigned int
 {
     this->constant_type = this->set_constant_type(value);
     this->value = this->convert_to_decimal();
+    string new_value = "";
+    // preserve only numerical values in the constant
+    if(!this->constant_type.isChar()){
+        for(char c : this->value){
+            if(!isalpha(c)) new_value += c;
+        }
+    }
+    else new_value = this->value;  
+    this->value = new_value;
 }
 
 Type Constant::set_constant_type(string value)
@@ -2704,6 +2703,7 @@ Type Constant::set_constant_type(string value)
             t.type_index = PrimitiveTypes::DOUBLE_T;
         }
     }
+
     else
     {
         string error_msg = "Invalid type: " + name;
@@ -2748,12 +2748,12 @@ StringLiteral::StringLiteral(string value, unsigned int line_no, unsigned int co
 // ################################## SYMBOL ######################################
 // ##############################################################################
 
-Symbol::Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o) {
+Symbol::Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o), is_temp(false) {
     function_definition = nullptr;
     this->mangled_name = create_mangled_name(this->name, this->type, this->scope, symbolTable.scope_stack);
 }
 
-Symbol::Symbol() : name(""), type(Type()), scope(0), offset(0) {
+Symbol::Symbol() : name(""), type(Type()), scope(0), offset(0), is_temp(false), mangled_name("") {
     function_definition = nullptr;
 }
 
@@ -2762,7 +2762,15 @@ std::string create_mangled_name(std::string& name, Type& type, int scope,
 {
     stringstream ss;
 
-    ss << "0_";
+    
+    if(name[0] == '#'){
+        for(int i = 1;i<name.size();i++){
+            ss << name[i];
+        }
+        return ss.str();
+    }
+
+    ss << "_";
 
     // Kind
     if (type.is_function)
@@ -2773,7 +2781,7 @@ std::string create_mangled_name(std::string& name, Type& type, int scope,
         ss << "v_";
 
     // Base name + scope
-    ss << name << "@S" << scope;
+    ss << name << "_S" << scope;
 
     // pair<int, pair<Type, string>> top = { 0, {Type(), name} };
     // if (!scope_stack.empty())
@@ -2810,7 +2818,7 @@ std::string create_mangled_name(std::string& name, Type& type, int scope,
 }
 
 // ##############################################################################
-// ################################## SYMBOLTABLE ######################################
+// ################################## SYMBOL TABLE ######################################
 // ##############################################################################
 
 SymbolTable::SymbolTable()
@@ -2841,6 +2849,13 @@ void SymbolTable::exitScope()
 {
     if (currentScope == 0)
         return;
+
+    // for(auto entry: fd->function_symbol_table.table) {
+    //     for(auto sym: entry.second) {
+    //         cout<<"Symbol: " << sym->name << endl;
+    //         cout<<"Offset: " << sym->offset << endl;
+    //     }
+    // }
 
     for (auto it = table.begin(); it != table.end();)
     {
@@ -2981,6 +2996,7 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
         Symbol* sym_f = new Symbol(name, type, currentScope, func->function_symbol_table.currAddress);
         func->function_symbol_table.table[sym->name].push_front(sym_f);
         func->function_symbol_table.currAddress += size;
+        func->size += size;
     }
     else if (top.type.is_defined_type)
     {
@@ -3009,6 +3025,7 @@ void SymbolTable::add_function_definition(Symbol* sym, FunctionDefinition* fd) {
     // {
     //     top = scope_stack.top();
     // }
+
     Symbol top = Symbol();
     if (!scope_stack.empty())
     {
@@ -3321,7 +3338,7 @@ Symbol* SymbolTable::getSymbol(string name)
     return sym;
 }
 
-Symbol* SymbolTable::getSymbolFromMangledName(std::string mangled_name)
+Symbol* SymbolTable::get_symbol_using_mangled_name(std::string mangled_name)
 {
     for (const auto& entry : table)
     {
@@ -3336,9 +3353,9 @@ Symbol* SymbolTable::getSymbolFromMangledName(std::string mangled_name)
     return nullptr;
 }
 
-bool SymbolTable::lookup_mangled_name(std::string mangled_name)
+bool SymbolTable::lookup_symbol_using_mangled_name(std::string mangled_name)
 {
-    return (this->getSymbolFromMangledName(mangled_name) != nullptr);
+    return (this->get_symbol_using_mangled_name(mangled_name) != nullptr);
 }
 
 Symbol* SymbolTable::getFunction(std::string name, vector<Type> arg_types)
@@ -3488,6 +3505,21 @@ void SymbolTable::print()
                  << "| " << setw(20) << left << symbol->type.type_index
                  << "| " << setw(8)  << left << symbol->scope
                  << "| " << setw(12) << left << symbol->offset << " |\n";
+                
+            if (symbol->function_definition != nullptr){
+                cout<<"Printing function definition for: " << symbol->name << endl;
+                cout<<"Function Size: " << symbol->function_definition->size << endl;
+                cout << "------------------------------------------------------------------------------------------------------------------------\n";
+                for(const auto& entry : symbol->function_definition->function_symbol_table.table){
+                    for(const auto symbol : entry.second){
+                        cout << "| " << setw(20) << left << symbol->name
+                             << "| " << setw(40) << left << symbol->mangled_name
+                             << "| " << setw(20) << left << symbol->type.type_index
+                             << "| " << setw(8)  << left << symbol->scope
+                             << "| " << setw(12) << left << symbol->offset << " |\n";
+                    }
+                }
+            }
         }
     }
 

@@ -14,6 +14,7 @@ extern "C" int yylex();
 extern int yyparse();
 extern void fix_labels_temps();
 extern void print_TAC();
+extern void print_mips_code();
 extern int yylineno;
 extern YYSTYPE yylval;
 extern FILE *yyin;
@@ -767,6 +768,7 @@ int main(int argc, char **argv) {
     }
     fix_labels_temps();
     print_TAC();
+    print_mips_code();
     printf("Parsing completed successfully.\n");
     return 0;
 }

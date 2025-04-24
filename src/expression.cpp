@@ -53,9 +53,7 @@ Expression* create_primary_expression(Identifier* i) {
         symbolTable.set_error();
         return P;
     }
-    P->result = new_temp_var(); // TAC
-    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_NOP),P->result,new_identifier(sym->mangled_name), new_empty_var(), 0); // TAC
-    P->code.push_back(i0); // TAC
+    P->result = new_identifier(sym->mangled_name); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     TACInstruction* i1_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
@@ -64,7 +62,6 @@ Expression* create_primary_expression(Identifier* i) {
     P->false_list.insert(i2_); // TAC
     P->jump_true_list.insert(i1);
     P->jump_false_list.insert(i2);
-    P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     P->jump_code.push_back(i1_); // TAC
@@ -81,7 +78,9 @@ Expression* create_primary_expression(Constant* x) {
     P->constant = x;
     P->type = x->get_constant_type();
     P->type.is_const_literal = true;
-    P->result = new_constant(x->value); // TAC
+    P->result = new_temp_var(); // TAC
+    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, new_constant(x->value), new_empty_var(), 0); // TAC
+    P->code.push_back(i0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     TACInstruction* i1_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
@@ -90,10 +89,14 @@ Expression* create_primary_expression(Constant* x) {
     P->jump_false_list.insert(i2);
     P->true_list.insert(i1_);
     P->false_list.insert(i2_); // TAC
+    P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     P->jump_code.push_back(i1_); // TAC
     P->jump_code.push_back(i2_); // TAC
+
+    symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
     return P;
 }
 
@@ -104,8 +107,10 @@ Expression* create_primary_expression(StringLiteral* x) {
     P->column_no = x->column_no;
     P->string_literal = x;
     P->type = Type(CHAR_T, 1, true);
+    TACOperand* t1 = new_temp_var(); // TAC
     P->result = new_temp_var(); // TAC
-    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), P->result, new_string(x->value), new_empty_var(), 0); // TAC
+    TACInstruction* i = emit(TACOperator(TAC_OPERATOR_NOP), t1, new_string(x->value), new_empty_var(), 0); // TAC
+    TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), P->result, t1, new_empty_var(), 0); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
     TACInstruction* i1_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
@@ -114,12 +119,18 @@ Expression* create_primary_expression(StringLiteral* x) {
     P->jump_false_list.insert(i2);
     P->true_list.insert(i1_);
     P->false_list.insert(i2_); // TAC
+    P->code.push_back(i); // TAC
     P->code.push_back(i0); // TAC
+    P->jump_code.push_back(i); // TAC
     P->jump_code.push_back(i0); // TAC
     P->jump_code.push_back(i1); // TAC
     P->jump_code.push_back(i2); // TAC
     P->jump_code.push_back(i1_); // TAC
     P->jump_code.push_back(i2_); // TAC
+
+    symbolTable.insert(t1->value, Type(CHAR_T, 2, true), 4, 0); // Insert temp into symbol table
+    symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
     return P;
 }
 
@@ -342,6 +353,9 @@ Expression* create_postfix_expression(Expression* x, Terminal* op) {
         return P;
     }
     P->type.is_const_literal = false;
+
+    symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
     return P;
 }
 
@@ -444,6 +458,14 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             P->jump_code.push_back(i6); // TAC
             P->jump_code.push_back(i5_); // TAC
             P->jump_code.push_back(i6_); // TAC
+
+            Type t1_type = x->type;
+            t1_type.ptr_level ++;
+            symbolTable.insert(t1->value, t1_type, t1_type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(t2->value, t1_type, t1_type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(t3->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
         }
         else if (op->name == "PTR_OP") {
             TACOperand* t1 = new_temp_var(); // TAC
@@ -477,6 +499,10 @@ Expression* create_postfix_expression(Expression* x, Terminal* op, Identifier* i
             P->jump_code.push_back(i5); // TAC
             P->jump_code.push_back(i4_); // TAC
             P->jump_code.push_back(i5_); // TAC
+
+            symbolTable.insert(t1->value, x->type, x->type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(t2->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+            symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
         }
     }
     P->type.is_const_literal = false;
@@ -542,10 +568,9 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
                 P->type.array_dims.erase(P->type.array_dims.begin());
                 if (P->type.array_dim == 0){
                     P->type.is_array = false;
-                    P->type.ptr_level--;
                 }
             }
-            else P->type.ptr_level--;
+            P->type.ptr_level--;
             if (P->type.ptr_level == 0) P->type.is_pointer = false;
         }
     }
@@ -566,6 +591,7 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     backpatch(index_expression->jump_false_list, i1->label); // TAC
     P->code.push_back(i1); // TAC
     P->jump_code.push_back(i1); // TAC
+    symbolTable.insert(t1->value, x->type, x->type.get_size(), 0); // Insert temp into symbol table
     if(P->type.ptr_level == 0){
         TACOperand* t2 = new_temp_var(); // TAC
         TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_ADD), t2, x->result, t1, 0); // TAC
@@ -574,6 +600,7 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
         P->jump_code.push_back(i2); // TAC
         P->code.push_back(i3); // TAC
         P->jump_code.push_back(i3); // TAC
+        symbolTable.insert(t2->value, x->type, x->type.get_size(), 0); // Insert temp into symbol table
     }
     else {
         TACInstruction* i2 = emit(TAC_OPERATOR_ADD, P->result, x->result, t1, 0); // TAC
@@ -593,6 +620,9 @@ Expression* create_postfix_expression(Expression* x, Expression* index_expressio
     P->jump_code.push_back(i5_); // TAC
     P->jump_code.push_back(i6_); // TAC
     P->type.is_const_literal = false;
+
+    symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
+
     return P;
 }
 
@@ -703,6 +733,8 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->jump_code.push_back(i3); // TAC
                 P->jump_code.push_back(i2_); // TAC
                 P->jump_code.push_back(i3_); // TAC
+
+                symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
             }
         }
     }
@@ -814,6 +846,8 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
             U->jump_code.push_back(i4); // TAC
             U->jump_code.push_back(i3_); // TAC
             U->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(U->result->value, U->type, U->type.get_size(), 0); // Insert temp into symbol table
         }
         else
         {
@@ -851,6 +885,8 @@ Expression* create_unary_expression(Expression* x, Terminal* op) {
         U->jump_code.push_back(i3); // TAC
         U->jump_code.push_back(i2_); // TAC
         U->jump_code.push_back(i3_); // TAC
+
+        symbolTable.insert(U->result->value, U->type, U->type.get_size(), 0); // Insert temp into symbol table
     }
     U->type.is_const_literal = false;
     return U;
@@ -1093,6 +1129,7 @@ Expression* create_unary_expression_cast(Expression* x, Terminal* op)
         U->jump_code.push_back(i3_); // TAC
     }
     U->type.is_const_literal = false;
+    symbolTable.insert(U->result->value, U->type, U->type.get_size(), 0); // Insert temp into symbol table
     return U;
 }
 
@@ -1123,6 +1160,7 @@ Expression* create_unary_expression(Terminal* op, TypeName* tn) {
     U->jump_code.push_back(i2_); // TAC
     U->jump_code.push_back(i3_); // TAC
     U->type.is_const_literal = false;
+    symbolTable.insert(U->result->value, U->type, U->type.get_size(), 0); // Insert temp into symbol table
     return U;
 }
 
@@ -1207,6 +1245,7 @@ Expression* create_cast_expression(TypeName* tn, Expression* x) {
     C->jump_code.push_back(i2_); // TAC
     C->jump_code.push_back(i3_); // TAC
     C->type.is_const_literal = false;
+    symbolTable.insert(C->result->value, C->type, C->type.get_size(), 0); // Insert temp into symbol table
     return C;
 }
 
@@ -1279,113 +1318,170 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
         return M;
     }
 
+    MultiplicativeExpression* left_multiplicative_expr = dynamic_cast<MultiplicativeExpression*> (left);
+    CastExpression* right_cast_expression = dynamic_cast<CastExpression*> (right);
+
+    string left_constant_value = "";
+    string right_constant_value = "";
+    string result_str = "";
+    string constant_type_str = "";
+
     Type lt = left->type;
     Type rt = right->type;
+
+    bool is_const_folding = lt.is_const_literal && rt.is_const_literal && lt.isIntorFloat() && rt.isIntorFloat();
+    if(is_const_folding){
+        left_constant_value = left_multiplicative_expr->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
+        right_constant_value = right_cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
+    }
 
     if (op->name == "MULTIPLY" || op->name == "DIVIDE") {
         if (lt.isFloat() || rt.isFloat()) {
             // float * float => float 
             if (lt.type_index > rt.type_index) {
-                TACOperand* t1 = new_temp_var(); // TAC
-                M->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
-                backpatch(left->next_list, i1->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                backpatch(left->true_list, i1->label); // TAC
-                backpatch(right->true_list, i1->label); // TAC
-                backpatch(left->false_list, i1->label); // TAC
-                backpatch(right->false_list, i1->label); // TAC
-                backpatch(left->jump_true_list, i1->label); // TAC
-                backpatch(right->jump_true_list, i1->label); // TAC
-                backpatch(left->jump_false_list, i1->label); // TAC
-                backpatch(right->jump_false_list, i1->label); // TAC
-                TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1, 0); // TAC
-                M->code.push_back(i1); // TAC
-                M->code.push_back(i2); // TAC
+                M->type = lt; // TAC
 
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i3_); // TAC
-                M->false_list.insert(i4_); // TAC
-                M->jump_true_list.insert(i3); // TAC
-                M->jump_false_list.insert(i4); // TAC
-                M->jump_code.push_back(i1); // TAC  
-                M->jump_code.push_back(i2); // TAC
-                M->jump_code.push_back(i3); // TAC
-                M->jump_code.push_back(i4); // TAC
-                M->jump_code.push_back(i3_); // TAC
-                M->jump_code.push_back(i4_); // TAC
+                if(!is_const_folding){
+                    TACOperand* t1 = new_temp_var(); // TAC
+                    M->result = new_temp_var(); // TAC
+                    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), right->result, 0); // TAC
+                    backpatch(left->next_list, i1->label); // TAC
+                    backpatch(right->next_list, i1->label); // TAC
+                    backpatch(left->jump_next_list, i1->label); // TAC
+                    backpatch(right->jump_next_list, i1->label); // TAC
+                    backpatch(left->true_list, i1->label); // TAC
+                    backpatch(right->true_list, i1->label); // TAC
+                    backpatch(left->false_list, i1->label); // TAC
+                    backpatch(right->false_list, i1->label); // TAC
+                    backpatch(left->jump_true_list, i1->label); // TAC
+                    backpatch(right->jump_true_list, i1->label); // TAC
+                    backpatch(left->jump_false_list, i1->label); // TAC
+                    backpatch(right->jump_false_list, i1->label); // TAC
+                    TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1, 0); // TAC
+                    M->code.push_back(i1); // TAC
+                    M->code.push_back(i2); // TAC
+
+                    TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    M->true_list.insert(i3_); // TAC
+                    M->false_list.insert(i4_); // TAC
+                    M->jump_true_list.insert(i3); // TAC
+                    M->jump_false_list.insert(i4); // TAC
+                    M->jump_code.push_back(i1); // TAC  
+                    M->jump_code.push_back(i2); // TAC
+                    M->jump_code.push_back(i3); // TAC
+                    M->jump_code.push_back(i4); // TAC
+                    M->jump_code.push_back(i3_); // TAC
+                    M->jump_code.push_back(i4_); // TAC
+                    symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
+                }
             }
             else if (lt.type_index == rt.type_index) {
                 M->type = lt;
-                M->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result, 0); // TAC
-                backpatch(left->next_list, i1->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                backpatch(left->true_list, i1->label); // TAC
-                backpatch(right->true_list, i1->label); // TAC
-                backpatch(left->false_list, i1->label); // TAC
-                backpatch(right->false_list, i1->label); // TAC
-                backpatch(left->jump_true_list, i1->label); // TAC
-                backpatch(right->jump_true_list, i1->label); // TAC
-                backpatch(left->jump_false_list, i1->label); // TAC
-                backpatch(right->jump_false_list, i1->label); // TAC
-                M->code.push_back(i1); // TAC
 
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i2_); // TAC
-                M->false_list.insert(i3_); // TAC
-                M->jump_true_list.insert(i2); // TAC
-                M->jump_false_list.insert(i3); // TAC
-                M->jump_code.push_back(i1); // TAC
-                M->jump_code.push_back(i2); // TAC
-                M->jump_code.push_back(i3); // TAC
-                M->jump_code.push_back(i2_); // TAC
-                M->jump_code.push_back(i3_); // TAC
+                if(!is_const_folding){
+                    M->result = new_temp_var(); // TAC
+                    TACInstruction* i1 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result, 0); // TAC
+                    backpatch(left->next_list, i1->label); // TAC
+                    backpatch(right->next_list, i1->label); // TAC
+                    backpatch(left->jump_next_list, i1->label); // TAC
+                    backpatch(right->jump_next_list, i1->label); // TAC
+                    backpatch(left->true_list, i1->label); // TAC
+                    backpatch(right->true_list, i1->label); // TAC
+                    backpatch(left->false_list, i1->label); // TAC
+                    backpatch(right->false_list, i1->label); // TAC
+                    backpatch(left->jump_true_list, i1->label); // TAC
+                    backpatch(right->jump_true_list, i1->label); // TAC
+                    backpatch(left->jump_false_list, i1->label); // TAC
+                    backpatch(right->jump_false_list, i1->label); // TAC
+                    M->code.push_back(i1); // TAC
+
+                    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    M->true_list.insert(i2_); // TAC
+                    M->false_list.insert(i3_); // TAC
+                    M->jump_true_list.insert(i2); // TAC
+                    M->jump_false_list.insert(i3); // TAC
+                    M->jump_code.push_back(i1); // TAC
+                    M->jump_code.push_back(i2); // TAC
+                    M->jump_code.push_back(i3); // TAC
+                    M->jump_code.push_back(i2_); // TAC
+                    M->jump_code.push_back(i3_); // TAC
+                }
             }
             else {
                 M->type = rt;
-                TACOperand* t1 = new_temp_var(); // TAC
-                M->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(rt.to_string()), left->result, 0); // TAC
-                backpatch(left->next_list, i1->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                backpatch(left->true_list, i1->label); // TAC
-                backpatch(right->true_list, i1->label); // TAC
-                backpatch(left->false_list, i1->label); // TAC
-                backpatch(right->false_list, i1->label); // TAC
-                backpatch(left->jump_true_list, i1->label); // TAC
-                backpatch(right->jump_true_list, i1->label); // TAC
-                backpatch(left->jump_false_list, i1->label); // TAC
-                backpatch(right->jump_false_list, i1->label); // TAC
-                TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result, 0); // TAC
-                M->code.push_back(i1); // TAC
 
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i3_); // TAC
-                M->false_list.insert(i4_); // TAC
-                M->jump_true_list.insert(i3); // TAC
-                M->jump_false_list.insert(i4); // TAC
-                M->jump_code.push_back(i1); // TAC
-                M->jump_code.push_back(i2); // TAC
-                M->jump_code.push_back(i3); // TAC
-                M->jump_code.push_back(i4); // TAC
-                M->jump_code.push_back(i3_); // TAC
-                M->jump_code.push_back(i4_); // TAC
+                if(!is_const_folding){
+                    TACOperand* t1 = new_temp_var(); // TAC
+                    M->result = new_temp_var(); // TAC
+                    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), left->result, 0); // TAC
+                    backpatch(left->next_list, i1->label); // TAC
+                    backpatch(right->next_list, i1->label); // TAC
+                    backpatch(left->jump_next_list, i1->label); // TAC
+                    backpatch(right->jump_next_list, i1->label); // TAC
+                    backpatch(left->true_list, i1->label); // TAC
+                    backpatch(right->true_list, i1->label); // TAC
+                    backpatch(left->false_list, i1->label); // TAC
+                    backpatch(right->false_list, i1->label); // TAC
+                    backpatch(left->jump_true_list, i1->label); // TAC
+                    backpatch(right->jump_true_list, i1->label); // TAC
+                    backpatch(left->jump_false_list, i1->label); // TAC
+                    backpatch(right->jump_false_list, i1->label); // TAC
+                    TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result, 0); // TAC
+                    M->code.push_back(i1); // TAC
+    
+                    TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    M->true_list.insert(i3_); // TAC
+                    M->false_list.insert(i4_); // TAC
+                    M->jump_true_list.insert(i3); // TAC
+                    M->jump_false_list.insert(i4); // TAC
+                    M->jump_code.push_back(i1); // TAC
+                    M->jump_code.push_back(i2); // TAC
+                    M->jump_code.push_back(i3); // TAC
+                    M->jump_code.push_back(i4); // TAC
+                    M->jump_code.push_back(i3_); // TAC
+                    M->jump_code.push_back(i4_); // TAC
+                    symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
+                }
+            }
+
+            if (is_const_folding) {
+                constant_type_str = "F_CONSTANT";
+                if (M->type.type_index == PrimitiveTypes::DOUBLE_T) {
+                    double left_double_value = stod(left_constant_value);
+                    double right_double_value = stod(right_constant_value);
+                    double result = (op->name == "MULTIPLY") ? left_double_value * right_double_value : left_double_value / right_double_value;
+                    result_str = to_string(result);
+                }
+                else if (M->type.type_index == PrimitiveTypes::FLOAT_T) {
+                    float left_float_value = stof(left_constant_value);
+                    float right_float_value = stof(right_constant_value);
+                    float result = (op->name == "MULTIPLY") ? left_float_value * right_float_value : left_float_value / right_float_value;
+                    result_str = to_string(result);
+                }
+                else if (M->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) {
+                    long double left_float_value = stold(left_constant_value);
+                    long double right_float_value = stold(right_constant_value);
+                    long double result = (op->name == "MULTIPLY") ? left_float_value * right_float_value : left_float_value / right_float_value;
+                    result_str = to_string(result);
+                }
+                else {
+                    M->type = ERROR_TYPE;
+                    string error_msg = "Operands of '" + op->name + "' are invalid at line " +
+                        to_string(M->line_no) + ", column " + to_string(M->column_no) +
+                        ". Left operand type: " + lt.to_string() + ", Right operand type: " + rt.to_string();
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return M;
+                }
             }
         }
         else if (lt.isInt() && rt.isInt()) {
@@ -1395,110 +1491,155 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
                 if (lt.isUnsigned() || rt.isUnsigned()) {
                     M->type.make_unsigned();
                 }
-                TACOperand* t1 = new_temp_var(); // TAC
-                M->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), right->result, 0); // TAC
-                backpatch(left->next_list, i1->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                backpatch(left->true_list, i1->label); // TAC
-                backpatch(right->true_list, i1->label); // TAC
-                backpatch(left->false_list, i1->label); // TAC
-                backpatch(right->false_list, i1->label); // TAC
-                backpatch(left->jump_true_list, i1->label); // TAC
-                backpatch(right->jump_true_list, i1->label); // TAC
-                backpatch(left->jump_false_list, i1->label); // TAC
-                backpatch(right->jump_false_list, i1->label); // TAC
-                TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1, 0); // TAC
-                M->code.push_back(i1); // TAC
-                M->code.push_back(i2); // TAC
 
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i3_); // TAC
-                M->false_list.insert(i4_); // TAC
-                M->jump_true_list.insert(i3); // TAC
-                M->jump_false_list.insert(i4); // TAC
-                M->jump_code.push_back(i1); // TAC
-                M->jump_code.push_back(i2); // TAC
-                M->jump_code.push_back(i3); // TAC
-                M->jump_code.push_back(i4); // TAC
-                M->jump_code.push_back(i3_); // TAC
-                M->jump_code.push_back(i4_); // TAC
+                if(!is_const_folding){
+                    TACOperand* t1 = new_temp_var(); // TAC
+                    M->result = new_temp_var(); // TAC
+                    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), right->result, 0); // TAC
+                    backpatch(left->next_list, i1->label); // TAC
+                    backpatch(right->next_list, i1->label); // TAC
+                    backpatch(left->jump_next_list, i1->label); // TAC
+                    backpatch(right->jump_next_list, i1->label); // TAC
+                    backpatch(left->true_list, i1->label); // TAC
+                    backpatch(right->true_list, i1->label); // TAC
+                    backpatch(left->false_list, i1->label); // TAC
+                    backpatch(right->false_list, i1->label); // TAC
+                    backpatch(left->jump_true_list, i1->label); // TAC
+                    backpatch(right->jump_true_list, i1->label); // TAC
+                    backpatch(left->jump_false_list, i1->label); // TAC
+                    backpatch(right->jump_false_list, i1->label); // TAC
+                    TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, t1, 0); // TAC
+                    M->code.push_back(i1); // TAC
+                    M->code.push_back(i2); // TAC
+    
+                    TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    M->true_list.insert(i3_); // TAC
+                    M->false_list.insert(i4_); // TAC
+                    M->jump_true_list.insert(i3); // TAC
+                    M->jump_false_list.insert(i4); // TAC
+                    M->jump_code.push_back(i1); // TAC
+                    M->jump_code.push_back(i2); // TAC
+                    M->jump_code.push_back(i3); // TAC
+                    M->jump_code.push_back(i4); // TAC
+                    M->jump_code.push_back(i3_); // TAC
+                    M->jump_code.push_back(i4_); // TAC
+                    symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
+                }
             }
             else if (lt.type_index == rt.type_index) {
                 M->type = lt;
-                M->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result, 0); // TAC
-                backpatch(left->next_list, i1->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                backpatch(left->true_list, i1->label); // TAC
-                backpatch(right->true_list, i1->label); // TAC
-                backpatch(left->false_list, i1->label); // TAC
-                backpatch(right->false_list, i1->label); // TAC
-                backpatch(left->jump_true_list, i1->label); // TAC
-                backpatch(right->jump_true_list, i1->label); // TAC
-                backpatch(left->jump_false_list, i1->label); // TAC
-                backpatch(right->jump_false_list, i1->label); // TAC
-                M->code.push_back(i1); // TAC
 
-                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i2_); // TAC
-                M->false_list.insert(i3_); // TAC
-                M->jump_true_list.insert(i2); // TAC
-                M->jump_false_list.insert(i3); // TAC
-                M->jump_code.push_back(i1); // TAC
-                M->jump_code.push_back(i2); // TAC
-                M->jump_code.push_back(i3); // TAC
-                M->jump_code.push_back(i2_); // TAC
-                M->jump_code.push_back(i3_); // TAC
+                if(!is_const_folding){
+                    M->result = new_temp_var(); // TAC
+                    TACInstruction* i1 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, left->result, right->result, 0); // TAC
+                    backpatch(left->next_list, i1->label); // TAC
+                    backpatch(right->next_list, i1->label); // TAC
+                    backpatch(left->jump_next_list, i1->label); // TAC
+                    backpatch(right->jump_next_list, i1->label); // TAC
+                    backpatch(left->true_list, i1->label); // TAC
+                    backpatch(right->true_list, i1->label); // TAC
+                    backpatch(left->false_list, i1->label); // TAC
+                    backpatch(right->false_list, i1->label); // TAC
+                    backpatch(left->jump_true_list, i1->label); // TAC
+                    backpatch(right->jump_true_list, i1->label); // TAC
+                    backpatch(left->jump_false_list, i1->label); // TAC
+                    backpatch(right->jump_false_list, i1->label); // TAC
+                    M->code.push_back(i1); // TAC
+
+                    TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    M->true_list.insert(i2_); // TAC
+                    M->false_list.insert(i3_); // TAC
+                    M->jump_true_list.insert(i2); // TAC
+                    M->jump_false_list.insert(i3); // TAC
+                    M->jump_code.push_back(i1); // TAC
+                    M->jump_code.push_back(i2); // TAC
+                    M->jump_code.push_back(i3); // TAC
+                    M->jump_code.push_back(i2_); // TAC
+                    M->jump_code.push_back(i3_); // TAC
+                }
             }
             else {
                 M->type = rt;
                 if (lt.isUnsigned() || rt.isUnsigned()) {
                     M->type.make_unsigned();
                 }
-                TACOperand* t1 = new_temp_var(); // TAC
-                M->result = new_temp_var(); // TAC
-                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), left->result, 0); // TAC
-                backpatch(left->next_list, i1->label); // TAC
-                backpatch(right->next_list, i1->label); // TAC
-                backpatch(left->jump_next_list, i1->label); // TAC
-                backpatch(right->jump_next_list, i1->label); // TAC
-                backpatch(left->true_list, i1->label); // TAC
-                backpatch(right->true_list, i1->label); // TAC
-                backpatch(left->false_list, i1->label); // TAC
-                backpatch(right->false_list, i1->label); // TAC
-                backpatch(left->jump_true_list, i1->label); // TAC
-                backpatch(right->jump_true_list, i1->label); // TAC
-                backpatch(left->jump_false_list, i1->label); // TAC
-                backpatch(right->jump_false_list, i1->label); // TAC
-                TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result, 0); // TAC
-                M->code.push_back(i1); // TAC
-                M->code.push_back(i2); // TAC
 
-                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-                M->true_list.insert(i3_); // TAC
-                M->false_list.insert(i4_); // TAC
-                M->jump_true_list.insert(i3); // TAC
-                M->jump_false_list.insert(i4); // TAC
-                M->jump_code.push_back(i1); // TAC
-                M->jump_code.push_back(i2); // TAC
-                M->jump_code.push_back(i3); // TAC
-                M->jump_code.push_back(i4); // TAC
-                M->jump_code.push_back(i3_); // TAC
-                M->jump_code.push_back(i4_); // TAC
+                if(!is_const_folding){
+                    TACOperand* t1 = new_temp_var(); // TAC
+                    M->result = new_temp_var(); // TAC
+                    TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), left->result, 0); // TAC
+                    backpatch(left->next_list, i1->label); // TAC
+                    backpatch(right->next_list, i1->label); // TAC
+                    backpatch(left->jump_next_list, i1->label); // TAC
+                    backpatch(right->jump_next_list, i1->label); // TAC
+                    backpatch(left->true_list, i1->label); // TAC
+                    backpatch(right->true_list, i1->label); // TAC
+                    backpatch(left->false_list, i1->label); // TAC
+                    backpatch(right->false_list, i1->label); // TAC
+                    backpatch(left->jump_true_list, i1->label); // TAC
+                    backpatch(right->jump_true_list, i1->label); // TAC
+                    backpatch(left->jump_false_list, i1->label); // TAC
+                    backpatch(right->jump_false_list, i1->label); // TAC
+                    TACInstruction* i2 = emit(TACOperator(op->name == "MULTIPLY" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), M->result, t1, right->result, 0); // TAC
+                    M->code.push_back(i1); // TAC
+                    M->code.push_back(i2); // TAC
+
+                    TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                    TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                    M->true_list.insert(i3_); // TAC
+                    M->false_list.insert(i4_); // TAC
+                    M->jump_true_list.insert(i3); // TAC
+                    M->jump_false_list.insert(i4); // TAC
+                    M->jump_code.push_back(i1); // TAC
+                    M->jump_code.push_back(i2); // TAC
+                    M->jump_code.push_back(i3); // TAC
+                    M->jump_code.push_back(i4); // TAC
+                    M->jump_code.push_back(i3_); // TAC
+                    M->jump_code.push_back(i4_); // TAC
+                    symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
+                }
+            }
+
+            if (is_const_folding) {
+                constant_type_str = "I_CONSTANT";
+                if (M->type.type_index == PrimitiveTypes::INT_T || M->type.type_index == PrimitiveTypes::SHORT_T) {
+                    int left_int_value = stoi(left_constant_value);
+                    int right_int_value = stoi(right_constant_value);
+                    int result = (op->name == "MULTIPLY") ? left_int_value * right_int_value : left_int_value / right_int_value;
+                    result_str = to_string(result);
+                } else if(M->type.type_index == PrimitiveTypes::U_INT_T || M->type.type_index == PrimitiveTypes::U_SHORT_T || M->type.type_index == PrimitiveTypes::U_LONG_T) {
+                    unsigned int left_int_value = stoul(left_constant_value);
+                    unsigned int right_int_value = stoul(right_constant_value);
+                    unsigned int result = (op->name == "MULTIPLY") ? left_int_value * right_int_value : left_int_value / right_int_value;
+                    result_str = to_string(result);
+                }
+                else if (M->type.type_index == PrimitiveTypes::LONG_T || M->type.type_index == PrimitiveTypes::LONG_LONG_T) {
+                    long long left_long_value = stol(left_constant_value);
+                    long long right_long_value = stol(right_constant_value);
+                    long long result = (op->name == "MULTIPLY") ? left_long_value * right_long_value : left_long_value / right_long_value;
+                    result_str = to_string(result);
+                } else if(M->type.type_index == PrimitiveTypes::U_LONG_LONG_T || M->type.type_index == PrimitiveTypes::U_LONG_T) {
+                    unsigned long long left_long_value = stoull(left_constant_value);
+                    unsigned long long right_long_value = stoull(right_constant_value);
+                    unsigned long long result = (op->name == "MULTIPLY") ? left_long_value * right_long_value : left_long_value / right_long_value;
+                    result_str = to_string(result);
+                } else {
+                    M->type = ERROR_TYPE;
+                    string error_msg = "Operands of '" + op->name + "' are invalid at line " +
+                        to_string(M->line_no) + ", column " + to_string(M->column_no) +
+                        ". Left operand type: " + lt.to_string() + ", Right operand type: " + rt.to_string();
+                    yyerror(error_msg.c_str());
+                    symbolTable.set_error();
+                    return M;
+                }
             }
         }
     }
@@ -1517,114 +1658,171 @@ Expression* create_multiplicative_expression(Expression* left, Terminal* op, Exp
             if (lt.isUnsigned() || rt.isUnsigned()) {
                 M->type.make_unsigned();
             }
-            TACOperand* t1 = new_temp_var(); // TAC
-            M->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), right->result, 0); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
-            backpatch(left->true_list, i1->label); // TAC
-            backpatch(right->true_list, i1->label); // TAC
-            backpatch(left->false_list, i1->label); // TAC
-            backpatch(right->false_list, i1->label); // TAC
-            backpatch(left->jump_true_list, i1->label); // TAC
-            backpatch(right->jump_true_list, i1->label); // TAC
-            backpatch(left->jump_false_list, i1->label); // TAC
-            backpatch(right->jump_false_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_MOD), M->result, left->result, t1, 0); // TAC
-            M->code.push_back(i1); // TAC
-            M->code.push_back(i2); // TAC
 
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            M->true_list.insert(i3_); // TAC
-            M->false_list.insert(i4_); // TAC
-            M->jump_true_list.insert(i3); // TAC
-            M->jump_false_list.insert(i4); // TAC
-            M->jump_code.push_back(i1); // TAC
-            M->jump_code.push_back(i2); // TAC
-            M->jump_code.push_back(i3); // TAC
-            M->jump_code.push_back(i4); // TAC
-            M->jump_code.push_back(i3_); // TAC
-            M->jump_code.push_back(i4_); // TAC
+            if(!is_const_folding){
+                TACOperand* t1 = new_temp_var(); // TAC
+                M->result = new_temp_var(); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), right->result, 0); // TAC
+                backpatch(left->next_list, i1->label); // TAC
+                backpatch(right->next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_MOD), M->result, left->result, t1, 0); // TAC
+                M->code.push_back(i1); // TAC
+                M->code.push_back(i2); // TAC
+
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                M->true_list.insert(i3_); // TAC
+                M->false_list.insert(i4_); // TAC
+                M->jump_true_list.insert(i3); // TAC
+                M->jump_false_list.insert(i4); // TAC
+                M->jump_code.push_back(i1); // TAC
+                M->jump_code.push_back(i2); // TAC
+                M->jump_code.push_back(i3); // TAC
+                M->jump_code.push_back(i4); // TAC
+                M->jump_code.push_back(i3_); // TAC
+                M->jump_code.push_back(i4_); // TAC
+                symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // Insert temp into symbol table
+            }
         }
         else if (lt.type_index == rt.type_index) {
             M->type = lt;
-            M->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MOD), M->result, left->result, right->result, 0); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
-            backpatch(left->true_list, i1->label); // TAC
-            backpatch(right->true_list, i1->label); // TAC
-            backpatch(left->false_list, i1->label); // TAC
-            backpatch(right->false_list, i1->label); // TAC
-            backpatch(left->jump_true_list, i1->label); // TAC
-            backpatch(right->jump_true_list, i1->label); // TAC
-            backpatch(left->jump_false_list, i1->label); // TAC
-            backpatch(right->jump_false_list, i1->label); // TAC
-            M->code.push_back(i1); // TAC
 
-            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            M->true_list.insert(i2_); // TAC
-            M->false_list.insert(i3_); // TAC
-            M->jump_true_list.insert(i2); // TAC
-            M->jump_false_list.insert(i3); // TAC
-            M->jump_code.push_back(i1); // TAC
-            M->jump_code.push_back(i2); // TAC
-            M->jump_code.push_back(i3); // TAC
-            M->jump_code.push_back(i2_); // TAC
-            M->jump_code.push_back(i3_); // TAC
+            if(!is_const_folding){
+                M->result = new_temp_var(); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MOD), M->result, left->result, right->result, 0); // TAC
+                backpatch(left->next_list, i1->label); // TAC
+                backpatch(right->next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                M->code.push_back(i1); // TAC
+
+                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                M->true_list.insert(i2_); // TAC
+                M->false_list.insert(i3_); // TAC
+                M->jump_true_list.insert(i2); // TAC
+                M->jump_false_list.insert(i3); // TAC
+                M->jump_code.push_back(i1); // TAC
+                M->jump_code.push_back(i2); // TAC
+                M->jump_code.push_back(i3); // TAC
+                M->jump_code.push_back(i2_); // TAC
+                M->jump_code.push_back(i3_); // TAC
+            }
         }
         else {
             M->type = rt;
             if (lt.isUnsigned() || rt.isUnsigned()) {
                 M->type.make_unsigned();
             }
-            TACOperand* t1 = new_temp_var(); // TAC
-            M->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), left->result, 0); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
-            backpatch(left->true_list, i1->label); // TAC
-            backpatch(right->true_list, i1->label); // TAC
-            backpatch(left->false_list, i1->label); // TAC
-            backpatch(right->false_list, i1->label); // TAC
-            backpatch(left->jump_true_list, i1->label); // TAC
-            backpatch(right->jump_true_list, i1->label); // TAC
-            backpatch(left->jump_false_list, i1->label); // TAC
-            backpatch(right->jump_false_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_MOD), M->result, t1, right->result, 0); // TAC
-            M->code.push_back(i1); // TAC
-            M->code.push_back(i2); // TAC
 
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            M->true_list.insert(i3_); // TAC
-            M->false_list.insert(i4_); // TAC
-            M->jump_true_list.insert(i3); // TAC
-            M->jump_false_list.insert(i4); // TAC
-            M->jump_code.push_back(i1); // TAC
-            M->jump_code.push_back(i2); // TAC
-            M->jump_code.push_back(i3); // TAC
-            M->jump_code.push_back(i4); // TAC
-            M->jump_code.push_back(i3_); // TAC
-            M->jump_code.push_back(i4_); // TAC
+            if(!is_const_folding){
+                TACOperand* t1 = new_temp_var(); // TAC
+                M->result = new_temp_var(); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(M->type.to_string()), left->result, 0); // TAC
+                backpatch(left->next_list, i1->label); // TAC
+                backpatch(right->next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_MOD), M->result, t1, right->result, 0); // TAC
+                M->code.push_back(i1); // TAC
+                M->code.push_back(i2); // TAC
+
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), M->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                M->true_list.insert(i3_); // TAC
+                M->false_list.insert(i4_); // TAC
+                M->jump_true_list.insert(i3); // TAC
+                M->jump_false_list.insert(i4); // TAC
+                M->jump_code.push_back(i1); // TAC
+                M->jump_code.push_back(i2); // TAC
+                M->jump_code.push_back(i3); // TAC
+                M->jump_code.push_back(i4); // TAC
+                M->jump_code.push_back(i3_); // TAC
+                M->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, M->type, M->type.get_size(), 0); // insert temp into symbol table
+            }
         }
 
+        if (is_const_folding) {
+            constant_type_str = "I_CONSTANT";
+            if (M->type.type_index == PrimitiveTypes::INT_T || M->type.type_index == PrimitiveTypes::SHORT_T) {
+                int left_int_value = stoi(left_constant_value);
+                int right_int_value = stoi(right_constant_value);
+                int result = left_int_value % right_int_value;
+                result_str = to_string(result);
+            } else if(M->type.type_index == PrimitiveTypes::U_INT_T || M->type.type_index == PrimitiveTypes::U_SHORT_T || M->type.type_index == PrimitiveTypes::U_LONG_T) {
+                unsigned int left_int_value = stoul(left_constant_value);
+                unsigned int right_int_value = stoul(right_constant_value);
+                unsigned int result = left_int_value % right_int_value;
+                result_str = to_string(result);
+            }
+            else if (M->type.type_index == PrimitiveTypes::LONG_T || M->type.type_index == PrimitiveTypes::LONG_LONG_T) {
+                long long left_long_value = stol(left_constant_value);
+                long long right_long_value = stol(right_constant_value);
+                long long result = left_long_value%  right_long_value;
+                result_str = to_string(result);
+            } else if(M->type.type_index == PrimitiveTypes::U_LONG_LONG_T || M->type.type_index == PrimitiveTypes::U_LONG_T) {
+                unsigned long long left_long_value = stoull(left_constant_value);
+                unsigned long long right_long_value = stoull(right_constant_value);
+                unsigned long long result = left_long_value%  right_long_value;
+                result_str = to_string(result);
+            } else {
+                M->type = ERROR_TYPE;
+                string error_msg = "Operands of '" + op->name + "' are invalid at line " +
+                    to_string(M->line_no) + ", column " + to_string(M->column_no) +
+                    ". Left operand type: " + lt.to_string() + ", Right operand type: " + rt.to_string();
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return M;
+            }
+        }
+    }
+
+    if(is_const_folding) {
+        M->code.clear(); // Clear the code list for constant folding
+        Constant* result = new Constant(constant_type_str, result_str, M->line_no, M->column_no); // TAC
+        Expression* constant_expr = create_primary_expression(result); // TAC
+        constant_expr = create_postfix_expression(constant_expr); // TAC
+        constant_expr = create_unary_expression(constant_expr); // TAC
+        constant_expr = create_cast_expression(constant_expr); // TAC
+        constant_expr = create_multiplicative_expression(constant_expr); // TAC
+        return constant_expr; // TAC
     }
     M->type.is_const_literal = false;
+    symbolTable.insert(M->result->value, M->type, M->type.get_size(), 0); // insert temp into symbol table
     return M;
 }
 
@@ -1641,21 +1839,21 @@ AdditiveExpression::AdditiveExpression() {
 }
 
 Expression* create_additive_expression(Expression* x) {
-    AdditiveExpression* M = new AdditiveExpression();
-    M->multiplicative_expression = dynamic_cast<MultiplicativeExpression*> (x);
-    M->line_no = x->line_no;
-    M->column_no = x->column_no;
-    M->type = x->type;
-    M->result = x->result; // TAC
-    M->true_list = x->true_list; // TAC
-    M->false_list = x->false_list; // TAC
-    M->jump_true_list = x->jump_true_list; // TAC
-    M->jump_false_list = x->jump_false_list; // TAC
-    M->code = x->code; // TAC
-    M->jump_code = x->jump_code; // TAC
-    M->next_list = x->next_list; // TAC
-    M->jump_next_list = x->jump_next_list; // TAC
-    return M;
+    AdditiveExpression* A = new AdditiveExpression();
+    A->multiplicative_expression = dynamic_cast<MultiplicativeExpression*> (x);
+    A->line_no = x->line_no;
+    A->column_no = x->column_no;
+    A->type = x->type;
+    A->result = x->result; // TAC
+    A->true_list = x->true_list; // TAC
+    A->false_list = x->false_list; // TAC
+    A->jump_true_list = x->jump_true_list; // TAC
+    A->jump_false_list = x->jump_false_list; // TAC
+    A->code = x->code; // TAC
+    A->jump_code = x->jump_code; // TAC
+    A->next_list = x->next_list; // TAC
+    A->jump_next_list = x->jump_next_list; // TAC
+    return A;
 }
 
 Expression* create_additive_expression(Expression* left, Terminal* op, Expression* right) {
@@ -1688,113 +1886,170 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         return A;
     }
 
+    AdditiveExpression* left_additive_expr = dynamic_cast<AdditiveExpression*> (left);
+    MultiplicativeExpression* right_multiplicative_expr = dynamic_cast<MultiplicativeExpression*> (right);
+
+    string left_constant_value = "";
+    string right_constant_value = "";
+    string result_str = "";
+    string constant_type_str = "";
+
     Type lt = left->type;
     Type rt = right->type;
+
+    bool is_const_folding = lt.is_const_literal && rt.is_const_literal && lt.isIntorFloat() && rt.isIntorFloat();
+    if(is_const_folding){
+        left_constant_value = left_additive_expr->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
+        right_constant_value = right_multiplicative_expr->cast_expression->unary_expression->postfix_expression->primary_expression->constant->value;
+    }
 
     if (lt.isFloat() || rt.isFloat()) {
         // float * float => float
         if (lt.type_index > rt.type_index) {
-            TACOperand* t1 = new_temp_var(); // TAC
-            A->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(lt.to_string()), right->result, 0); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
-            backpatch(left->true_list, i1->label); // TAC
-            backpatch(right->true_list, i1->label); // TAC
-            backpatch(left->false_list, i1->label); // TAC
-            backpatch(right->false_list, i1->label); // TAC
-            backpatch(left->jump_true_list, i1->label); // TAC
-            backpatch(right->jump_true_list, i1->label); // TAC
-            backpatch(left->jump_false_list, i1->label); // TAC
-            backpatch(right->jump_false_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
-            A->code.push_back(i1); // TAC
-            A->code.push_back(i2); // TAC
+            A->type = lt;
 
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3_); // TAC
-            A->false_list.insert(i4_); // TAC
-            A->jump_true_list.insert(i3); // TAC
-            A->jump_false_list.insert(i4); // TAC
-            A->jump_code.push_back(i1); // TAC
-            A->jump_code.push_back(i2); // TAC
-            A->jump_code.push_back(i3); // TAC
-            A->jump_code.push_back(i4); // TAC
-            A->jump_code.push_back(i3_); // TAC
-            A->jump_code.push_back(i4_); // TAC
+            if(!is_const_folding){
+                TACOperand* t1 = new_temp_var(); // TAC
+                A->result = new_temp_var(); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(A->type.to_string()), right->result, 0); // TAC
+                backpatch(left->next_list, i1->label); // TAC
+                backpatch(right->next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
+                A->code.push_back(i1); // TAC
+                A->code.push_back(i2); // TAC
+    
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i3_); // TAC
+                A->false_list.insert(i4_); // TAC
+                A->jump_true_list.insert(i3); // TAC
+                A->jump_false_list.insert(i4); // TAC
+                A->jump_code.push_back(i1); // TAC
+                A->jump_code.push_back(i2); // TAC
+                A->jump_code.push_back(i3); // TAC
+                A->jump_code.push_back(i4); // TAC
+                A->jump_code.push_back(i3_); // TAC
+                A->jump_code.push_back(i4_); // TAC
+                symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
+            }
         }
         else if (lt.type_index == rt.type_index) {
             A->type = lt;
-            A->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result, 0); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
-            backpatch(left->true_list, i1->label); // TAC
-            backpatch(right->true_list, i1->label); // TAC
-            backpatch(left->false_list, i1->label); // TAC
-            backpatch(right->false_list, i1->label); // TAC
-            backpatch(left->jump_true_list, i1->label); // TAC
-            backpatch(right->jump_true_list, i1->label); // TAC
-            backpatch(left->jump_false_list, i1->label); // TAC
-            backpatch(right->jump_false_list, i1->label); // TAC
-            A->code.push_back(i1); // TAC
 
-            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i2_); // TAC
-            A->false_list.insert(i3_); // TAC
-            A->jump_true_list.insert(i2); // TAC
-            A->jump_false_list.insert(i3); // TAC
-            A->jump_code.push_back(i1); // TAC
-            A->jump_code.push_back(i2); // TAC
-            A->jump_code.push_back(i3); // TAC
-            A->jump_code.push_back(i2_); // TAC
-            A->jump_code.push_back(i3_); // TAC
+            if(!is_const_folding){
+                A->result = new_temp_var(); // TAC
+                TACInstruction* i1 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result, 0); // TAC
+                backpatch(left->next_list, i1->label); // TAC
+                backpatch(right->next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                A->code.push_back(i1); // TAC
+    
+                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i2_); // TAC
+                A->false_list.insert(i3_); // TAC
+                A->jump_true_list.insert(i2); // TAC
+                A->jump_false_list.insert(i3); // TAC
+                A->jump_code.push_back(i1); // TAC
+                A->jump_code.push_back(i2); // TAC
+                A->jump_code.push_back(i3); // TAC
+                A->jump_code.push_back(i2_); // TAC
+                A->jump_code.push_back(i3_); // TAC
+            }
         }
         else {
             A->type = rt;
-            TACOperand* t1 = new_temp_var(); // TAC
-            A->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(rt.to_string()), left->result, 0); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
-            backpatch(left->true_list, i1->label); // TAC
-            backpatch(right->true_list, i1->label); // TAC
-            backpatch(left->false_list, i1->label); // TAC
-            backpatch(right->false_list, i1->label); // TAC
-            backpatch(left->jump_true_list, i1->label); // TAC
-            backpatch(right->jump_true_list, i1->label); // TAC
-            backpatch(left->jump_false_list, i1->label); // TAC
-            backpatch(right->jump_false_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result, 0); // TAC
-            A->code.push_back(i1); // TAC
-            A->code.push_back(i2); // TAC
 
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3_); // TAC
-            A->false_list.insert(i4_); // TAC
-            A->jump_true_list.insert(i3); // TAC
-            A->jump_false_list.insert(i4); // TAC
-            A->jump_code.push_back(i1); // TAC
-            A->jump_code.push_back(i2); // TAC
-            A->jump_code.push_back(i3); // TAC
-            A->jump_code.push_back(i4); // TAC
-            A->jump_code.push_back(i3_); // TAC
-            A->jump_code.push_back(i4_); // TAC
+            if(!is_const_folding){
+                TACOperand* t1 = new_temp_var(); // TAC
+                A->result = new_temp_var(); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(rt.to_string()), left->result, 0); // TAC
+                backpatch(left->next_list, i1->label); // TAC
+                backpatch(right->next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result, 0); // TAC
+                A->code.push_back(i1); // TAC
+                A->code.push_back(i2); // TAC
+    
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i3_); // TAC
+                A->false_list.insert(i4_); // TAC
+                A->jump_true_list.insert(i3); // TAC
+                A->jump_false_list.insert(i4); // TAC
+                A->jump_code.push_back(i1); // TAC
+                A->jump_code.push_back(i2); // TAC
+                A->jump_code.push_back(i3); // TAC
+                A->jump_code.push_back(i4); // TAC
+                A->jump_code.push_back(i3_); // TAC
+                A->jump_code.push_back(i4_); // TAC
+                symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
+            }
+        }
+
+        if (is_const_folding) {
+            constant_type_str = "F_CONSTANT";
+            if (A->type.type_index == PrimitiveTypes::DOUBLE_T) {
+                double left_double_value = stod(left_constant_value);
+                double right_double_value = stod(right_constant_value);
+                double result = (op->name == "PLUS") ? left_double_value + right_double_value : left_double_value - right_double_value;
+                result_str = to_string(result);
+            }
+            else if (A->type.type_index == PrimitiveTypes::FLOAT_T) {
+                float left_float_value = stof(left_constant_value);
+                float right_float_value = stof(right_constant_value);
+                float result = (op->name == "PLUS") ? left_float_value + right_float_value : left_float_value - right_float_value;
+                result_str = to_string(result);
+            }
+            else if (A->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) {
+                long double left_float_value = stold(left_constant_value);
+                long double right_float_value = stold(right_constant_value);
+                long double result = (op->name == "PLUS") ? left_float_value + right_float_value : left_float_value - right_float_value;
+                result_str = to_string(result);
+            }
+            else {
+                A->type = ERROR_TYPE;
+                string error_msg = "Operands of '" + op->name + "' are invalid at line " +
+                    to_string(A->line_no) + ", column " + to_string(A->column_no) +
+                    ". Left operand type: " + lt.to_string() + ", Right operand type: " + rt.to_string();
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return A;
+            }
         }
     }
     else if (lt.isInt() && rt.isInt()) {
@@ -1804,129 +2059,170 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             if (lt.isUnsigned() || rt.isUnsigned()) {
                 A->type.make_unsigned();
             }
-            TACOperand* t1 = new_temp_var(); // TAC
-            A->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(A->type.to_string()), right->result, 0); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
-            backpatch(left->true_list, i1->label); // TAC
-            backpatch(right->true_list, i1->label); // TAC
-            backpatch(left->false_list, i1->label); // TAC
-            backpatch(right->false_list, i1->label); // TAC
-            backpatch(left->jump_true_list, i1->label); // TAC
-            backpatch(right->jump_true_list, i1->label); // TAC
-            backpatch(left->jump_false_list, i1->label); // TAC
-            backpatch(right->jump_false_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
-            A->code.push_back(i1); // TAC
-            A->code.push_back(i2); // TAC
 
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3_); // TAC
-            A->false_list.insert(i4_); // TAC
-            A->jump_true_list.insert(i3); // TAC
-            A->jump_false_list.insert(i4); // TAC
-            A->jump_code.push_back(i1); // TAC
-            A->jump_code.push_back(i2); // TAC
-            A->jump_code.push_back(i3); // TAC
-            A->jump_code.push_back(i4); // TAC
-            A->jump_code.push_back(i3_); // TAC
-            A->jump_code.push_back(i4_); // TAC
+            if(!is_const_folding){
+                TACOperand* t1 = new_temp_var(); // TAC
+                A->result = new_temp_var(); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(A->type.to_string()), right->result, 0); // TAC
+                backpatch(left->next_list, i1->label); // TAC
+                backpatch(right->next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, t1, 0); // TAC
+                A->code.push_back(i1); // TAC
+                A->code.push_back(i2); // TAC
+    
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i3_); // TAC
+                A->false_list.insert(i4_); // TAC
+                A->jump_true_list.insert(i3); // TAC
+                A->jump_false_list.insert(i4); // TAC
+                A->jump_code.push_back(i1); // TAC
+                A->jump_code.push_back(i2); // TAC
+                A->jump_code.push_back(i3); // TAC
+                A->jump_code.push_back(i4); // TAC
+                A->jump_code.push_back(i3_); // TAC
+                A->jump_code.push_back(i4_); // TAC
+                symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
+            }
         }
         else if (lt.type_index == rt.type_index) {
             A->type = lt;
-            A->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result, 0); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
-            backpatch(left->true_list, i1->label); // TAC
-            backpatch(right->true_list, i1->label); // TAC
-            backpatch(left->false_list, i1->label); // TAC
-            backpatch(right->false_list, i1->label); // TAC
-            backpatch(left->jump_true_list, i1->label); // TAC
-            backpatch(right->jump_true_list, i1->label); // TAC
-            backpatch(left->jump_false_list, i1->label); // TAC
-            backpatch(right->jump_false_list, i1->label); // TAC
-            A->code.push_back(i1); // TAC
 
-            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i2_); // TAC
-            A->false_list.insert(i3_); // TAC
-            A->jump_true_list.insert(i2); // TAC
-            A->jump_false_list.insert(i3); // TAC
-            A->jump_code.push_back(i1); // TAC
-            A->jump_code.push_back(i2); // TAC
-            A->jump_code.push_back(i3); // TAC
-            A->jump_code.push_back(i2_); // TAC
-            A->jump_code.push_back(i3_); // TAC
+            if(!is_const_folding){
+                A->result = new_temp_var(); // TAC
+                TACInstruction* i1 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, left->result, right->result, 0); // TAC
+                backpatch(left->next_list, i1->label); // TAC
+                backpatch(right->next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                A->code.push_back(i1); // TAC
+    
+                TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i2_); // TAC
+                A->false_list.insert(i3_); // TAC
+                A->jump_true_list.insert(i2); // TAC
+                A->jump_false_list.insert(i3); // TAC
+                A->jump_code.push_back(i1); // TAC
+                A->jump_code.push_back(i2); // TAC
+                A->jump_code.push_back(i3); // TAC
+                A->jump_code.push_back(i2_); // TAC
+                A->jump_code.push_back(i3_); // TAC
+            }
         }
         else {
             A->type = rt;
             if (lt.isUnsigned() || rt.isUnsigned()) {
                 A->type.make_unsigned();
             }
-            TACOperand* t1 = new_temp_var(); // TAC
-            A->result = new_temp_var(); // TAC
-            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(A->type.to_string()), left->result, 0); // TAC
-            backpatch(left->next_list, i1->label); // TAC
-            backpatch(right->next_list, i1->label); // TAC
-            backpatch(left->jump_next_list, i1->label); // TAC
-            backpatch(right->jump_next_list, i1->label); // TAC
-            backpatch(left->true_list, i1->label); // TAC
-            backpatch(right->true_list, i1->label); // TAC
-            backpatch(left->false_list, i1->label); // TAC
-            backpatch(right->false_list, i1->label); // TAC
-            backpatch(left->jump_true_list, i1->label); // TAC
-            backpatch(right->jump_true_list, i1->label); // TAC
-            backpatch(left->jump_false_list, i1->label); // TAC
-            backpatch(right->jump_false_list, i1->label); // TAC
-            TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result, 0); // TAC
-            A->code.push_back(i1); // TAC
-            A->code.push_back(i2); // TAC
 
-            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
-            TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
-            A->true_list.insert(i3_); // TAC
-            A->false_list.insert(i4_); // TAC
-            A->jump_true_list.insert(i3); // TAC
-            A->jump_false_list.insert(i4); // TAC
-            A->jump_code.push_back(i1); // TAC
-            A->jump_code.push_back(i2); // TAC
-            A->jump_code.push_back(i3); // TAC
-            A->jump_code.push_back(i4); // TAC
-            A->jump_code.push_back(i3_); // TAC
-            A->jump_code.push_back(i4_); // TAC
+            if(!is_const_folding){
+                TACOperand* t1 = new_temp_var(); // TAC
+                A->result = new_temp_var(); // TAC
+                TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(A->type.to_string()), left->result, 0); // TAC
+                backpatch(left->next_list, i1->label); // TAC
+                backpatch(right->next_list, i1->label); // TAC
+                backpatch(left->jump_next_list, i1->label); // TAC
+                backpatch(right->jump_next_list, i1->label); // TAC
+                backpatch(left->true_list, i1->label); // TAC
+                backpatch(right->true_list, i1->label); // TAC
+                backpatch(left->false_list, i1->label); // TAC
+                backpatch(right->false_list, i1->label); // TAC
+                backpatch(left->jump_true_list, i1->label); // TAC
+                backpatch(right->jump_true_list, i1->label); // TAC
+                backpatch(left->jump_false_list, i1->label); // TAC
+                backpatch(right->jump_false_list, i1->label); // TAC
+                TACInstruction* i2 = emit(TACOperator(op->name == "PLUS" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), A->result, t1, right->result, 0); // TAC
+                A->code.push_back(i1); // TAC
+                A->code.push_back(i2); // TAC
+    
+                TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                TACInstruction* i3_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), A->result, new_empty_var(), 2); // TAC
+                TACInstruction* i4_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+                A->true_list.insert(i3_); // TAC
+                A->false_list.insert(i4_); // TAC
+                A->jump_true_list.insert(i3); // TAC
+                A->jump_false_list.insert(i4); // TAC
+                A->jump_code.push_back(i1); // TAC
+                A->jump_code.push_back(i2); // TAC
+                A->jump_code.push_back(i3); // TAC
+                A->jump_code.push_back(i4); // TAC
+                A->jump_code.push_back(i3_); // TAC
+                A->jump_code.push_back(i4_); // TAC
+                symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
+            }
+        }
+        
+        if (is_const_folding) {
+            constant_type_str = "I_CONSTANT";
+            if (A->type.type_index == PrimitiveTypes::INT_T || A->type.type_index == PrimitiveTypes::SHORT_T) {
+                int left_int_value = stoi(left_constant_value);
+                int right_int_value = stoi(right_constant_value);
+                int result = (op->name == "PLUS") ? left_int_value + right_int_value : left_int_value - right_int_value;
+                result_str = to_string(result);
+            } else if(A->type.type_index == PrimitiveTypes::U_INT_T || A->type.type_index == PrimitiveTypes::U_SHORT_T || A->type.type_index == PrimitiveTypes::U_LONG_T) {
+                unsigned int left_int_value = stoul(left_constant_value);
+                unsigned int right_int_value = stoul(right_constant_value);
+                unsigned int result = (op->name == "PLUS") ? left_int_value + right_int_value : left_int_value - right_int_value;
+                result_str = to_string(result);
+            }
+            else if (A->type.type_index == PrimitiveTypes::LONG_T || A->type.type_index == PrimitiveTypes::LONG_LONG_T) {
+                long long left_long_value = stol(left_constant_value);
+                long long right_long_value = stol(right_constant_value);
+                long long result = (op->name == "PLUS") ? left_long_value + right_long_value : left_long_value - right_long_value;
+                result_str = to_string(result);
+            } else if(A->type.type_index == PrimitiveTypes::U_LONG_LONG_T || A->type.type_index == PrimitiveTypes::U_LONG_T) {
+                unsigned long long left_long_value = stoull(left_constant_value);
+                unsigned long long right_long_value = stoull(right_constant_value);
+                unsigned long long result = (op->name == "PLUS") ? left_long_value + right_long_value : left_long_value - right_long_value;
+                result_str = to_string(result);
+            } else {
+                A->type = ERROR_TYPE;
+                string error_msg = "Operands of '" + op->name + "' are invalid at line " +
+                    to_string(A->line_no) + ", column " + to_string(A->column_no) +
+                    ". Left operand type: " + lt.to_string() + ", Right operand type: " + rt.to_string();
+                yyerror(error_msg.c_str());
+                symbolTable.set_error();
+                return A;
+            }
         }
     }
     else if (op->name == "PLUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
         Type t = lt;
+        t.ptr_level--;
         if(t.is_array){
             if(t.array_dim == 1){
                 t.is_array = false;
-                t.is_pointer = false;
-                t.ptr_level = 0;
             }
             t.array_dim--;
             t.array_dims.erase(t.array_dims.begin());
         }
-        else {
-            t.ptr_level--;
-            if(t.ptr_level == 0){
-                t.is_pointer = false;
-            }
+        if(t.ptr_level == 0){
+            t.is_pointer = false;
         }
         TACOperand* t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
@@ -1961,24 +2257,21 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         A->jump_code.push_back(i4); // TAC
         A->jump_code.push_back(i3_); // TAC
         A->jump_code.push_back(i4_); // TAC
+        symbolTable.insert(t1->value, t, t.get_size(), 0); // Insert temp into symbol table
     }
     else if (op->name == "PLUS" && lt.isInt() && rt.isPointer()) {
         A->type = rt;
         Type t = rt;
+        t.ptr_level--;
         if(t.is_array){
             if(t.array_dim == 1){
                 t.is_array = false;
-                t.is_pointer = false;
-                t.ptr_level = 0;
             }
             t.array_dim--;
             t.array_dims.erase(t.array_dims.begin());
         }
-        else {
-            t.ptr_level--;
-            if(t.ptr_level == 0){
-                t.is_pointer = false;
-            }
+        if(t.ptr_level == 0){
+            t.is_pointer = false;
         }
         TACOperand* t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
@@ -2013,24 +2306,21 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         A->jump_code.push_back(i4); // TAC
         A->jump_code.push_back(i3_); // TAC
         A->jump_code.push_back(i4_); // TAC
+        symbolTable.insert(t1->value, t, t.get_size(), 0); // Insert temp into symbol table
     }
     else if (op->name == "MINUS" && lt.isPointer() && rt.isInt()) {
         A->type = lt;
         Type t = lt;
+        t.ptr_level--;
         if(t.is_array){
             if(t.array_dim == 1){
                 t.is_array = false;
-                t.is_pointer = false;
-                t.ptr_level = 0;
             }
             t.array_dim--;
             t.array_dims.erase(t.array_dims.begin());
         }
-        else {
-            t.ptr_level--;
-            if(t.ptr_level == 0){
-                t.is_pointer = false;
-            }
+        if(t.ptr_level == 0){
+            t.is_pointer = false;
         }
         TACOperand* t1 = new_temp_var(); // TAC
         A->result = new_temp_var(); // TAC
@@ -2065,6 +2355,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         A->jump_code.push_back(i4); // TAC
         A->jump_code.push_back(i3_); // TAC
         A->jump_code.push_back(i4_); // TAC
+        symbolTable.insert(t1->value, t, t.get_size(), 0); // Insert temp into symbol table
     }
     else if (op->name == "MINUS" && lt.isPointer() && rt.isPointer()) {
         if (lt == rt) {
@@ -2102,6 +2393,7 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+            symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
         }
         else {
             A->type = ERROR_TYPE;
@@ -2120,7 +2412,21 @@ Expression* create_additive_expression(Expression* left, Terminal* op, Expressio
         symbolTable.set_error();
         return A;
     }
+
+    if(is_const_folding){
+        A->code.clear(); // Clear the code list for constant folding
+        Constant* result = new Constant(constant_type_str, result_str, A->line_no, A->column_no); // TAC
+        Expression* constant_expr = create_primary_expression(result); // TAC
+        constant_expr = create_postfix_expression(constant_expr); // TAC
+        constant_expr = create_unary_expression(constant_expr); // TAC
+        constant_expr = create_cast_expression(constant_expr); // TAC
+        constant_expr = create_multiplicative_expression(constant_expr); // TAC
+        constant_expr = create_additive_expression(constant_expr); // TAC
+        return constant_expr; // TAC
+    }
+
     A->type.is_const_literal = false;
+    symbolTable.insert(A->result->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
 
     return A;
 }
@@ -2243,6 +2549,8 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         S->jump_code.push_back(i4); // TAC
         S->jump_code.push_back(i3_); // TAC
         S->jump_code.push_back(i4_); // TAC
+
+        symbolTable.insert(t1->value, S->type, S->type.get_size(), 0); // Insert temp into symbol table
     }
     else if (lt.type_index == rt.type_index) {
         S->type = lt;
@@ -2318,8 +2626,11 @@ Expression* create_shift_expression(Expression* left, Terminal* op, Expression* 
         S->jump_code.push_back(i4); // TAC
         S->jump_code.push_back(i3_); // TAC
         S->jump_code.push_back(i4_); // TAC
+
+        symbolTable.insert(t1->value, S->type, S->type.get_size(), 0); // Insert temp into symbol table
     }
     S->type.is_const_literal = false;
+    symbolTable.insert(S->result->value, S->type, S->type.get_size(), 0); // Insert temp into symbol table
     return S;
 }
 
@@ -2453,6 +2764,8 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->jump_code.push_back(i8); // TAC
             R->jump_code.push_back(i7_); // TAC
             R->jump_code.push_back(i8_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else if (lt.type_index == rt.type_index) {
             R->result = new_temp_var(); // TAC
@@ -2563,6 +2876,8 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
             R->jump_code.push_back(i8); // TAC
             R->jump_code.push_back(i7_); // TAC
             R->jump_code.push_back(i8_); // TAC
+
+            symbolTable.insert(t1->value, rt, rt.get_size(), 0); // Insert temp into symbol table
         }
     }
     else if (lt.is_pointer && rt.is_pointer) {
@@ -2641,6 +2956,7 @@ Expression* create_relational_expression(Expression* left, Terminal* op, Express
         return R;
     }
     R->type.is_const_literal = false;
+    symbolTable.insert(R->result->value, R->type, R->type.get_size(), 0); // Insert temp into symbol table
     return R;
 }
 
@@ -2765,6 +3081,8 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->jump_code.push_back(i8); // TAC
             E->jump_code.push_back(i7_); // TAC
             E->jump_code.push_back(i8_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else if (lt.type_index == rt.type_index) {
             E->result = new_temp_var(); // TAC
@@ -2857,6 +3175,8 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->jump_code.push_back(i8); // TAC
             E->jump_code.push_back(i7_); // TAC
             E->jump_code.push_back(i8_); // TAC
+
+            symbolTable.insert(t1->value, rt, rt.get_size(), 0); // Insert temp into symbol table
         }
 
     }
@@ -2908,6 +3228,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
             E->jump_code.push_back(i7); // TAC
             E->jump_code.push_back(i6_); // TAC
             E->jump_code.push_back(i7_); // TAC
+
         }
         else {
             E->type = ERROR_TYPE;
@@ -2928,6 +3249,7 @@ Expression* create_equality_expression(Expression* left, Terminal* op, Expressio
         return E;
     }
     E->type.is_const_literal = false;
+    symbolTable.insert(E->result->value, E->type, E->type.get_size(), 0); // Insert temp into symbol table
     return E;
 }
 
@@ -3037,6 +3359,8 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 A->jump_code.push_back(i4); // TAC
                 A->jump_code.push_back(i3_); // TAC
                 A->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
             }
             else if (lt.type_index == rt.type_index) {
                 A->type = lt;
@@ -3111,6 +3435,8 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
                 A->jump_code.push_back(i4); // TAC
                 A->jump_code.push_back(i3_); // TAC
                 A->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
             }
         }
         else {
@@ -3123,6 +3449,7 @@ Expression* create_and_expression(Expression* left, Terminal* op, Expression* ri
         }
     }
     A->type.is_const_literal = false;
+    symbolTable.insert(A->result->value, A->type, A->type.get_size(), 0); // Insert temp into symbol table
     return A;
 }
 
@@ -3232,6 +3559,8 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 X->jump_code.push_back(i4); // TAC
                 X->jump_code.push_back(i3_); // TAC
                 X->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, X->type, X->type.get_size(), 0); // Insert temp into symbol table
             }
             else if (lt.type_index == rt.type_index) {
                 X->type = lt;
@@ -3306,6 +3635,8 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
                 X->jump_code.push_back(i4); // TAC
                 X->jump_code.push_back(i3_); // TAC
                 X->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, X->type, X->type.get_size(), 0); // Insert temp into symbol table
             }
         }
         else {
@@ -3318,6 +3649,7 @@ Expression* create_xor_expression(Expression* left, Terminal* op, Expression* ri
         }
     }
     X->type.is_const_literal = false;
+    symbolTable.insert(X->result->value, X->type, X->type.get_size(), 0); // Insert temp into symbol table
     return X;
 }
 
@@ -3427,6 +3759,8 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 O->jump_code.push_back(i4); // TAC
                 O->jump_code.push_back(i3_); // TAC
                 O->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, O->type, O->type.get_size(), 0); // Insert temp into symbol table
             }
             else if (lt.type_index == rt.type_index) {
                 O->type = lt;
@@ -3501,6 +3835,8 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
                 O->jump_code.push_back(i4); // TAC
                 O->jump_code.push_back(i3_); // TAC
                 O->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, O->type, O->type.get_size(), 0); // Insert temp into symbol table
             }
         }
         else {
@@ -3513,6 +3849,7 @@ Expression* create_or_expression(Expression* left, Terminal* op, Expression* rig
         }
     }
     O->type.is_const_literal = false;
+    symbolTable.insert(O->result->value, O->type, O->type.get_size(), 0); // Insert temp into symbol table
     return O;
 }
 
@@ -3576,7 +3913,6 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 return L;
             }
             else{
-                TACOperand* t1 = new_temp_var(); // TAC
                 L->result = new_temp_var(); // TAC
                 L->code = left->jump_code; // TAC
                 L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
@@ -3626,7 +3962,7 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 L->jump_true_list = right->jump_true_list; // TAC
                 L->jump_false_list = merge_lists(left->jump_false_list, right->jump_false_list); // TAC
                 L->true_list = L->jump_true_list; // TAC
-                L->false_list = L->jump_false_list; // TAC
+                L->false_list = L->jump_false_list; // TAC   
             }
         }
         else {
@@ -3635,9 +3971,11 @@ Expression* create_logical_and_expression(Expression* left, Terminal* op, Expres
                 to_string(L->line_no) + ", column " + to_string(L->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return L;
         }
     }
     L->type.is_const_literal = false;
+    symbolTable.insert(L->result->value, L->type, L->type.get_size(), 0); // Insert temp into symbol table
     return L;
 }
 
@@ -3700,7 +4038,6 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
                 return L;
             }
             else{
-                TACOperand* t1 = new_temp_var(); // TAC
                 L->result = new_temp_var(); // TAC
                 L->code = left->jump_code; // TAC
                 L->code.insert(L->code.end(), right->jump_code.begin(), right->jump_code.end()); // TAC
@@ -3758,9 +4095,11 @@ Expression* create_logical_or_expression(Expression* left, Terminal* op, Express
                 to_string(L->line_no) + ", column " + to_string(L->column_no);
             yyerror(error_msg.c_str());
             symbolTable.set_error();
+            return L;
         }
     }
     L->type.is_const_literal = false;
+    symbolTable.insert(L->result->value, L->type, L->type.get_size(), 0); // Insert temp into symbol table
     return L;
 }
 
@@ -3912,6 +4251,8 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
             C->false_list = merge_lists(true_expr->jump_false_list, false_expr->jump_false_list); // TAC
             C->jump_true_list = C->true_list; // TAC
             C->jump_false_list = C->false_list; // TAC
+
+            symbolTable.insert(t1->value, C->type, C->type.get_size(), 0); // Insert temp into symbol table
         }
         else if (tt.type_index < ft.type_index) {
             C->type = ft;
@@ -3920,7 +4261,40 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
             }
             TACOperand* t1 = new_temp_var(); // TAC
             TACInstruction* i0 = emit(TACOperator(TAC_OPERATOR_CAST), t1, new_type(C->type.to_string()), true_expr->result, 0); // TAC
+            C->result = new_temp_var(); // TAC
+            C->code.insert(C->code.end(), true_expr->code.begin(), true_expr->code.end()); // TAC
+            TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, t1, new_empty_var(), 0); // TAC
+            TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
+            TACInstruction* i2_ = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
             C->code.push_back(i0); // TAC
+            C->code.push_back(i1); // TAC
+            C->code.push_back(i2); // TAC
+            C->code.push_back(i2_); // TAC
+            C->code.insert(C->code.end(), false_expr->code.begin(), false_expr->code.end()); // TAC
+            C->code.push_back(i0); // TAC
+            TACInstruction* i3 = emit(TACOperator(TAC_OPERATOR_NOP), C->result, t1, new_empty_var(), 0); // TAC
+            C->code.push_back(i3); // TAC
+            backpatch(condition->true_list, true_expr->code[0]->label); // TAC
+            backpatch(condition->true_list, i1->label); // TAC
+            backpatch(condition->false_list, false_expr->code[0]->label); // TAC
+            backpatch(condition->false_list, i3->label); // TAC
+            backpatch(true_expr->next_list, i1->label); // TAC
+            backpatch(false_expr->next_list, i3->label); // TAC
+            C->next_list.insert(i2_); // TAC
+            C->jump_next_list.insert(i2); // TA
+
+            C->jump_code = condition->jump_code; // TAC
+            C->jump_code.insert(C->jump_code.end(), true_expr->jump_code.begin(), true_expr->jump_code.end()); // TAC
+            C->jump_code.insert(C->jump_code.end(), false_expr->jump_code.begin(), false_expr->jump_code.end()); // TAC
+            backpatch(condition->jump_true_list, true_expr->jump_code[0]->label); // TAC
+            backpatch(condition->jump_false_list, false_expr->jump_code[0]->label); // TAC
+            C->true_list = merge_lists(true_expr->jump_true_list, false_expr->jump_true_list); // TAC
+            C->false_list = merge_lists(true_expr->jump_false_list, false_expr->jump_false_list); // TAC
+            C->jump_true_list = C->true_list; // TAC
+            C->jump_false_list = C->false_list; // TAC
+
+            symbolTable.insert(t1->value, C->type, C->type.get_size(), 0); // Insert temp into symbol table
+
         }
     }
     else {
@@ -3931,6 +4305,7 @@ Expression* create_conditional_expression(Expression* condition, Expression* tru
         symbolTable.set_error();
     }
     C->type.is_const_literal = false;
+    symbolTable.insert(C->result->value, C->type, C->type.get_size(), 0); // Insert temp into symbol table
     return C;
 }
 
@@ -3998,6 +4373,7 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
 
     Type lt = left->type;
     Type rt = right->type;
+    A->result = left->result; // TAC
 
     if (lt.is_const_variable) {
         yyerror(("Assignment to const variable at line " + std::to_string(A->line_no)).c_str());
@@ -4049,6 +4425,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
 
         }
         else {
@@ -4124,6 +4502,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             TACInstruction* i1 = emit(TACOperator(op->name == "MUL_ASSIGN" ? TAC_OPERATOR_MUL : TAC_OPERATOR_DIV), left->result, left->result, right->result, 0); // TAC
@@ -4199,6 +4579,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, rt, rt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             A->type = lt;
@@ -4235,6 +4617,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
                 A->jump_code.push_back(i4); // TAC
                 A->jump_code.push_back(i3_); // TAC
                 A->jump_code.push_back(i4_); // TAC
+
+                symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
             }
             else {
                 TACInstruction* i1 = emit(TACOperator(op->name == "ADD_ASSIGN" ? TAC_OPERATOR_ADD : TAC_OPERATOR_SUB), left->result, left->result, right->result, 0); // TAC
@@ -4311,6 +4695,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_MOD), left->result, left->result, right->result, 0); // TAC
@@ -4387,6 +4773,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             TACInstruction* i1 = emit(TACOperator(op->name == "AND_ASSIGN" ? TAC_OPERATOR_BIT_AND : op->name == "OR_ASSIGN" ? TAC_OPERATOR_BIT_OR : TAC_OPERATOR_BIT_XOR), left->result, left->result, right->result, 0); // TAC
@@ -4462,6 +4850,8 @@ Expression* create_assignment_expression(Expression* left, Terminal* op, Express
             A->jump_code.push_back(i4); // TAC
             A->jump_code.push_back(i3_); // TAC
             A->jump_code.push_back(i4_); // TAC
+
+            symbolTable.insert(t1->value, lt, lt.get_size(), 0); // Insert temp into symbol table
         }
         else {
             TACInstruction* i1 = emit(TACOperator(op->name == "LEFT_ASSIGN" ? TAC_OPERATOR_LEFT_SHIFT : TAC_OPERATOR_RIGHT_SHIFT), left->result, left->result, right->result, 0); // TAC

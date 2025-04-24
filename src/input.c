@@ -220,5 +220,70 @@
 //     s.id = 1;
 // // }
 
-void func(int a){
+// void func(int a){
+// }
+
+// int arr[5];
+// void func(int x){
+//     x++;
+// }
+
+// int main(){
+//     int x = 1;
+//     func(x);
+//     return 0;
+// }
+
+// int main(){
+//     short x = 0xF;
+//     short y = -2;
+//     short z = x + y;
+//     return 0;
+// }
+
+// char x = '\n';
+// int y = 5;
+// long long z= 10000000000;
+// float f = 3.14;
+// double d = 3.14;
+// char* s = "Hello, World!";
+// char c;
+
+// int sub(int a, int b) {
+//     int diff = a - b;
+//     return diff;
+// }
+
+// int add(int a, int b) {
+//     int sum = a + b;
+//     return sum;
+// }
+
+// breakpoint_global;
+
+// int main(){
+//     int a = 1; // tested and working
+//     // int b = a++; // tested and working
+//     // int b = a--; // tested and working
+//     int b = 2;
+//     int c = a + b; // tested and working
+//     int d = a - b; // tested and working
+//     int e = a * b; // tested and working
+//     int f = a / b; // tested and working
+//     int g = a % b; // tested and working
+//     int h = a & b; // tested and working
+//     int i = a | b; // tested and working
+//     int j = a ^ b; // tested and working
+//     int k = a << b; // tested and working
+//     int l = a >> b; // tested and working
+// }
+
+int add(int a, int b) {
+    return a + b;
 }
+
+int main(){
+    int sum = add(1,2);
+    return 0;
+}
+

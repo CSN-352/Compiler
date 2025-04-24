@@ -60,12 +60,12 @@ TACOperand* new_string(string value);
 
 enum TACOperatorType {
     // Arithmetic Operators
-    TAC_OPERATOR_ADD = 0,        // +
-    TAC_OPERATOR_SUB,        // -
-    TAC_OPERATOR_MUL,        // *
-    TAC_OPERATOR_DIV,        // /
-    TAC_OPERATOR_MOD,        // %
-    TAC_OPERATOR_UMINUS,     // Unary minus (-x)
+    TAC_OPERATOR_ADD = 0,        // + #codegen done (add)
+    TAC_OPERATOR_SUB,        // - #codegen done (sub)
+    TAC_OPERATOR_MUL,        // * #codegen done (mul)
+    TAC_OPERATOR_DIV,        // / #codegen done (div)
+    TAC_OPERATOR_MOD,        // % #codegen done (mod)
+    TAC_OPERATOR_UMINUS,     // Unary minus (-x) #codegen done (neg)
 
     // Relational Operators
     TAC_OPERATOR_EQ,         // ==
@@ -76,27 +76,27 @@ enum TACOperatorType {
     TAC_OPERATOR_LE,         // <=
 
     // Logical Operators
-    TAC_OPERATOR_AND,        // &&
+    TAC_OPERATOR_AND,        // && 
     TAC_OPERATOR_OR,         // ||
-    TAC_OPERATOR_NOT,        // !
+    TAC_OPERATOR_NOT,        // ! 
 
     // Bitwise Operators
-    TAC_OPERATOR_BIT_AND,    // &
-    TAC_OPERATOR_BIT_OR,     // |
-    TAC_OPERATOR_BIT_XOR,    // ^
-    TAC_OPERATOR_LEFT_SHIFT, // <<
-    TAC_OPERATOR_RIGHT_SHIFT,// >>
-    TAC_OPERATOR_BIT_NOT,    // ~
+    TAC_OPERATOR_BIT_AND,    // & #codegen done (and)
+    TAC_OPERATOR_BIT_OR,     // | #codegen done (or)
+    TAC_OPERATOR_BIT_XOR,    // ^ #codegen done (xor)
+    TAC_OPERATOR_LEFT_SHIFT, // << // #codegen done (sllv)
+    TAC_OPERATOR_RIGHT_SHIFT,// >> // #codegen done (srlv, srav)
+    TAC_OPERATOR_BIT_NOT,    // ~ // #codegen done (not)
 
     // // Assignment Operators
-    TAC_OPERATOR_ASSIGN,     // =
+    TAC_OPERATOR_ASSIGN,     // = #codegen done (load)
 
     // Pointer and Memory Operators
-    TAC_OPERATOR_ADDR_OF,    // & (Address-of)
-    TAC_OPERATOR_DEREF,      // * (Dereference)
+    TAC_OPERATOR_ADDR_OF,    // & (Address-of) #codegen done (la)
+    TAC_OPERATOR_DEREF,      // * (Dereference) #codegen done (load)
 
     // Casting Operators
-    TAC_OPERATOR_CAST,       // Type casting (e.g., (int)x)
+    TAC_OPERATOR_CAST,       // Type casting (e.g., (int)x) #codegen done (cast)
 
     // Control Flow (Branching & Jumps)
     TAC_OPERATOR_GOTO,       // goto label
@@ -173,5 +173,11 @@ void print_TAC_instruction(TACInstruction* instruction);
 void print_TAC();
 
 void fix_labels_temps();
+
+//##############################################################################
+//################################## PRINT TACInstruction ######################################
+//##############################################################################
+
+string get_operand_string(TACOperand* operand);
 
 #endif
