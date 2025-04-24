@@ -1226,6 +1226,7 @@ DeclarationSpecifiers* create_declaration_specifiers(SpecifierQualifierList* sql
 {
     DeclarationSpecifiers* P = new DeclarationSpecifiers();
     P->type_specifiers.insert(P->type_specifiers.end(), sql->type_specifiers.begin(), sql->type_specifiers.end());
+    P->type_qualifiers.insert(P->type_qualifiers.end(), sql->type_qualifiers.begin(), sql->type_qualifiers.end());
     if (sql) sql->set_type();
     P->set_type();
     if (P->type_index == -1)
