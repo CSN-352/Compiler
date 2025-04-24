@@ -482,7 +482,6 @@ void update_descriptors_for_function_call(string function_name)
     }
 }
 
-// Aaditya complete implementation with is_double
 
 void update_for_load(MIPSRegister reg, const std::string &var, bool is_double)
 {
@@ -988,6 +987,75 @@ MIPSRegister get_float_register_for_operand(const std::string &var, bool for_res
         return spill_reg;
     }
 }
+
+std::vector<std::pair<std::pair<MIPSRegister, std::string>, std::vector<std::string> > > temp_registers_descriptor;
+
+
+void spill_temp_registers() {
+    temp_registers_descriptor.clear();
+
+    std::vector<MIPSRegister> temp_registers = {
+        T0, T1, T2, T3, T4, T5, T6, T7, T8, T9
+    };
+
+    int offset = 0;
+
+    for (auto reg : temp_registers) {
+        if (!register_descriptor[reg].empty()) {
+            emit_instruction("subi", "SP", "SP", "4");
+            emit_instruction("store", get_mips_register_name(reg), "SP", "0");
+
+            std::vector<std::string> vars;
+            for (const std::string& var : register_descriptor[reg]) {
+                address_descriptor[var].erase(get_mips_register_name(reg));
+                vars.push_back(var);
+            }
+
+            std::string offset_str = std::to_string(offset);
+            temp_registers_descriptor.push_back({{reg, offset_str}, vars});
+
+            offset += 4;
+            register_descriptor[reg].clear();
+        }
+    }
+
+    offset = 0;
+    for(int index = temp_registers_descriptor.size()-1;index>=0;index--){
+        temp_registers_descriptor[index].first.second = to_string(offset);
+        offset+=4;
+    }
+}
+
+void restore_temp_registers() {
+    int total_offset = 0;
+
+    for (const auto& entry : temp_registers_descriptor) {
+        MIPSRegister reg = entry.first.first;
+        const std::string& offset = entry.first.second;
+        const std::vector<std::string>& vars = entry.second;
+
+        // Load value from stack offset into register
+        emit_instruction("load", get_mips_register_name(reg), "SP", offset);
+
+        for (const std::string& var : vars) {
+            // Restore address descriptor
+            address_descriptor[var].insert(get_mips_register_name(reg));
+            register_descriptor[reg].insert(var);
+        }
+
+        // Keep track of how much stack space we used
+        total_offset += 4;
+    }
+
+    // Deallocate the stack space
+    if (total_offset > 0) {
+        emit_instruction("addi", "SP", "SP", std::to_string(total_offset));
+    }
+
+    // Clear the temp descriptor after restoring
+    temp_registers_descriptor.clear();
+}
+
 
 //=================== MIPS Instruction Class ===================//
 
@@ -1861,6 +1929,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
         emit_instruction("store", "RA", "SP", to_string(offset - 4)); // Store return address
         emit_instruction("store", "FP", "SP", to_string(offset - 8)); // Store old frame pointer
         emit_instruction("move", "FP", "SP", "");
+        function_args_size = 0;
     }
     else if (op == "function_end")
     {
@@ -1874,6 +1943,10 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "function_param")
     {
+        if(function_args_size == 0) {
+            spill_temp_registers();
+        }    
+
         Symbol *dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
         if (dest_sym->type.type_index >= PrimitiveTypes::U_CHAR_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_T)
         {
@@ -1911,8 +1984,16 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "function_call")
     {
+        // add a check for function pointer if dest name (not mangles name) starts with '#';
+        // if(dest_sym->name[0] == '#'){
+        //     MIPSRegister dest_reg = get_register_for_operand(dest)
+        //     emit_instruction("jalr",get_mips_register_name(dest_reg),"","");
+        // } else{
+        //    emit_instruction("jal", dest, "", "");
+        // }
         emit_instruction("jal", dest, "", "");
         emit_instruction("addi", "SP", "SP", to_string(function_args_size));
+        restore_temp_registers();
     }
     else if (op == "function_return")
     {
