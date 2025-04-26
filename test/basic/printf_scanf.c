@@ -8,6 +8,7 @@ int main(){
     char ch;
     scanf("%d", &val);
     scanf("%f", &num);
-    scanf(" %c", &ch); 
+    scanf(" %c", &ch);
     printf("You entered: %c\n", ch);
+    printf("Will this work ?? %f\n", &ch);
 }

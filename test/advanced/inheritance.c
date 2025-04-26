@@ -46,6 +46,16 @@ private:
     int z4;
 };
 
+// Multi level inheritence
+class C < -public B
+{
+    void deeperTest()
+    {
+        x1 = 1; //  from A1
+        x4 = 2; //  from B
+        y2 = 3; //  A2 is protected in B, y2 is protected in A2 → not accessible
+    }
+};
 
 int main() {
     class B obj;
@@ -64,4 +74,7 @@ int main() {
     x = obj.x4;
     // x = obj.y4; // Error: y4 is protected in B
     // x = obj.z4; // Error: z4 is private in B
+
+    class C c;
+    c.deeperTest();
 }

@@ -872,7 +872,6 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
 
     P->declaration_specifiers = declaration_specifiers;
     P->init_declarator_list = init_declarator_list;
-
     if (init_declarator_list == nullptr)
     {
         return P;

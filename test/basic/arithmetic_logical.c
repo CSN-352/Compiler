@@ -1,32 +1,50 @@
 // // Passing
 // int x;
 
-int main() {
-    int a = 10, b = 5;
+// double main() {
+//     int a = 10, b = 5;
+// int sum = (a + b);
+// int diff = a - b;
+// int prod = a * b;
+// int quot = a / b;
+// int mod = a % b;
+// int result = (((a > b) && (b < 15)) || !(a == b));
+// int complea = (a + b) * (a - b) / 2;
+// int logic = (a > b) && (b != 0) || (a < 50);
+// float c = 5.5, d = 2.2;
+// float f_prod = c * d;
+// float f_quot = c / d;
+// char ch = 'A';
+// char next_ch = ch + 1;
+//     // breakpoint;
+//     // breakpoint_global;
+// }
+
+// int y;
+
+int main()
+{
+    int a = 10;
+    int b = 5;
+    ++a--;
+    float c = 5.5, d = 2.2;
+    // signed int sc = -1000;
+    if ((a < b) || (a < c))
+    {
+        a++;
+    }
     int sum = (a + b);
-    int diff = a - b;
-    int prod = a * b;
-    int quot = a / b;
+    short diff = a - b;
+    long long prod = a * b;
+    unsigned long quot = a / b;
     int mod = a % b;
-    int result = (((a > b) && (b < 15)) || !(a == b));
+    int result = (((a > b) && (b < 1.5)) || !(a == b));
     int complea = (a + b) * (a - b) / 2;
     int logic = (a > b) && (b != 0) || (a < 50);
-    float c = 5.5, d = 2.2;
+    short k = logic;
     float f_prod = c * d;
     float f_quot = c / d;
     char ch = 'A';
     char next_ch = ch + 1;
-    // breakpoint;
-    // breakpoint_global;
+    
 }
-
-// int y;
-
-// int main(){
-//     int a = 10;
-//     int b = 5;
-//     int c = 0;
-//     if((a<b)||(a<c)){
-//         a++;
-//     }
-// }
