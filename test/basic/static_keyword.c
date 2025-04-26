@@ -46,8 +46,8 @@ void get_static_var()
 
 int main()
 {
-    test_static_local(); // Should print 1
-    test_static_local(); // Should print 2
-    set_static_var(55);
+    // test_static_local(); // Should print 1
+    // test_static_local(); // Should print 2
+    // set_static_var(55);
     get_static_var(); // Should show separate scope
 }

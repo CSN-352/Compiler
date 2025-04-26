@@ -1,5 +1,5 @@
 // Passing
-
+// MIPS passed
 int main()
 {
     int a = 5, b = 0;

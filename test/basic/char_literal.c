@@ -1,6 +1,8 @@
 // Passing
 // TAC DONE
 
-char c = 'a';
-char d = '_';
-char e = '\r';
+int main(){
+    char c = 'a';
+    char d = '_';
+    char e = '\r';
+}
