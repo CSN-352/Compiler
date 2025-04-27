@@ -1331,6 +1331,7 @@ std::vector<MIPSInstruction> mips_code_text;
 
 void emit_instruction(string op, string dest, string src1, string src2)
 {
+    // Aaditya Add nop instruction after jump/branch instructions to avoid delay slot issue
     Symbol *dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
     Symbol *src1_sym = current_symbol_table.get_symbol_using_mangled_name(src1);
     Symbol *src2_sym = current_symbol_table.get_symbol_using_mangled_name(src2);

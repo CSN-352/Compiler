@@ -172,6 +172,8 @@ void print_TAC_instruction(TACInstruction* instruction);
 
 void print_TAC();
 
+void remove_dead_code();
+
 void fix_labels_temps();
 
 //##############################################################################
