@@ -337,20 +337,14 @@
 // }
 // int a = 1;
 
-int add(int a, int b) {
-    return a + b;
-}
+// int add(int a, int b) {
+//     return a + b;
+// }
 
-int sub(int a, int b) {
-    return a - b;
-}
+// char c = 'B';
 
 int main(){
-    //int a = 1;
-    //int b = 2;
-    int x = add(1,2);
-    // int y = sub(a,b);
-    breakpoint_global;
+    char ch = 'A';
+    char next_ch = ch + 1;
     return 0;
 }
-

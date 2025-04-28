@@ -1,4 +1,5 @@
 // Passing
+// Passing MIPS
 
 int main(){
     int x = 5;

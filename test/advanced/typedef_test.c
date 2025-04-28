@@ -4,6 +4,6 @@ typedef unsigned long long ULI;
 ULI number;
 
 int main() {
-    number = 12345612345432190;
+    number = 4512548512;
     return 0;
 }
