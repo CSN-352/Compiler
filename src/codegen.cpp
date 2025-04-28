@@ -2285,7 +2285,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "function_param")
     {   
-        Symbol *dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
+
+        emit_instruction("load", dest, dest, ""); // Load the argument
         if (dest_sym->type.type_index >= PrimitiveTypes::U_CHAR_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_T)
         {
             // Integers
@@ -2744,13 +2745,12 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "addi")
     { // addi instruction
-        // only used for sp,fp,gp so no need to check for type
-        if(src1=="SP"){
+        if(src1 == "SP"){
             MIPSRegister src1_reg = get_register_for_operand(src1);                  // Get a register for the source 1
             MIPSRegister dest_reg = get_register_for_operand(dest, true);            // Get a register for the destination
             MIPSInstruction addi_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, src2); // Add immediate instruction
             mips_code_text.push_back(addi_instr);                                    // Emit add immediate instruction
-            update_for_add(dest, dest_reg); 
+            update_for_add(dest, dest_reg);                                          // Update register descriptor and address descriptor
             return;
         }
         emit_instruction("load", src1, src1, "");                                  // Load the source value into a register

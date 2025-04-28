@@ -438,11 +438,17 @@
 //         // if(i == 1) break;
 //     }
 // }
+
+void printf(char* str, ...){
+    
+}
+
 int main(){
     int a = 1;
     for(int j=12;j<15;j++){
         if(j == 14) continue;
         a--;
     }
+    printf("a = %d\n", a);
     return 0;
 }  
