@@ -2546,6 +2546,10 @@ FunctionDefinition* create_function_definition(DeclarationSpecifiers* ds, Declar
             symbolTable.insert(function_name, type, type.get_size(), 1);
             Symbol* sym = symbolTable.getSymbol(function_name);
             symbolTable.add_function_definition(sym, P);
+            Symbol* func_sym = symbolTable.getSymbol(function_name);
+            if(func_sym->scope != 0){
+                symbolTable.class_member_functions[function_name].push_front(func_sym);
+            }
             symbolTable.enterScope(type, function_name);
             if (d->direct_declarator->parameters != nullptr)
             {

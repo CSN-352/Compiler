@@ -350,20 +350,7 @@
 //     return 0;
 // }
 
-// static int x = 1;
-// int add(int a, int b) {
-//     static int y = 2;
-//     return a + b;
-// }
-// class A {
-// public:
-//     int x1;
-//     int x2;
-//     void func() {
-//         static int z = 1;
-//     }
-// };
-// breakpoint_global;
+
 
 // void printf(char* str, int d, int e, int f){
 
@@ -421,4 +408,23 @@
 
 // enum DAYS {MONDAY, TUESDAY, WEDNESDAY=4, THURSDAY, FRIDAY, SATURDAY, SUNDAY};
 
-signed int i = 0;
+// signed int i = 0;
+
+static int x = 1;
+class A {
+public:
+    int x1;
+    int x2;
+    void func() {
+        static int z = 1;
+    }
+};
+int add(int a, int b) {
+    static int y = 2;
+    return a + b;
+}
+
+int main(){
+    int c = add(1,2);
+}
+breakpoint_global;

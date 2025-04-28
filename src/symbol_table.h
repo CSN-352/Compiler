@@ -286,6 +286,7 @@ public:
     std::unordered_map<std::string, std::list<std::pair<int, DefinedTypes*>>> defined_types;
     std::unordered_map<std::string, std::list<Symbol*>> typedefs;
     std::unordered_map<std::string, std::list<Symbol*>> static_vars;
+    std::unordered_map<std::string, std::list<Symbol*>> class_member_functions;
     int currentScope;
     unsigned int currAddress = 0;
     bool error;

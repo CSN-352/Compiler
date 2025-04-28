@@ -30,23 +30,18 @@ void initialize_global_symbol_table()
             current_symbol_table.table[entry.first].push_back(sym); // Copy entries from the global symbol table
         }
     }
+    for(const auto &entry : symbolTable.class_member_functions){
+        for(const auto &sym : entry.second)
+        {
+            current_symbol_table.table[entry.first].push_back(sym); // Copy entries from the global symbol table
+        }                                                                                                           
+    }
+
 }
 
 void insert_function_symbol_table(const string &function_name)
 {
     Symbol* func = current_symbol_table.get_symbol_using_mangled_name(function_name);
-    // if(func == nullptr){
-    //     for(auto &entry : current_symbol_table.defined_types){
-    //         for(auto &type : entry.second){
-    //             SymbolTable type_symbol_table = type.second->type_definition->type_symbol_table;
-    //             func = type_symbol_table.get_symbol_using_mangled_name(function_name);
-    //             if(func != nullptr){
-    //                 current_symbol_table.table[func->name]
-    //                 break;
-    //             }
-    //         }
-    //     }
-    // }
     SymbolTable function_symbol_table = func->function_definition->function_symbol_table;
     for (const auto &entry : function_symbol_table.table)
     {
@@ -802,7 +797,7 @@ void spill_registers_at_function_end()
             else
             {
                 Symbol *var_sym = current_symbol_table.get_symbol_using_mangled_name(v);
-                if(var_sym != nullptr && var_sym->scope == 0){ // store global variables only
+                if(var_sym != nullptr && (var_sym->scope == 0 || var_sym->type.is_static)){ // store global variables only
                     emit_instruction("store", v, v, "");
                 }
                 address_descriptor[v].clear();
@@ -1504,7 +1499,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
 
     if (op == "load")
     { // assignment instruction
-        if (dest_sym != nullptr && dest_sym->scope == 0)
+        if (dest_sym != nullptr && (dest_sym->scope == 0 || dest_sym->type.is_static))
         { // global variable
             if (!check_global_variable(dest))
             {                                                           // global variable initialization
@@ -1517,7 +1512,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             // No instruction needed, only change register descriptor and address descriptor
             update_for_assign(dest, src1, get_register_for_operand(src1));
         }
-        else if (src1_sym != nullptr && src1_sym->scope == 0)
+        else if (src1_sym != nullptr && (src1_sym->scope == 0 || src1_sym->type.is_static))
         { // global variable
             // Load variable from memory
 
@@ -1844,7 +1839,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             mips_code_text.push_back(load_addr_instr);                           // Emit load address instruction
             update_for_load(addr_reg, dest);                                     // Update register descriptor and address descriptor
         }
-        else if (src1_sym != nullptr && src1_sym->scope == 0)
+        else if (src1_sym != nullptr && (src1_sym->scope == 0 || src1_sym->type.is_static))
         {                                                                    // global variable
             MIPSRegister addr_reg = get_register_for_operand(dest, true);    // Get a register for the address
             MIPSInstruction load_addr_instr(MIPSOpcode::LA, addr_reg, src1); // Load address of dest
@@ -1863,7 +1858,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
     else if (op == "deref")
     {
         // same as load, but without la
-        if (dest_sym != nullptr && dest_sym->scope == 0)
+        if (dest_sym != nullptr && (dest_sym->scope == 0 || dest_sym->type.is_static))
         { // global variable
             if (!check_global_variable(dest))
             {                                                           // global variable initialization
@@ -1967,7 +1962,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             mips_code_text.push_back(store_instr);                                 // Emit store instruction
             return;
         }
-        else if (dest_sym != nullptr && dest_sym->scope == 0)
+        else if (dest_sym != nullptr && (dest_sym->scope == 0 || dest_sym->type.is_static))
         {                                                             // global variable storage
             if(dest_sym->type.is_pointer || dest_sym->type.is_function){ // store address of pointer variable/object/function
                 MIPSRegister src1_reg = get_register_for_operand(src1); // Get a register for the source
