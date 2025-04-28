@@ -35,23 +35,18 @@ void initialize_global_symbol_table()
 void insert_function_symbol_table(const string &function_name)
 {
     Symbol* func = current_symbol_table.get_symbol_using_mangled_name(function_name);
-    if(func == nullptr){
-        for(auto &entry : current_symbol_table.defined_types){
-            for(auto p : entry.second){
-                SymbolTable st = p.second->type_definition->type_symbol_table;
-                func = st.get_symbol_using_mangled_name(function_name);
-                if(func != nullptr){
-                    current_symbol_table.print(); // Print the current symbol table for debugging
-                    current_symbol_table.table[func->name].push_front(func); // Copy entries from the function symbol table
-                    current_symbol_table.print(); // Print the current symbol table for debugging
-                    break;
-                }
-            }
-            if(func != nullptr){
-                break;
-            }
-        }
-    }
+    // if(func == nullptr){
+    //     for(auto &entry : current_symbol_table.defined_types){
+    //         for(auto &type : entry.second){
+    //             SymbolTable type_symbol_table = type.second->type_definition->type_symbol_table;
+    //             func = type_symbol_table.get_symbol_using_mangled_name(function_name);
+    //             if(func != nullptr){
+    //                 current_symbol_table.table[func->name]
+    //                 break;
+    //             }
+    //         }
+    //     }
+    // }
     SymbolTable function_symbol_table = func->function_definition->function_symbol_table;
     for (const auto &entry : function_symbol_table.table)
     {

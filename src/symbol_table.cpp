@@ -1080,6 +1080,10 @@ void DeclarationSpecifiers::set_type()
             {
                 isUnsigned = 1;
             }
+            else if(type_specifiers[i]->primitive_type_specifier->name == "SIGNED" && isUnsigned == 0)
+            {
+                isUnsigned = 0;
+            }
             else if (type_specifiers[i]->primitive_type_specifier->name == "SHORT")
             {
                 isShort++;
@@ -1953,7 +1957,7 @@ Enumerator* create_enumerator(Identifier* id, Expression* e)
 // ############################ ENUMERATOR LIST###############################
 // ##############################################################################
 
-EnumeratorList::EnumeratorList() : NonTerminal("ENUMERATOR LIST") {}
+EnumeratorList::EnumeratorList() : NonTerminal("ENUMERATOR LIST"), last_constant_value("-1") {}
 
 EnumeratorList* create_enumerator_list(Enumerator* e)
 {
@@ -2145,6 +2149,10 @@ void SpecifierQualifierList::set_type()
             if (type_specifiers[i]->primitive_type_specifier->name == "UNSIGNED")
             {
                 isUnsigned = 1;
+            }
+            else if( type_specifiers[i]->primitive_type_specifier->name == "SIGNED" && isUnsigned == 0)
+            {
+                isUnsigned = 0;
             }
             else if (type_specifiers[i]->primitive_type_specifier->name == "SHORT")
             {

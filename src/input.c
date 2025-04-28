@@ -377,10 +377,48 @@
 //     return 0;
 // }
 
-int main(){
-    int a = 0;
-    for(int i=0;i<5;i++){
-        a = 4;
-    }
-    return 0;
-}
+// int main(){
+//     int a = 0;
+//     for(int i=0;i<5;i++){
+//         a = 4;
+//     }
+//     return 0;
+// }
+
+// void printf(char* str, ...){
+   
+// }
+
+// int main(){
+//     int x = 5;
+//     printf("x = %d", x);
+//     return 0;
+// }
+
+// int main(){
+//     int x = 1;
+//     int y;
+//     switch(x){
+//         case 1:
+//             y = 2;
+//         case 2:
+//             y = 3;
+//             break;
+//         default:
+//             y = 4;
+//     }
+// }
+
+// int factorial(int n){
+//     if(n == 0) return 1;
+//     return n * factorial(n-1);
+// }
+
+// int main(){
+//     int x = factorial(4);
+//     return 0;
+// }
+
+// enum DAYS {MONDAY, TUESDAY, WEDNESDAY=4, THURSDAY, FRIDAY, SATURDAY, SUNDAY};
+
+signed int i = 0;
