@@ -3,7 +3,7 @@
 
 void test_int_family_implicit() {
 
-    char c = 10;
+    char c = 10000000000000;
     short s = c;         // char -> short
     int i = s;           // short -> int
     long l = i;          // int -> long
@@ -19,7 +19,7 @@ void test_int_family_implicit() {
 
 void test_int_family_explicit() {
 
-    int i = 1000;
+    int i = 1000000000000000;
     char c = (char)i;     // int -> char
     short s = (short)i;   // int -> short
     long l = (long)i;     // int -> long

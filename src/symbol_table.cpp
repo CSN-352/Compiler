@@ -11,13 +11,14 @@
 #include <utility>
 #include <iterator>
 #include <string>
-
+#include <limits.h>
 #include "parser.tab.h"
 #include "symbol_table.h"
 #include "expression.h"
 #include "ast.h"
 #include "utils.h"
 #include "tac.h"
+#include "float.h"
 
 using namespace std;
 
@@ -2636,11 +2637,11 @@ Type Constant::set_constant_type(string value)
         bool isUnsigned = false;
         for (int i = 0; i < length; i++)
         {
-            if (name[i] == 'l' || name[i] == 'L')
+            if (value[i] == 'l' || value[i] == 'L')
             {
                 isLong++;
             }
-            else if (name[i] == 'u' || name[i] == 'U')
+            else if (value[i] == 'u' || value[i] == 'U')
             {
                 isUnsigned = true;
             }
@@ -2663,11 +2664,19 @@ Type Constant::set_constant_type(string value)
         }
         else if (!isLong && isUnsigned)
         {
-            t.type_index = PrimitiveTypes::U_SHORT_T;
+            long long val = std::stoll(value);
+            if (val > UINT_MAX)
+                t.type_index = PrimitiveTypes::U_LONG_T;
+            else
+                t.type_index = PrimitiveTypes::U_INT_T;
         }
         else if (!isLong && !isUnsigned)
         {
-            t.type_index = PrimitiveTypes::SHORT_T;
+            long long val = std::stoll(value);
+            if (val >= INT_MIN && val <= INT_MAX)
+                t.type_index = PrimitiveTypes::INT_T;
+            else
+                t.type_index = PrimitiveTypes::LONG_T;
         }
     }
     else if (name == "CHAR_CONSTANT")
@@ -2680,11 +2689,11 @@ Type Constant::set_constant_type(string value)
         int isDouble = 0;
         for (int i = 0; i < length; i++)
         {
-            if (name[i] == 'l' || name[i] == 'L')
+            if (value[i] == 'l' || value[i] == 'L')
             {
                 isDouble++;
             }
-            else if (name[i] == 'f' || name[i] == 'F')
+            else if (value[i] == 'f' || value[i] == 'F')
             {
                 isFloat++;
             }
@@ -2699,7 +2708,11 @@ Type Constant::set_constant_type(string value)
         }
         else
         {
-            t.type_index = PrimitiveTypes::DOUBLE_T;
+            long double val = std::stold(value);
+            if (val > FLT_MAX || val < FLT_MIN)
+                t.type_index = PrimitiveTypes::DOUBLE_T;
+            else
+                t.type_index = PrimitiveTypes::FLOAT_T;
         }
     }
 
@@ -2708,6 +2721,8 @@ Type Constant::set_constant_type(string value)
         string error_msg = "Invalid type: " + name;
         yyerror(error_msg.c_str());
     }
+    debug(value);
+    debug(t.type_index);
     return t;
 }
 
