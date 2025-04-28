@@ -3107,12 +3107,19 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "andi")
     {
+        if(!check_immediate(src2)){
+            store_immediate(src2, Type(PrimitiveTypes::INT_T, 0, false));
+        }
+        emit_instruction("la", "addr", src2, ""); // Load the immediate value into a register
+        MIPSRegister addr_reg = get_register_for_operand("addr"); // Get a register for the address of immediate value
+        MIPSRegister src2_reg = get_register_for_operand("temp", true); // Get a register for the immediate value
+        MIPSInstruction load_instr(MIPSOpcode::LW, src2_reg, "0", addr_reg);     // Load the immediate value into a register
         if (dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T)
         {
             emit_instruction("load", src1, src1, "");                               // Load the source value into a register
             MIPSRegister src1_reg = get_register_for_operand(src1);                 // Get a register for the source 1
             MIPSRegister dest_reg = get_register_for_operand(dest, true);           // Get a register for the destination
-            MIPSInstruction andi_instr(MIPSOpcode::ANDI, dest_reg, src1_reg, src2); // Bitwise ANDI the register and immediate value
+            MIPSInstruction andi_instr(MIPSOpcode::AND, dest_reg, src1_reg, src2_reg); // Bitwise ANDI the register and immediate value
             mips_code_text.push_back(andi_instr);                                   // Emit andi instruction
             update_for_add(dest, dest_reg);                                         // Update register descriptor and address descriptor
         }
@@ -3812,8 +3819,6 @@ vector<string> parameters_emit_instrcution(TACInstruction *instr)
             dest_sym = current_symbol_table.get_symbol_using_mangled_name(instr->result->value.substr(1));
         else
             dest_sym = current_symbol_table.get_symbol_using_mangled_name(instr->result->value);
-        cout << dest_sym->mangled_name << endl;
-        cout << dest_sym->type.type_index << endl;
         if (dest_sym->type.isSigned())
         {
             emit_instruction_args[0] = "srav";
