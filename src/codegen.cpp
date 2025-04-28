@@ -2739,6 +2739,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
     else if (op == "addi")
     { // addi instruction
         // only used for sp,fp,gp so no need to check for type
+        emit_instruction("load", src1, src1, "");                                  // Load the source value into a register
         MIPSRegister src1_reg = get_register_for_operand(src1);                  // Get a register for the source 1
         MIPSRegister dest_reg = get_register_for_operand(dest, true);            // Get a register for the destination
         MIPSInstruction addi_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, src2); // Add immediate instruction
@@ -2808,7 +2809,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
         }
     }
     else if (op == "subi")
-    { // subi instructio
+    { // subi instruction
+        emit_instruction("load", src1, src1, "");                                  // Load the source value into a register
         MIPSRegister src1_reg = get_register_for_operand(src1);       // Get a register for the source 1
         MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
         string neg_offset = "-" + src2;
@@ -3970,8 +3972,11 @@ void initalize_mips_code_vectors()
         vector<string> emit_instruction_args = parameters_emit_instrcution(instr);
         if (leader_labels_map.find(get_operand_string(instr->label)) != leader_labels_map.end())
         {
+            spill_registers_after_basic_block(); // Spill registers after the basic block
             MIPSInstruction label_instr(leader_labels_map[get_operand_string(instr->label)]); // Create a label instruction
             mips_code_text.push_back(label_instr);                                            // Emit the label instruction
+        }
+        if(emit_instruction_args[0] == "j"){
             spill_registers_after_basic_block(); // Spill registers after the basic block
         }
         if(instr->op.type == TACOperatorType::TAC_OPERATOR_PARAM){
