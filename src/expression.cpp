@@ -701,9 +701,22 @@ Expression* create_postfix_expression_func(Expression* x, ArgumentExpressionList
                 P->type.arg_types.clear();
                 P->result = new_temp_var(); // TAC
                 TACInstruction* i1;
-                if(argument_expression_list != nullptr)P->code.insert(P->code.begin(),argument_expression_list->code.begin(),argument_expression_list->code.end()); // TAC
+                if(argument_expression_list != nullptr){
+                    P->code.insert(P->code.begin(),argument_expression_list->code.begin(),argument_expression_list->code.end()); // TAC
+                    vector<string> arg_results;
+                    for(auto i:argument_expression_list->code){
+                        if(i->op.type == TAC_OPERATOR_PARAM){
+                            arg_results.push_back(i->result->value); // TAC
+                        }
+                    }
+                    for(int arg_num = 0; arg_num < x->type.num_args; arg_num++){ // Add a temp variable for each argument in case we need to type cast it before passing it to the function
+                        string arg_result = arg_results[arg_num];
+                        Type arg_type = x->type.arg_types[arg_num];
+                        symbolTable.insert(arg_result+"_cast", arg_type, arg_type.get_size(), 0); // Insert temp into symbol table
+                    }
+                }
                 if (x->type.type_index == PrimitiveTypes::VOID_T){
-                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_constant(""), x->result, new_constant(to_string(arguments.size())), 0); // TAC
+                    i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_empty_var(), x->result, new_constant(to_string(arguments.size())), 0); // TAC
                 }
                 else{
                     i1 = emit(TACOperator(TAC_OPERATOR_CALL), P->result, x->result, new_constant(to_string(arguments.size())), 0); // TAC

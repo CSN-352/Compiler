@@ -467,9 +467,9 @@ void set_offset_for_function_args(string func){
     }
     int function_local_variable_size = func_sym->function_definition->size;
     int total_function_size = function_local_variable_size + function_args_size;
-    cout<<"Function Name: "<<func<<endl;
-    cout<<"Total Function Size: "<<total_function_size<<endl;
-    cout<<"Function Local Variable Size: "<<function_local_variable_size<<endl;
+    // cout<<"Function Name: "<<func<<endl;
+    // cout<<"Total Function Size: "<<total_function_size<<endl;
+    // cout<<"Function Local Variable Size: "<<function_local_variable_size<<endl;
 
     // vector<pair<int,string> > args;
 
@@ -1088,7 +1088,7 @@ void restore_temp_registers() {
         string var = *(entry.second.begin()); // Get the variable name to restore
         string offset = get_stack_offset_for_local_variable(var); // Get the offset for the variable
         const std::vector<std::string>& vars = entry.second;
-        cout<<"Restoring temp register: "<<get_mips_register_name(reg)<<" for variable: "<<var<<endl;
+        // cout<<"Restoring temp register: "<<get_mips_register_name(reg)<<" for variable: "<<var<<endl;
 
         for (const std::string& var : vars) {
             // Restore address descriptor
@@ -1370,8 +1370,8 @@ std::string get_stack_offset_for_local_variable(std::string var)
 {
     if (stack_address_descriptor.find(var) != stack_address_descriptor.end())
     {
-        cout<<"returning stack address for "<<var<<endl;
-        cout<<stack_address_descriptor[var]<<endl;
+        // cout<<"returning stack address for "<<var<<endl;
+        // cout<<stack_address_descriptor[var]<<endl;
         return stack_address_descriptor[var];
     }
     return "0"; // Default case, return 0 if not found
@@ -2145,7 +2145,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
         insert_function_symbol_table(dest);
         set_offset_for_function_args(dest);
         int offset = func->function_definition->size + 8;
-        cout<<"Function args size: "<<function_args_size<<endl;
+        // cout<<"Function args size: "<<function_args_size<<endl;
         // update_descriptors_for_function_call(dest); // Update register descriptor and address descriptor for function call
         emit_instruction("subi", "SP", "SP", to_string(offset));      // Adjust stack pointer for function frame
         emit_instruction("store", "SP", "RA", to_string(offset - 4)); // Store return address
@@ -2174,7 +2174,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             function_args_size += dest_sym->type.get_size();
             emit_instruction("subi", "SP", "SP", to_string(dest_sym->type.get_size()));
             MIPSRegister dest_reg = get_register_for_operand(dest);
-            cout<<"inside function param"<<get_mips_register_name(dest_reg)<<endl;
+            // cout<<"inside function param"<<get_mips_register_name(dest_reg)<<endl;
             emit_instruction("store", "SP", dest, "0");
             //function_params.push_back(make_pair(dest,(function_args_size)));
         }
@@ -3793,8 +3793,12 @@ void initalize_mips_code_vectors()
         if(instr->op.type == TACOperatorType::TAC_OPERATOR_PARAM && func_sym == nullptr){
             for(int param_itr = instr_no; param_itr < TAC_CODE.size(); param_itr++){
                 if(TAC_CODE[param_itr]->op.type == TACOperatorType::TAC_OPERATOR_CALL){
-                    string func = TAC_CODE[param_itr]->result->value;
+                    string func = TAC_CODE[param_itr]->arg1->value;
                     func_sym = current_symbol_table.get_symbol_using_mangled_name(func); // Get the function symbol
+                    // cout<<"Function symbol found: "<<func<<endl;
+                    if(func_sym == nullptr){
+                        cout << "Error: Function symbol not found so not set" << endl;
+                    }
                     break;
                 }
             }
@@ -3810,9 +3814,14 @@ void initalize_mips_code_vectors()
         }
         if(instr->op.type == TACOperatorType::TAC_OPERATOR_PARAM){
             Symbol *param_sym = current_symbol_table.get_symbol_using_mangled_name(emit_instruction_args[1]); // Get the parameter symbol
+            if(func_sym == nullptr){
+                cout << "Error: Function symbol not found for parameter" << endl;
+                
+            }
             // Siya : Complete this
             if(arg_count < func_sym->type.num_args && param_sym->type != func_sym->type.arg_types[arg_count]){
-                // emit_instruction("cast","" , "", emit_instruction_args[1]); // Cast the parameter to the correct type
+                emit_instruction("cast",emit_instruction_args[1]+"_cast", "", emit_instruction_args[1]); // Cast the parameter to the correct type
+                emit_instruction_args[1] = emit_instruction_args[1]+"_cast"; // Update the parameter name to the casted name
             }
             arg_count++;
         }
