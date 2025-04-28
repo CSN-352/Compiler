@@ -858,6 +858,7 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
             }
         }
     }
+    }
     P->type.is_const_literal = false;
     return P;
 }

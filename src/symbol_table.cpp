@@ -301,55 +301,6 @@ bool Type::is_same_type(Type t)
     {
         return true;
     }
-    return false;
-}
-
-int getTypeGroup(int type)
-{
-    switch (type)
-    {
-    case PrimitiveTypes::SHORT_T:
-    case PrimitiveTypes::INT_T:
-    case PrimitiveTypes::LONG_T:
-    case PrimitiveTypes::LONG_LONG_T:
-        return 1; // signed integers group
-
-    case PrimitiveTypes::U_SHORT_T:
-    case PrimitiveTypes::U_INT_T:
-    case PrimitiveTypes::U_LONG_T:
-    case PrimitiveTypes::U_LONG_LONG_T:
-        return 2; // unsigned integers group
-
-    case PrimitiveTypes::CHAR_T:
-        return 3; // char group
-
-    case PrimitiveTypes::U_CHAR_T:
-        return 4; // unsigned char group
-
-    case PrimitiveTypes::FLOAT_T:
-    case PrimitiveTypes::DOUBLE_T:
-        return 5; // float/double group
-
-    case PrimitiveTypes::LONG_DOUBLE_T:
-        return 6; // long double group
-
-    case PrimitiveTypes::VOID_T:
-        return 7; // void group
-
-    default:
-        return -1; // error or unknown
-    }
-}
-
-bool Type::is_same_type(Type t)
-{   
-    if (getTypeGroup(this->type_index) == getTypeGroup(t.type_index) && !this->is_pointer && !t.is_pointer ) {
-        return true;
-    }
-    if (getTypeGroup(this->type_index) == getTypeGroup(t.type_index) && this->is_pointer && t.is_pointer && this->ptr_level == t.ptr_level)
-    {
-        return true;
-    }
         return false;
 }
 
