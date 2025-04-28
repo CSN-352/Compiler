@@ -87,6 +87,7 @@ extern std::unordered_map<MIPSRegister, std::unordered_set<std::string> > regist
 extern std::unordered_map<std::string, std::unordered_set<std::string> > address_descriptor;
 extern std::unordered_map<std::string, std::string > stack_address_descriptor;
 void initialize_stack_offset_for_local_variables(Symbol* func);
+void set_offset_for_function_args(string func);
 std::string get_stack_offset_for_local_variable(std::string var);
 
 void debug_register_descriptor();
@@ -112,10 +113,14 @@ void set_leader_labels();
 MIPSRegister get_register_for_operand(const string& var, bool for_result = false);
 MIPSRegister get_float_register_for_operand(const string& var, bool for_result = false, bool is_double = false);
 
+extern std::vector<std::pair<MIPSRegister, std::vector<std::string> > > temp_registers_descriptor;
 
+void spill_temp_registers();
+void restore_temp_registers();
 
 void spill_register(MIPSRegister reg);
 void spill_float_register(MIPSRegister reg, bool is_double = false);
+void spill_registers_at_function_end();
 
 //=================== MIPS Instruction Class ===================//
 
