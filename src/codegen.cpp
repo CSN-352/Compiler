@@ -615,6 +615,14 @@ void update_for_add(const std::string &x, MIPSRegister rx, bool is_double)
             }
         }
     }
+
+    for(auto &[v, locs] : register_descriptor)
+    {
+        if (v != rx && locs.count(x))
+        {
+            locs.erase(x);
+        }
+    }
 }
 
 // x = y
@@ -629,6 +637,14 @@ void update_for_assign(const std::string &x, const std::string &y, MIPSRegister 
         MIPSRegister ry_next = static_cast<MIPSRegister>(static_cast<int>(ry) + 1);
         register_descriptor[ry_next].insert(x);
         address_descriptor[x].insert(get_mips_register_name(ry_next));
+    }
+
+    for(auto &[v, locs] : register_descriptor)
+    {
+        if (v != ry && locs.count(x))
+        {
+            locs.erase(x);
+        }
     }
 }
 
@@ -669,7 +685,7 @@ void set_leader_labels()
         if (instr->flag == 1)
         {
             std::string label = get_operand_string(instr->result);
-            cout << "Label: " << label << "\n";
+            // cout << "Label: " << label << "\n";
             if (leader_labels_map.find(label) == leader_labels_map.end())
                 leader_labels_map[label] = "L" + std::to_string(label_counter++); // Add the label of goto as a leader label
             if (instr_no + 1 < TAC_CODE.size())
@@ -690,11 +706,11 @@ void set_leader_labels()
         }
     }
 
-    cout << "Printing leader labels map\n";
-    for (auto x : leader_labels_map)
-    {
-        std::cout << x.first << " : " << x.second << "\n";
-    }
+    // cout << "Printing leader labels map\n";
+    // for (auto x : leader_labels_map)
+    // {
+    //     std::cout << x.first << " : " << x.second << "\n";
+    // }
 
     return;
 }
@@ -1073,6 +1089,24 @@ MIPSRegister get_float_register_for_operand(const std::string &var, bool for_res
 
 std::vector<std::pair<MIPSRegister, std::vector<std::string> > > temp_registers_descriptor;
 
+void spill_registers_after_basic_block(){
+    for (const auto &[reg, vars] : register_descriptor)
+    {
+        if (vars.size() > 0)
+        {
+            // cout << "Spilling register: " << get_mips_register_name(reg) << "\n";
+            spill_register(reg);
+        }
+    }
+    // register_descriptor.clear();
+    for(const auto &[var, regs] : address_descriptor){
+        if(regs.size() > 0){
+            // cout << "Spilling address: " << reg << "\n";
+            address_descriptor[var].clear();
+            address_descriptor[var].insert("mem");
+        }
+    }
+}
 
 void spill_temp_registers() {
     temp_registers_descriptor.clear();
@@ -3932,6 +3966,7 @@ void initalize_mips_code_vectors()
         {
             MIPSInstruction label_instr(leader_labels_map[get_operand_string(instr->label)]); // Create a label instruction
             mips_code_text.push_back(label_instr);                                            // Emit the label instruction
+            spill_registers_after_basic_block(); // Spill registers after the basic block
         }
         if(instr->op.type == TACOperatorType::TAC_OPERATOR_PARAM){
             Symbol *param_sym = current_symbol_table.get_symbol_using_mangled_name(emit_instruction_args[1]); // Get the parameter symbol

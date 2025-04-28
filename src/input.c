@@ -350,20 +350,20 @@
 //     return 0;
 // }
 
-static int x = 1;
-int add(int a, int b) {
-    static int y = 2;
-    return a + b;
-}
-class A {
-public:
-    int x1;
-    int x2;
-    void func() {
-        static int z = 1;
-    }
-};
-breakpoint_global;
+// static int x = 1;
+// int add(int a, int b) {
+//     static int y = 2;
+//     return a + b;
+// }
+// class A {
+// public:
+//     int x1;
+//     int x2;
+//     void func() {
+//         static int z = 1;
+//     }
+// };
+// breakpoint_global;
 
 // void printf(char* str, int d, int e, int f){
 
@@ -376,3 +376,11 @@ breakpoint_global;
 //     printf("The sum of %d and %d is %d\n", p, q, r);
 //     return 0;
 // }
+
+int main(){
+    int a = 0;
+    for(int i=0;i<5;i++){
+        a = 4;
+    }
+    return 0;
+}
