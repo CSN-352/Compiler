@@ -2251,6 +2251,10 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "function_begin")
     {
+        if (dest == "_f_printf_S0__sig_1") {
+            function_args_size = 0;
+            return;
+        }
         Symbol *func = current_symbol_table.get_symbol_using_mangled_name(dest);
         insert_function_symbol_table(dest);
         set_offset_for_function_args(dest);
@@ -2266,6 +2270,9 @@ void emit_instruction(string op, string dest, string src1, string src2)
     else if (op == "function_end")
     {
         spill_registers_at_function_end(); // Spill registers at function end
+        if (dest == "_f_printf_S0__sig_1") {
+            return;
+        }
         Symbol *func = current_symbol_table.get_symbol_using_mangled_name(dest);
         erase_function_symbol_table(dest);
         int offset = func->function_definition->size + 8;
@@ -2321,6 +2328,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
     else if (op == "function_call")
     {
         spill_temp_registers(); // Spill temporary registers before function call
+        emit_instruction("li","a0",to_string(function_args_size+4),"");
         // add a check for function pointer if dest name (not mangles name) starts with '#';
         if(dest_sym->name[0] == '#'){
             emit_instruction("jalr",dest,"","");
@@ -2330,7 +2338,6 @@ void emit_instruction(string op, string dest, string src1, string src2)
         }
         // emit_instruction("jal", dest, "", "");
         emit_instruction("addi", "SP", "SP", to_string(function_args_size));
-        emit_instruction("li","a0",to_string(function_args_size+4),"");
         restore_temp_registers();
         if(src1_sym == nullptr) return; // no need to load return value
         if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T)
@@ -3962,6 +3969,9 @@ void initalize_mips_code_vectors()
         vector<string> emit_instruction_args = parameters_emit_instrcution(instr);
         if (leader_labels_map.find(get_operand_string(instr->label)) != leader_labels_map.end())
         {
+            if (get_operand_string(instr->label) == "_f_printf_S0__sig_1") {
+                continue;;
+            }
             MIPSInstruction label_instr(leader_labels_map[get_operand_string(instr->label)]); // Create a label instruction
             mips_code_text.push_back(label_instr);                                            // Emit the label instruction
             spill_registers_after_basic_block(); // Spill registers after the basic block
@@ -4046,5 +4056,103 @@ void print_mips_code()
         }
         cout << endl;
     }
+
+    add_printf_code();
+
     cout << endl;
 }
+
+
+void add_printf_code()
+{
+    std::cout << R"(
+_f_printf_S0__sig_1:
+    ADDIU $sp, $sp, -8
+    SW $ra, 4($sp)
+    SW $fp, 0($sp)
+    MOVE $fp, $sp
+
+	addu $a0, $a0, $sp
+
+    lw $t0, 0($a0)
+	addiu $a0, $a0, -4
+    move $t2, $a0
+
+next_char_printf:
+    lb $t3, 0($t0)
+    beqz $t3, done_printf
+
+    li $t4, '%'
+    beq $t3, $t4, handle_format_printf
+
+    li $v0, 11
+    move $a0, $t3
+    syscall
+
+    addiu $t0, $t0, 1
+    j next_char_printf
+
+handle_format_printf:
+    addiu $t0, $t0, 1
+    lb $t3, 0($t0)
+
+    beq $t3, 'd', print_int_printf
+    beq $t3, 's', print_string_printf
+    beq $t3, 'c', print_char_printf
+	beq $t3, 'f', print_float_printf
+
+    li $v0, 11
+    li $a0, '%'
+    syscall
+    move $a0, $t3
+    syscall
+
+    addiu $t0, $t0, 1
+    j next_char_printf
+
+print_int_printf:
+    lw $a0, 0($t2)
+    li $v0, 1
+    syscall
+
+    addiu $t2, $t2, -4    # move to next argument (backward)
+    addiu $t0, $t0, 1
+    j next_char_printf
+
+print_string_printf:
+    lw $a0, 0($t2)
+    li $v0, 4
+    syscall
+
+    addiu $t2, $t2, -4
+    addiu $t0, $t0, 1
+    j next_char_printf
+
+print_char_printf:
+    lb $a0, 0($t2)
+    li $v0, 11
+    syscall
+
+    addiu $t2, $t2, -4
+    addiu $t0, $t0, 1
+    j next_char_printf
+	
+print_float_printf:
+    lw $t1, 0($t2)         # Load float bits into $t1
+    mtc1 $t1, $f12         # Move bits into floating-point register $f12
+    li $v0, 2              # syscall 2: print float
+    syscall
+
+    addiu $t2, $t2, -4
+    addiu $t0, $t0, 1
+    j next_char_printf
+
+done_printf:
+	LW $fp, 0($sp)
+    LW $ra, 4($sp)
+    ADDIU $sp, $sp, 8
+    JR $ra
+    jr $ra
+)" << std::endl;
+}
+

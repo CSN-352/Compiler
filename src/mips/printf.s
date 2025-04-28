@@ -43,7 +43,14 @@ main:
     syscall
 
 
-printf:
+_f_printf_S0__sig_1:
+    ADDIU $sp, $sp, -8
+    SW $ra, 4($sp)
+    SW $fp, 0($sp)
+    MOVE $fp, $sp
+
+	addu $a0, $a0, $sp
+
     lw $t0, 0($a0)
 	
 	addiu $a0, $a0, -4
@@ -104,7 +111,7 @@ print_char_printf:
     li $v0, 11
     syscall
 
-    addiu $t2, $t2, -1
+    addiu $t2, $t2, -4
     addiu $t0, $t0, 1
     j next_char_printf
 	
@@ -119,4 +126,8 @@ print_float_printf:
     j next_char_printf
 
 done_printf:
+	LW $fp, 0($sp)
+    LW $ra, 4($sp)
+    ADDIU $sp, $sp, 8
+    JR $ra
     jr $ra

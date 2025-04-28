@@ -31,11 +31,19 @@
 
 // class Point p1;
 
+void printf(char* str, ...){
+    
+}
+
 int main(){
-    int x = 1+2+3-9+8;      // 5
-    int product = 12 * 4;   // 48
-    int quotient = 12 / 4;  // 3
-    int remainder = 12 % 4; // 0
+
+    char* str = "Alice\n";
+    printf("Hello %d\n", 6);
+
+    // int x = 1+2+3-9+8;      // 5
+    // int product = 12 * 4;   // 48
+    // int quotient = 12 / 4;  // 3
+    // int remainder = 12 % 4; // 0
     // int x = 9+6;
 
     // int y = 3;
