@@ -3969,9 +3969,6 @@ void initalize_mips_code_vectors()
         vector<string> emit_instruction_args = parameters_emit_instrcution(instr);
         if (leader_labels_map.find(get_operand_string(instr->label)) != leader_labels_map.end())
         {
-            if (get_operand_string(instr->label) == "_f_printf_S0__sig_1") {
-                continue;;
-            }
             MIPSInstruction label_instr(leader_labels_map[get_operand_string(instr->label)]); // Create a label instruction
             mips_code_text.push_back(label_instr);                                            // Emit the label instruction
             spill_registers_after_basic_block(); // Spill registers after the basic block
@@ -4048,6 +4045,10 @@ void print_mips_code()
             cout << get_opcode_name(instr.opcode) << " " << instr.immediate;
             break;
         case (MIPSInstructionType::_LABEL_TYPE):
+            if(instr.label == "_f_printf_S0__sig_1"){
+                continue;
+            }
+            else
             cout << instr.label << ":";
             break;
         case (MIPSInstructionType::_NOP_TYPE):
