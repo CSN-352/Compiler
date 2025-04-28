@@ -899,7 +899,7 @@ MIPSRegister get_float_register_for_operand(const std::string &var, bool for_res
         {
             for (const auto &[reg, vars] : register_descriptor)
             {
-                if (vars.count(var) && vars.count(get_mips_register_name(reg)))
+                if (vars.count(var) && address_descriptor[var].count(get_mips_register_name(reg)))
                 {
                     return reg;
                 }
@@ -1044,12 +1044,17 @@ MIPSRegister get_float_register_for_operand(const std::string &var, bool for_res
 
 std::vector<std::pair<MIPSRegister, std::vector<std::string> > > temp_registers_descriptor;
 
-// Aaditya write for float as well
+
 void spill_temp_registers() {
     temp_registers_descriptor.clear();
 
     std::vector<MIPSRegister> temp_registers = {
         T0, T1, T2, T3, T4, T5, T6, T7, T8, T9
+    };
+
+    std::vector<MIPSRegister> float_temp_registers = {
+        F0, F2, F4, F6, F8, F10, F12, F14, F16, F18,
+        F20, F22, F24, F26, F28, F30
     };
 
     int offset = 0;
@@ -1076,9 +1081,50 @@ void spill_temp_registers() {
             register_descriptor[reg].clear();
         }
     }
+
+    for (auto reg : float_temp_registers) {
+        if (!register_descriptor[reg].empty()) {
+            Symbol* var_sym = current_symbol_table.get_symbol_using_mangled_name(*(register_descriptor[reg].begin()));
+            MIPSRegister reg_next = static_cast<MIPSRegister>(static_cast<int>(reg) + 1);
+            if (var_sym != nullptr) {
+                string stack_offset = get_stack_offset_for_local_variable(var_sym->mangled_name);
+                // Check the type: float or double
+                if (var_sym->type.type_index == PrimitiveTypes::FLOAT_T) {
+                    emit_instruction("store", "FP", *(register_descriptor[reg].begin()), stack_offset);  // store single precision float
+                }
+                else {
+                    emit_instruction("store", "FP", *(register_descriptor[reg].begin()), stack_offset);  // store double precision float
+                }
+                address_descriptor[var_sym->mangled_name].insert("mem");
+            }
+
+            std::vector<std::string> vars;
+            for (const std::string& var : register_descriptor[reg]) {
+                if(var_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+                    address_descriptor[var].erase(get_mips_register_name(reg));
+                }
+                else {
+                    address_descriptor[var].erase(get_mips_register_name(reg));
+                    address_descriptor[var].erase(get_mips_register_name(reg_next));
+                }
+                if (var_sym != nullptr) vars.push_back(var);
+            }
+            if(var_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+                temp_registers_descriptor.push_back({reg, vars});
+            }
+            else {
+                temp_registers_descriptor.push_back({reg, vars});
+                temp_registers_descriptor.push_back({reg_next, vars});
+            }
+
+            register_descriptor[reg].clear();
+            if(var_sym->type.type_index != PrimitiveTypes::FLOAT_T){
+                register_descriptor[reg_next].clear();
+            }
+        }
+    }
 }
 
-// Aaditya write for float as well
 void restore_temp_registers() {
     int total_offset = 0;
 
@@ -1096,6 +1142,15 @@ void restore_temp_registers() {
             register_descriptor[reg].insert(var);
         }
 
+        // Check if reg is an odd float register before loading
+        string reg_name = get_mips_register_name(reg);
+        if (reg_name[0] == 'F') { // It's a floating point register
+            int reg_num = stoi(reg_name.substr(1)); // Extract the number part
+            if (reg_num % 2 != 0) {
+                continue; // Odd float register: skip loading
+            }
+        }
+        
         // Load value from stack offset into register
         emit_instruction("load", var, "FP", offset);
 
@@ -2602,7 +2657,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             emit_instruction("load", src2, src2, "");                                   // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1);               // Get a register for the source 1
             MIPSRegister src2_reg = get_float_register_for_operand(src2);               // Get a register for the source 2
-            MIPSRegister dest_reg = get_float_register_for_operand(dest, true);         // Get a register for the destination
+            MIPSRegister dest_reg = get_float_register_for_operand(dest, true, false);         // Get a register for the destination
             MIPSInstruction add_instr(MIPSOpcode::ADD_S, dest_reg, src1_reg, src2_reg); // Add the two registers
             mips_code_text.push_back(add_instr);                                        // Emit add instruction
             update_for_add(dest, dest_reg);                                             // Update register descriptor and address descriptor
