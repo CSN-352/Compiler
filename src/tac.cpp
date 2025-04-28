@@ -182,7 +182,7 @@ string get_operator_string(TACOperatorType op) {
 }
 
 void print_TAC_instruction(TACInstruction* instruction) {
-    if(instruction->op.type == TACOperatorType::TAC_OPERATOR_CALL) cout<<"calling function: "<<get_operand_string(instruction->arg1)<<endl;
+    // if(instruction->op.type == TACOperatorType::TAC_OPERATOR_CALL) cout<<"calling function: "<<get_operand_string(instruction->arg1)<<endl;
     // if (!instruction||instruction->result->type == TAC_OPERAND_EMPTY) return;
     if(instruction->label->type == TAC_OPERAND_LABEL) cout<<instruction->label->value << ": "; // Print the label of the instruction
     // **Jump Instructions**

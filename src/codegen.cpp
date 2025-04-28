@@ -923,16 +923,16 @@ MIPSRegister get_float_register_for_operand(const std::string &var, bool for_res
         // 1. Already in a register
         if (!for_result)
         {
-            cout<<"float register for: "<<var<<"\n";
+            // cout<<"float register for: "<<var<<"\n";
             for (const auto &[reg, vars] : register_descriptor)
             {
                 if (vars.count(var) && address_descriptor[var].count(get_mips_register_name(reg)))
                 {
-                    cout<<"found in register: "<<get_mips_register_name(reg)<<"\n";
+                    // cout<<"found in register: "<<get_mips_register_name(reg)<<"\n";
                     return reg;
                 }
             }
-            cout<<"not found in register\n";
+            // cout<<"not found in register\n";
         }
         else
         {
