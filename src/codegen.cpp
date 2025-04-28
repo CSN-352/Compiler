@@ -375,21 +375,21 @@ std::string get_opcode_name(MIPSOpcode opcode)
     case MIPSOpcode::BLE:
         return "BLE";
     case MIPSOpcode::C_EQ_S:
-        return "C_EQ_S";
+        return "C.EQ.S";
     case MIPSOpcode::BC1T:
         return "BC1T";
     case MIPSOpcode::C_EQ_D:
-        return "C_EQ_D";
+        return "C.EQ.D";
     case MIPSOpcode::BC1F:
         return "BC1F";
     case MIPSOpcode::C_LT_S:
-        return "C_LT_S";
+        return "C.LT.S";
     case MIPSOpcode::C_LT_D:
-        return "C_LT_D";
+        return "C.LT.D";
     case MIPSOpcode::C_LE_S:
-        return "C_LE_S";
+        return "C.LE.S";
     case MIPSOpcode::C_LE_D:
-        return "C_LE_D";
+        return "C.LE.D";
     case MIPSOpcode::J:
         return "J";
     case MIPSOpcode::JR:
@@ -822,6 +822,8 @@ MIPSRegister get_register_for_operand(const std::string &var, bool for_result)
         return MIPSRegister::FP;
     if (var == "RA")
         return MIPSRegister::RA;
+    if (var == "a0")
+        return MIPSRegister::A0;
 
     // 1. Already in a register
     // if(var.size()>0 && (var[0]=='#' || var[0]=='0') && !for_result){
@@ -2328,6 +2330,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
         }
         // emit_instruction("jal", dest, "", "");
         emit_instruction("addi", "SP", "SP", to_string(function_args_size));
+        emit_instruction("li","a0",to_string(function_args_size+4),"");
         restore_temp_registers();
         if(src1_sym == nullptr) return; // no need to load return value
         if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T)
@@ -2480,7 +2483,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             }
             MIPSRegister src_reg = get_register_for_operand(src2, false);       // Get a register for the source
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg);    // Move int to float register
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg, dest_reg);    // Move int to float register
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr);                               // Emit move instruction
             mips_code_text.push_back(cvt_instr);
@@ -2491,7 +2494,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             emit_instruction("load", src2, src2, "");                           // Load the source value into a register
             MIPSRegister src_reg = get_register_for_operand(src2, false);       // Get a register for the source
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg);    // Move int to float register
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg, dest_reg);    // Move int to float register
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr);                               // Emit move instruction
             mips_code_text.push_back(cvt_instr);                                // Emit conversion instruction
@@ -2502,7 +2505,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             emit_instruction("load", src2 + "_lo", src2 + "_lo", "");             // Load the source value into a register
             MIPSRegister src_reg = get_register_for_operand(src2 + "_lo", false); // Get a register for the source
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true);   // Get a register for the destination
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg);      // Move int to float register
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg, dest_reg);      // Move int to float register
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, dest_reg, dest_reg);   // Convert int to float
             mips_code_text.push_back(move_instr);                                 // Emit move instruction
             mips_code_text.push_back(cvt_instr);                                  // Emit conversion instruction
@@ -2525,7 +2528,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             }
             MIPSRegister src_reg = get_register_for_operand(src2);                    // Get a register for the source
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg);          // Move int to float register
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg, dest_reg);          // Move int to float register
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, dest_reg, dest_reg);       // Convert int to float
             mips_code_text.push_back(move_instr);                                     // Emit move instruction
             mips_code_text.push_back(cvt_instr);
@@ -2536,7 +2539,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             emit_instruction("load", src2, src2, "");                           // Load the source value into a register
             MIPSRegister src_reg = get_register_for_operand(src2);              // Get a register for the source
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg);    // Move int to float register
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg, dest_reg);    // Move int to float register
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr);                               // Emit move instruction
             mips_code_text.push_back(cvt_instr);                                // Emit conversion instruction
@@ -2547,7 +2550,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             emit_instruction("load", src2 + "_lo", src2 + "_lo", "");           // Load the source value into a register
             MIPSRegister src_reg = get_register_for_operand(src2 + "_lo");      // Get a register for the source
             MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-            MIPSInstruction move_instr(MIPSOpcode::MTC1, dest_reg, src_reg);    // Move int to float register
+            MIPSInstruction move_instr(MIPSOpcode::MTC1, src_reg, dest_reg);    // Move int to float register
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, dest_reg, dest_reg); // Convert int to float
             mips_code_text.push_back(move_instr);                               // Emit move instruction
             mips_code_text.push_back(cvt_instr);                                // Emit conversion instruction
@@ -3434,7 +3437,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             emit_instruction("load", src1, src1, "");                           // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1);       // Get a register for the source 1
             MIPSRegister temp_reg = get_float_register_for_operand("temp", true);     // Get a register for the zero value
-            MIPSInstruction move_zero_instr(MIPSOpcode::MTC1, temp_reg, MIPSRegister::ZERO); // Move zero to the temp register
+            MIPSInstruction move_zero_instr(MIPSOpcode::MTC1, MIPSRegister::ZERO, temp_reg); // Move zero to the temp register
             mips_code_text.push_back(move_zero_instr);                               // Emit move zero instruction
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_S_W, temp_reg, temp_reg);         // Convert the zero value to float
             mips_code_text.push_back(cvt_instr);                                       // Emit convert instruction
@@ -3448,7 +3451,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             emit_instruction("load", src1, src1, "");                                    // Load the source value into a register
             MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true);   // Get a register for the source 1
             MIPSRegister temp_reg = get_float_register_for_operand("temp", true, true); // Get a register for the zero value
-            MIPSInstruction move_zero_instr(MIPSOpcode::MTC1, temp_reg, MIPSRegister::ZERO); // Move zero to the temp register
+            MIPSInstruction move_zero_instr(MIPSOpcode::MTC1, MIPSRegister::ZERO, temp_reg); // Move zero to the temp register
             mips_code_text.push_back(move_zero_instr);                                    // Emit move zero instruction
             MIPSInstruction cvt_instr(MIPSOpcode::CVT_D_W, temp_reg, temp_reg);            // Convert the zero value to double
             mips_code_text.push_back(cvt_instr);                                          // Emit convert instruction
