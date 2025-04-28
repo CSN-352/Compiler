@@ -2358,6 +2358,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "function_return")
     {
+        if(dest_sym == nullptr) return;
         if (dest_sym->type.type_index <= PrimitiveTypes::LONG_T)
         {
             // Integers

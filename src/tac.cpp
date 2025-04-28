@@ -294,7 +294,8 @@ void fix_labels_temps(){
     int label_ct = 1;
 
     for(int i=0;i<TAC_CODE.size();i++){
-        // if (TAC_CODE[i]->result->type == TAC_OPERAND_EMPTY ) TAC_CODE.erase(TAC_CODE.begin() + i); // Remove uninitialized entries
+        TACInstruction* instr = TAC_CODE[i];
+        if (TAC_CODE[i]->result->type == TAC_OPERAND_EMPTY && instr->flag!=0) TAC_CODE.erase(TAC_CODE.begin() + i); // Remove uninitialized entries
         if(TAC_CODE[i]->label->type == TAC_OPERAND_LABEL && TAC_CODE[i]->label->value != ""){
             if(labels.find(TAC_CODE[i]->label->value) == labels.end()){
                 labels[TAC_CODE[i]->label->value] = label_ct;
