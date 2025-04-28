@@ -335,8 +335,22 @@
 //     int* x;
 //     int* y = x+1;
 // }
+int a = 1;
 
-int add(int a, int b) {
+short add(short a, short b) {
     return a + b;
+}
+
+int sub(int a, int b) {
+    return a - b;
+}
+
+int main(){
+    int a = 1;
+    int b = 2;
+    int x = add(1,2);
+    int y = sub(a,b);
+    breakpoint_global;
+    return 0;
 }
 

@@ -458,35 +458,6 @@ bool check_if_variable_in_register(const std::string &var)
     return false;
 }
 
-void update_descriptors_for_function_call(string function_name)
-{
-    Symbol *func_sym = current_symbol_table.get_symbol_using_mangled_name(function_name);
-    int function_args_size = 0;
-    for(auto arg : func_sym->type.arg_types){
-        function_args_size += arg.get_size();
-    }
-    int function_local_variable_size = func_sym->function_definition->size;
-    int total_function_size = function_local_variable_size + function_args_size;
-    for (auto entry : current_symbol_table.table)
-    {
-        for (auto sym : entry.second)
-        {
-            if (sym->scope > func_sym->scope)
-            {
-                if (sym->offset >= function_args_size)
-                {                                                                                                        // function is a local variable
-                    address_descriptor[sym->mangled_name].insert("mem");                                                 // Add to memory
-                }
-                else if (sym->offset < function_args_size)
-                {                                                                                                        // function is an argument
-                    address_descriptor[sym->mangled_name].insert("mem");                                                 // Add to memory
-                    stack_address_descriptor[sym->mangled_name] = std::to_string(total_function_size - sym->offset + 4); // Add to stack address descriptor
-                }
-            }
-        }
-    }
-}
-
 void set_offset_for_function_args(string func){
 
     Symbol *func_sym = current_symbol_table.get_symbol_using_mangled_name(func);
@@ -494,11 +465,13 @@ void set_offset_for_function_args(string func){
     for(auto arg : func_sym->type.arg_types){
         function_args_size += arg.get_size();
     }
-    cout<<"function_args_size "<<function_args_size<<endl;
     int function_local_variable_size = func_sym->function_definition->size;
     int total_function_size = function_local_variable_size + function_args_size;
+    cout<<"Function Name: "<<func<<endl;
+    cout<<"Total Function Size: "<<total_function_size<<endl;
+    cout<<"Function Local Variable Size: "<<function_local_variable_size<<endl;
 
-    vector<pair<int,string> > args;
+    // vector<pair<int,string> > args;
 
     for (auto entry : current_symbol_table.table)
     {
@@ -508,20 +481,32 @@ void set_offset_for_function_args(string func){
             {
                 if (sym->offset < function_args_size)
                 {
-                    args.push_back(make_pair(sym->offset,sym->mangled_name));
+                    stack_address_descriptor[sym->mangled_name] = std::to_string(total_function_size - sym->offset + 8 - sym->type.get_size()); // Add to stack address descriptor
+                    address_descriptor[sym->mangled_name].insert("mem"); // Add to address descriptor
+                }
+                else{
+                    stack_address_descriptor[sym->mangled_name] = std::to_string(total_function_size - sym->offset - sym->type.get_size()); // Add to stack address descriptor  
                 }
                 
             }
         }
     }
 
-    sort(args.begin(),args.end());
-    
-    int base_offset = 0;
-    for(int i = args.size()-1;i >= 0;i--){
-        stack_address_descriptor[args[i].second] = base_offset;
-        base_offset += args[i].first;
-    }
+    // for (auto entry : current_symbol_table.table)
+    // {
+    //     for (auto sym : entry.second)
+    //     {
+    //         if (sym->scope > func_sym->scope)
+    //         {
+    //             cout<<"Address Descriptor: "<<sym->mangled_name<<endl;
+    //             cout<<"Address Descriptor Offset: "<<stack_address_descriptor[sym->mangled_name]<<endl;
+                
+    //         }
+    //     }
+    // }
+
+    // sort(args.begin(),args.end());
+
 }
 
 void update_for_load(MIPSRegister reg, const std::string &var, bool is_double)
@@ -762,6 +747,34 @@ void spill_float_register(MIPSRegister reg, bool is_double)
             }
         }
     }
+}
+
+void spill_registers_at_function_end()
+{
+    // Emit store instruction (ST) for each variable in the register
+    for (const auto &[reg, vars] : register_descriptor)
+    {
+        for (const auto &v : vars)
+        {
+            if (address_descriptor[v].count("mem"))
+            {
+                address_descriptor[v].clear();
+                address_descriptor[v].insert("mem");
+                continue;
+            }
+            else
+            {
+                Symbol *var_sym = current_symbol_table.get_symbol_using_mangled_name(v);
+                if(var_sym != nullptr && var_sym->scope == 0){ // store global variables only
+                    emit_instruction("store", v, v, "");
+                }
+                address_descriptor[v].clear();
+                address_descriptor[v].insert("mem");
+            }
+        }
+    }
+    // Clear the register descriptor after spilling all its variables
+    register_descriptor.clear();
 }
 
 // Modify this so that register to be spilled is chosen cyclicly
@@ -1029,9 +1042,9 @@ MIPSRegister get_float_register_for_operand(const std::string &var, bool for_res
     }
 }
 
-std::vector<std::pair<std::pair<MIPSRegister, std::string>, std::vector<std::string> > > temp_registers_descriptor;
+std::vector<std::pair<MIPSRegister, std::vector<std::string> > > temp_registers_descriptor;
 
-
+// Aaditya write for float as well
 void spill_temp_registers() {
     temp_registers_descriptor.clear();
 
@@ -1043,40 +1056,39 @@ void spill_temp_registers() {
 
     for (auto reg : temp_registers) {
         if (!register_descriptor[reg].empty()) {
-            emit_instruction("subi", "SP", "SP", "4");
-            emit_instruction("store", get_mips_register_name(reg), "SP", "0");
+            Symbol* var_sym = current_symbol_table.get_symbol_using_mangled_name(*(register_descriptor[reg].begin()));
+            if (var_sym != nullptr) {
+                string offset = get_stack_offset_for_local_variable(var_sym->mangled_name);
+                emit_instruction("store", "FP", *(register_descriptor[reg].begin()), offset);
+                address_descriptor[var_sym->mangled_name].insert("mem");
+            }
 
             std::vector<std::string> vars;
             for (const std::string& var : register_descriptor[reg]) {
                 address_descriptor[var].erase(get_mips_register_name(reg));
-                vars.push_back(var);
+                if(var_sym != nullptr) vars.push_back(var);
             }
 
             std::string offset_str = std::to_string(offset);
-            temp_registers_descriptor.push_back({{reg, offset_str}, vars});
+            temp_registers_descriptor.push_back({reg, vars});
 
             offset += 4;
             register_descriptor[reg].clear();
         }
     }
-
-    offset = 0;
-    for(int index = temp_registers_descriptor.size()-1;index>=0;index--){
-        temp_registers_descriptor[index].first.second = to_string(offset);
-        offset+=4;
-    }
 }
 
+// Aaditya write for float as well
 void restore_temp_registers() {
     int total_offset = 0;
 
     for (const auto& entry : temp_registers_descriptor) {
-        MIPSRegister reg = entry.first.first;
-        const std::string& offset = entry.first.second;
+        MIPSRegister reg = entry.first; // Get the register to restore
+        if(entry.second.empty()) continue; // Skip if no variables to restore
+        string var = *(entry.second.begin()); // Get the variable name to restore
+        string offset = get_stack_offset_for_local_variable(var); // Get the offset for the variable
         const std::vector<std::string>& vars = entry.second;
-
-        // Load value from stack offset into register
-        emit_instruction("load", get_mips_register_name(reg), "SP", offset);
+        cout<<"Restoring temp register: "<<get_mips_register_name(reg)<<" for variable: "<<var<<endl;
 
         for (const std::string& var : vars) {
             // Restore address descriptor
@@ -1084,13 +1096,9 @@ void restore_temp_registers() {
             register_descriptor[reg].insert(var);
         }
 
-        // Keep track of how much stack space we used
-        total_offset += 4;
-    }
+        // Load value from stack offset into register
+        emit_instruction("load", var, "FP", offset);
 
-    // Deallocate the stack space
-    if (total_offset > 0) {
-        emit_instruction("addi", "SP", "SP", std::to_string(total_offset));
     }
 
     // Clear the temp descriptor after restoring
@@ -1362,6 +1370,8 @@ std::string get_stack_offset_for_local_variable(std::string var)
 {
     if (stack_address_descriptor.find(var) != stack_address_descriptor.end())
     {
+        cout<<"returning stack address for "<<var<<endl;
+        cout<<stack_address_descriptor[var]<<endl;
         return stack_address_descriptor[var];
     }
     return "0"; // Default case, return 0 if not found
@@ -1465,12 +1475,91 @@ void emit_instruction(string op, string dest, string src1, string src2)
                 update_for_load(dest_reg, dest, true);                                    // Update register descriptor and address descriptor
             }
         }
-        else if (src1 == "FP" || src1 == "SP" || src1 == "GP")
+        else if (src1 == "FP" || src1 == "SP" || src1 == "RA")
         { // local stack variable
-            MIPSRegister src1_reg = get_register_for_operand(src1);
-            MIPSRegister dest_reg = get_register_for_operand(dest, true);
-            MIPSInstruction load_instr(MIPSOpcode::LW, dest_reg, src2, src1_reg);
-            mips_code_text.push_back(load_instr);
+            MIPSRegister src1_reg;
+            if(src1 == "FP") src1_reg = MIPSRegister::FP;
+            else if(src1 == "SP") src1_reg = MIPSRegister::SP;
+            else if(src1 == "RA") src1_reg = MIPSRegister::RA;
+            if(dest_sym == nullptr){
+                MIPSRegister dest_reg;                       // Get a register for the destination
+                if(dest == "FP") dest_reg = MIPSRegister::FP; // Get a register for the destination
+                else if(dest == "SP") dest_reg = MIPSRegister::SP; // Get a register for the destination
+                else if(dest == "RA") dest_reg = MIPSRegister::RA; // Get a register for the destination
+                MIPSInstruction load_instr(MIPSOpcode::LW, dest_reg, src2, src1_reg); // Load word from memory
+                mips_code_text.push_back(load_instr);                        // Emit load instruction
+                return;
+            }
+            if(dest_sym->type.is_pointer || dest_sym->type.is_function){ // load address of pointer variable/object/function
+                emit_instruction("la", dest, src1, ""); // Load address of src1 into dest
+                return;
+            }
+            else if(dest_sym->type.type_index == PrimitiveTypes::U_CHAR_T)
+            {
+                MIPSRegister dest_reg = get_register_for_operand(dest, true);                         // Get a register for the destination
+                string src1_offset = get_stack_offset_for_local_variable(dest);                       // Get the offset for the source variable
+                MIPSInstruction load_instr(MIPSOpcode::LBU, dest_reg, src1_offset, src1_reg); // Load byte from memory
+                mips_code_text.push_back(load_instr);                                                 // Emit load instruction
+                update_for_load(dest_reg, dest);                                                      // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::CHAR_T)
+            {
+                MIPSRegister dest_reg = get_register_for_operand(dest, true);                        // Get a register for the destination
+                string src1_offset = get_stack_offset_for_local_variable(dest);                      // Get the offset for the source variable
+                MIPSInstruction load_instr(MIPSOpcode::LB, dest_reg, src1_offset, src1_reg); // Load byte from memory
+                mips_code_text.push_back(load_instr);                                                // Emit load instruction
+                update_for_load(dest_reg, dest);                                                     // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::U_SHORT_T)
+            {
+                MIPSRegister dest_reg = get_register_for_operand(dest, true);                         // Get a register for the destination
+                string src1_offset = get_stack_offset_for_local_variable(dest);                       // Get the offset for the source variable
+                MIPSInstruction load_instr(MIPSOpcode::LHU, dest_reg, src1_offset, src1_reg); // Load halfword from memory
+                mips_code_text.push_back(load_instr);                                                 // Emit load instruction
+                update_for_load(dest_reg, dest);                                                      // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::SHORT_T)
+            {
+                MIPSRegister dest_reg = get_register_for_operand(dest, true);                        // Get a register for the destination
+                string src1_offset = get_stack_offset_for_local_variable(dest);                      // Get the offset for the source variable
+                MIPSInstruction load_instr(MIPSOpcode::LH, dest_reg, src1_offset, src1_reg); // Load halfword from memory
+                mips_code_text.push_back(load_instr);                                                // Emit load instruction
+                update_for_load(dest_reg, dest);                                                     // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index >= PrimitiveTypes::U_INT_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_T)
+            {
+                MIPSRegister dest_reg = get_register_for_operand(dest, true);                        // Get a register for the destination
+                string src1_offset = get_stack_offset_for_local_variable(dest);                      // Get the offset for the source variable
+                MIPSInstruction load_instr(MIPSOpcode::LW, dest_reg, src1_offset, src1_reg); // Load word from memory
+                mips_code_text.push_back(load_instr);                                                // Emit load instruction
+                update_for_load(dest_reg, dest);                                                     // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T || dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T)
+            {
+                MIPSRegister dest_reg_hi = get_register_for_operand(dest + "_hi", true);                   // Get a register for the destination
+                MIPSRegister dest_reg_lo = get_register_for_operand(dest + "_lo", true);                   // Get a register for the destination
+                string src1_offset = get_stack_offset_for_local_variable(dest);                            // Get the offset for the source variable
+                MIPSInstruction load_instr_hi(MIPSOpcode::LW, dest_reg_hi, src1_offset, src1_reg); // Load upper 32 bits of long long from memory
+                MIPSInstruction load_instr_lo(MIPSOpcode::LW, dest_reg_lo, to_string(stoi(src1_offset) + 4), src1_reg); // Load lower 32 bits of long long from memory
+                mips_code_text.push_back(load_instr_hi);                                                   // Emit load instruction for upper 32 bits
+                mips_code_text.push_back(load_instr_lo);                                                   // Emit load instruction for lower 32 bits
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::FLOAT_T)
+            {
+                MIPSRegister dest_reg = get_float_register_for_operand(dest, true);                    // Get a register for the destination
+                string src1_offset = get_stack_offset_for_local_variable(dest);                        // Get the offset for the source variable
+                MIPSInstruction load_instr(MIPSOpcode::LWC1, dest_reg, src1_offset, src1_reg); // Load float from memory
+                mips_code_text.push_back(load_instr);                                                  // Emit load instruction for float
+                update_for_load(dest_reg, dest);                                                       // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T)
+            {
+                MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true); // Get a register for the destination
+                string src1_offset = get_stack_offset_for_local_variable(dest);           // Get the offset for the source variable
+                MIPSInstruction load_instr(MIPSOpcode::LDC1, dest_reg, src1_offset, src1_reg); // Load long double from memory
+                mips_code_text.push_back(load_instr);                                        // Emit load instruction for long double
+                update_for_load(dest_reg, dest, true);                                       // Update register descriptor and address descriptor
+            }
         }
         else if (src1_sym != nullptr)
         { // local stack variable
@@ -1524,7 +1613,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
                 MIPSRegister dest_reg_lo = get_register_for_operand(dest + "_lo", true);                   // Get a register for the destination
                 string src1_offset = get_stack_offset_for_local_variable(src1);                            // Get the offset for the source variable
                 MIPSInstruction load_instr_hi(MIPSOpcode::LW, dest_reg_hi, src1_offset, MIPSRegister::FP); // Load upper 32 bits of long long from memory
-                MIPSInstruction load_instr_lo(MIPSOpcode::LW, dest_reg_lo, src1_offset, MIPSRegister::FP); // Load lower 32 bits of long long from memory
+                MIPSInstruction load_instr_lo(MIPSOpcode::LW, dest_reg_lo, to_string(stoi(src1_offset)+4), MIPSRegister::FP); // Load lower 32 bits of long long from memory
                 mips_code_text.push_back(load_instr_hi);                                                   // Emit load instruction for upper 32 bits
                 mips_code_text.push_back(load_instr_lo);                                                   // Emit load instruction for lower 32 bits
                 update_for_load(dest_reg_hi, dest + "_hi");                                                // Update register descriptor and address descriptor
@@ -1949,42 +2038,71 @@ void emit_instruction(string op, string dest, string src1, string src2)
     {
         if (dest_sym != nullptr)
         {
-            if (dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T)
-            {
-                MIPSRegister src1_reg = get_register_for_operand(src1);           // Get a register for the source
+            if(src1 == "V0" || src1 == "V1"){
+                MIPSRegister src1_reg;
+                if(src1 == "V0")
+                    src1_reg = MIPSRegister::V0;
+                else 
+                    src1_reg = MIPSRegister::V1;
                 MIPSRegister dest_reg = get_register_for_operand(dest, true);     // Get a register for the destination
                 MIPSInstruction move_instr(MIPSOpcode::MOVE, dest_reg, src1_reg); // Move instruction
                 mips_code_text.push_back(move_instr);                             // Emit move instruction
                 update_for_load(dest_reg, dest);                                  // Update register descriptor and address descriptor
             }
-            else if (dest_sym->type.type_index < PrimitiveTypes::FLOAT_T)
-            {
-                MIPSRegister src1_reg_hi = get_register_for_operand(src1 + "_hi");         // Get a register for the upper 32 bits of the source
-                MIPSRegister src1_reg_lo = get_register_for_operand(src1 + "_lo");         // Get a register for the lower 32 bits of the source
-                MIPSRegister dest_reg_hi = get_register_for_operand(dest + "_hi", true);   // Get a register for the upper 32 bits of the destination
-                MIPSRegister dest_reg_lo = get_register_for_operand(dest + "_lo", true);   // Get a register for the lower 32 bits of the destination
-                MIPSInstruction move_instr_hi(MIPSOpcode::MOVE, dest_reg_hi, src1_reg_hi); // Move instruction for upper 32 bits
-                MIPSInstruction move_instr_lo(MIPSOpcode::MOVE, dest_reg_lo, src1_reg_lo); // Move instruction for lower 32 bits
-                mips_code_text.push_back(move_instr_hi);                                   // Emit move instruction for upper 32 bits
-                mips_code_text.push_back(move_instr_lo);                                   // Emit move instruction for lower 32 bits
-                update_for_load(dest_reg_hi, dest + "_hi");                                // Update register descriptor and address descriptor
-                update_for_load(dest_reg_lo, dest + "_lo");                                // Update register descriptor and address descriptor
-            }
-            else if (dest_sym->type.type_index == PrimitiveTypes::FLOAT_T)
-            {
-                MIPSRegister src1_reg = get_float_register_for_operand(src1);       // Get a register for the source
+            else if(src1 == "F0"){
+                MIPSRegister src1_reg = MIPSRegister::F0; // Get a register for the source
                 MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
-                MIPSInstruction move_instr(MIPSOpcode::MOVS, dest_reg, src1_reg);   // Move instruction for float
-                mips_code_text.push_back(move_instr);                               // Emit move instruction for float
-                update_for_load(dest_reg, dest);                                    // Update register descriptor and address descriptor
+                if(src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T){
+                    dest_reg = get_float_register_for_operand(dest, true, true);  // Get a register for the destination
+                    MIPSInstruction move_instr(MIPSOpcode::MOVD, dest_reg, src1_reg);   // Move instruction for double
+                    mips_code_text.push_back(move_instr);                               // Emit move instruction for double
+                    update_for_load(dest_reg, dest, true);                              // Update register descriptor and address descriptor
+                }
+                else if(src1_sym->type.type_index == PrimitiveTypes::FLOAT_T){
+                    dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
+                    MIPSInstruction move_instr(MIPSOpcode::MOVS, dest_reg, src1_reg);   // Move instruction for float
+                    mips_code_text.push_back(move_instr);                               // Emit move instruction for float
+                    update_for_load(dest_reg, dest);                                    // Update register descriptor and address descriptor
+                }                                 
             }
-            else if (dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T)
-            {
-                MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source
-                MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true);  // Get a register for the destination
-                MIPSInstruction move_instr(MIPSOpcode::MOVD, dest_reg, src1_reg);          // Move instruction for double
-                mips_code_text.push_back(move_instr);                                      // Emit move instruction for double
-                update_for_load(dest_reg, dest, true);                                     // Update register descriptor and address descriptor
+            else{
+                if (dest_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T)
+                {
+                    MIPSRegister src1_reg = get_register_for_operand(src1);           // Get a register for the source
+                    MIPSRegister dest_reg = get_register_for_operand(dest, true);     // Get a register for the destination
+                    MIPSInstruction move_instr(MIPSOpcode::MOVE, dest_reg, src1_reg); // Move instruction
+                    mips_code_text.push_back(move_instr);                             // Emit move instruction
+                    update_for_load(dest_reg, dest);                                  // Update register descriptor and address descriptor
+                }
+                else if (dest_sym->type.type_index < PrimitiveTypes::FLOAT_T)
+                {
+                    MIPSRegister src1_reg_hi = get_register_for_operand(src1 + "_hi");         // Get a register for the upper 32 bits of the source
+                    MIPSRegister src1_reg_lo = get_register_for_operand(src1 + "_lo");         // Get a register for the lower 32 bits of the source
+                    MIPSRegister dest_reg_hi = get_register_for_operand(dest + "_hi", true);   // Get a register for the upper 32 bits of the destination
+                    MIPSRegister dest_reg_lo = get_register_for_operand(dest + "_lo", true);   // Get a register for the lower 32 bits of the destination
+                    MIPSInstruction move_instr_hi(MIPSOpcode::MOVE, dest_reg_hi, src1_reg_hi); // Move instruction for upper 32 bits
+                    MIPSInstruction move_instr_lo(MIPSOpcode::MOVE, dest_reg_lo, src1_reg_lo); // Move instruction for lower 32 bits
+                    mips_code_text.push_back(move_instr_hi);                                   // Emit move instruction for upper 32 bits
+                    mips_code_text.push_back(move_instr_lo);                                   // Emit move instruction for lower 32 bits
+                    update_for_load(dest_reg_hi, dest + "_hi");                                // Update register descriptor and address descriptor
+                    update_for_load(dest_reg_lo, dest + "_lo");                                // Update register descriptor and address descriptor
+                }
+                else if (dest_sym->type.type_index == PrimitiveTypes::FLOAT_T)
+                {
+                    MIPSRegister src1_reg = get_float_register_for_operand(src1);       // Get a register for the source
+                    MIPSRegister dest_reg = get_float_register_for_operand(dest, true); // Get a register for the destination
+                    MIPSInstruction move_instr(MIPSOpcode::MOVS, dest_reg, src1_reg);   // Move instruction for float
+                    mips_code_text.push_back(move_instr);                               // Emit move instruction for float
+                    update_for_load(dest_reg, dest);                                    // Update register descriptor and address descriptor
+                }
+                else if (dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T)
+                {
+                    MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source
+                    MIPSRegister dest_reg = get_float_register_for_operand(dest, true, true);  // Get a register for the destination
+                    MIPSInstruction move_instr(MIPSOpcode::MOVD, dest_reg, src1_reg);          // Move instruction for double
+                    mips_code_text.push_back(move_instr);                                      // Emit move instruction for double
+                    update_for_load(dest_reg, dest, true);                                     // Update register descriptor and address descriptor
+                }
             }
         }
         else if(dest == "V0" || dest == "V1"){
@@ -2028,15 +2146,16 @@ void emit_instruction(string op, string dest, string src1, string src2)
         set_offset_for_function_args(dest);
         int offset = func->function_definition->size + 8;
         cout<<"Function args size: "<<function_args_size<<endl;
-        update_descriptors_for_function_call(dest); // Update register descriptor and address descriptor for function call
+        // update_descriptors_for_function_call(dest); // Update register descriptor and address descriptor for function call
         emit_instruction("subi", "SP", "SP", to_string(offset));      // Adjust stack pointer for function frame
-        emit_instruction("store", "RA", "SP", to_string(offset - 4)); // Store return address
-        emit_instruction("store", "FP", "SP", to_string(offset - 8)); // Store old frame pointer
+        emit_instruction("store", "SP", "RA", to_string(offset - 4)); // Store return address
+        emit_instruction("store", "SP", "FP", to_string(offset - 8)); // Store old frame pointer
         emit_instruction("move", "FP", "SP", "");
         function_args_size = 0;
     }
     else if (op == "function_end")
     {
+        spill_registers_at_function_end(); // Spill registers at function end
         Symbol *func = current_symbol_table.get_symbol_using_mangled_name(dest);
         erase_function_symbol_table(dest);
         int offset = func->function_definition->size + 8;
@@ -2046,17 +2165,14 @@ void emit_instruction(string op, string dest, string src1, string src2)
         emit_instruction("jr", "RA", "", "");
     }
     else if (op == "function_param")
-    {
-        if(function_args_size == 0) {
-            //spill_temp_registers();
-        }    
+    {   
 
         Symbol *dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
         if (dest_sym->type.type_index >= PrimitiveTypes::U_CHAR_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_T)
         {
             // Integers
-            function_args_size += 4;
-            emit_instruction("subi", "SP", "SP", to_string(4));
+            function_args_size += dest_sym->type.get_size();
+            emit_instruction("subi", "SP", "SP", to_string(dest_sym->type.get_size()));
             MIPSRegister dest_reg = get_register_for_operand(dest);
             cout<<"inside function param"<<get_mips_register_name(dest_reg)<<endl;
             emit_instruction("store", "SP", dest, "0");
@@ -2066,7 +2182,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
         {
             // long long
             function_args_size += 8;
-            emit_instruction("subi", "SP", "SP", to_string(8));
+            emit_instruction("subi", "SP", "SP", "8");
             MIPSRegister dest_reg = get_register_for_operand(dest + "_hi");
             emit_instruction("store", "SP", dest, "4");
             dest_reg = get_register_for_operand(dest + "_lo");
@@ -2078,7 +2194,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
         {
             // float
             function_args_size += 4;
-            emit_instruction("subi", "SP", "SP", to_string(4));
+            emit_instruction("subi", "SP", "SP", "4");
             MIPSRegister dest_reg = get_float_register_for_operand(dest);
             emit_instruction("store","SP",dest, "0");
             // function_params.push_back(make_pair(dest,(function_args_size)));
@@ -2086,7 +2202,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
         else if (dest_sym->type.type_index >= PrimitiveTypes::DOUBLE_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_DOUBLE_T)
         {
             function_args_size += 8;
-            emit_instruction("subi", "SP", "SP", to_string(8));
+            emit_instruction("subi", "SP", "SP", "8");
             MIPSRegister dest_reg = get_float_register_for_operand(dest);
             emit_instruction("store", "SP",dest, "0");
             // function_params.push_back(make_pair(dest,(function_args_size)));
@@ -2094,16 +2210,40 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "function_call")
     {
+        spill_temp_registers(); // Spill temporary registers before function call
         // add a check for function pointer if dest name (not mangles name) starts with '#';
-        // if(dest_sym->name[0] == '#'){
-        //     MIPSRegister dest_reg = get_register_for_operand(dest)
-        //     emit_instruction("jalr",get_mips_register_name(dest_reg),"","");
-        // } else{
-        //    emit_instruction("jal", dest, "", "");
-        // }
-        emit_instruction("jal", dest, "", "");
+        if(dest_sym->name[0] == '#'){
+            emit_instruction("jalr",dest,"","");
+        } 
+        else{
+           emit_instruction("jal", dest, "", "");
+        }
+        // emit_instruction("jal", dest, "", "");
         emit_instruction("addi", "SP", "SP", to_string(function_args_size));
-        //restore_temp_registers();
+        restore_temp_registers();
+        if(src1_sym == nullptr) return; // no need to load return value
+        if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T)
+        {
+            MIPSRegister dest_reg = get_register_for_operand(src1, true); // Get a register for the destination
+            emit_instruction("move", src1, "V0", "");              // Move instruction
+        }
+        else if (src1_sym->type.type_index < PrimitiveTypes::FLOAT_T)
+        {
+            MIPSRegister dest_reg_hi = get_register_for_operand(src1 + "_hi", true); // Get a register for the upper 32 bits of the destination
+            MIPSRegister dest_reg_lo = get_register_for_operand(src1 + "_lo", true); // Get a register for the lower 32 bits of the destination
+            emit_instruction("move", src1 + "_hi", "V0", "");                      // Move instruction for upper 32 bits
+            emit_instruction("move", src1 + "_lo", "V1", "");                      // Move instruction for lower 32 bits
+        }
+        else if (src1_sym->type.type_index == PrimitiveTypes::FLOAT_T)
+        {
+            MIPSRegister dest_reg = get_float_register_for_operand(src1, true); // Get a register for the destination
+            emit_instruction("move", src1, "F0", "");                          // Move instruction for float
+        }
+        else if (src1_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src1_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T)
+        {
+            MIPSRegister dest_reg = get_float_register_for_operand(src1, true, true); // Get a register for the destination
+            emit_instruction("move", src1, "F0", "");                              // Move instruction for double
+        }
     }
     else if (op == "function_return")
     {
@@ -3070,11 +3210,15 @@ void emit_instruction(string op, string dest, string src1, string src2)
     {
         MIPSInstruction jump_instr(MIPSOpcode::J, dest); // Unconditional jump instruction
         mips_code_text.push_back(jump_instr); // Emit jump instruction
+        MIPSInstruction nop_instr(MIPSOpcode::NOP); // No operation instruction
+        mips_code_text.push_back(nop_instr);       // Emit nop instruction
     }
     else if (op == "jal")
     {
         MIPSInstruction jump_instr(MIPSOpcode::JAL, dest); // Jump and link instruction
         mips_code_text.push_back(jump_instr);              // Emit jump instruction
+        MIPSInstruction nop_instr(MIPSOpcode::NOP);        // No operation instruction
+        mips_code_text.push_back(nop_instr);              // Emit nop instruction
     }
     else if (op == "sltu")
     {
@@ -3084,6 +3228,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
         MIPSRegister src2_reg = get_register_for_operand(src2);                     // Get a register for the source 2
         MIPSRegister dest_reg = get_register_for_operand(dest, true);               // Get a register for the destination
         MIPSInstruction sltu_instr(MIPSOpcode::SLTU, dest_reg, src1_reg, src2_reg); // Set less than unsigned instruction
+        mips_code_text.push_back(sltu_instr);                                       // Emit sltu instruction
+        update_for_add(dest, dest_reg);                                             // Update register descriptor and address descriptor
     }
     else if (op == "beq")
     {
@@ -3122,6 +3268,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
             MIPSInstruction jump_instr(MIPSOpcode::BC1T, dest);                        // Branch if equal instruction
             mips_code_text.push_back(jump_instr);                                      // Emit jump instruction
         }
+        MIPSInstruction nop_instr(MIPSOpcode::NOP); // No operation instruction
+        mips_code_text.push_back(nop_instr);       // Emit nop instruction
     }
     else if (op == "bnez")
     {
@@ -3164,6 +3312,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest);                          // Branch if not equal to zero instruction
             mips_code_text.push_back(jump_instr);                                        // Emit jump instruction
         }
+        MIPSInstruction nop_instr(MIPSOpcode::NOP); // No operation instruction
+        mips_code_text.push_back(nop_instr);       // Emit nop instruction
     }
     else if (op == "bne")
     {
@@ -3202,6 +3352,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest);                        // Branch if not equal instruction
             mips_code_text.push_back(jump_instr);                                      // Emit jump instruction
         }
+        MIPSInstruction nop_instr(MIPSOpcode::NOP); // No operation instruction
+        mips_code_text.push_back(nop_instr);       // Emit nop instruction
     }
     else if (op == "blt")
     {
@@ -3240,6 +3392,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
             MIPSInstruction jump_instr(MIPSOpcode::BC1T, dest);                        // Branch if less than instruction
             mips_code_text.push_back(jump_instr);                                      // Emit jump instruction
         }
+        MIPSInstruction nop_instr(MIPSOpcode::NOP); // No operation instruction
+        mips_code_text.push_back(nop_instr);       // Emit nop instruction
     }
     else if (op == "ble")
     {
@@ -3278,6 +3432,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
             MIPSInstruction jump_instr(MIPSOpcode::BC1T, dest);                        // Branch if less than or equal to instruction
             mips_code_text.push_back(jump_instr);                                      // Emit jump instruction
         }
+        MIPSInstruction nop_instr(MIPSOpcode::NOP); // No operation instruction
+        mips_code_text.push_back(nop_instr);       // Emit nop instruction
     }
     else if (op == "bgt")
     {
@@ -3316,6 +3472,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest);                        // Branch if greater than instruction
             mips_code_text.push_back(jump_instr);                                      // Emit jump instruction
         }
+        MIPSInstruction nop_instr(MIPSOpcode::NOP); // No operation instruction
+        mips_code_text.push_back(nop_instr);       // Emit nop instruction
     }
     else if (op == "bge")
     {
@@ -3354,6 +3512,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
             MIPSInstruction jump_instr(MIPSOpcode::BC1F, dest);                        // Branch if greater than or equal to instruction
             mips_code_text.push_back(jump_instr);                                      // Emit jump instruction
         }
+        MIPSInstruction nop_instr(MIPSOpcode::NOP); // No operation instruction
+        mips_code_text.push_back(nop_instr);       // Emit nop instruction
     }
 }
 
@@ -3543,6 +3703,7 @@ vector<string> parameters_emit_instrcution(TACInstruction *instr)
     else if (instr->op.type == TACOperatorType::TAC_OPERATOR_CALL)
     {
         emit_instruction_args[0] = "function_call";
+        emit_instruction_args[2] = get_operand_string(instr->result);
         emit_instruction_args[1] = get_operand_string(instr->arg1);
     }
     else if (instr->op.type == TACOperatorType::TAC_OPERATOR_RETURN)
@@ -3624,14 +3785,36 @@ vector<string> parameters_emit_instrcution(TACInstruction *instr)
 
 void initalize_mips_code_vectors()
 {
+    Symbol* func_sym = nullptr; // Initialize the function symbol for function calls
+    int arg_count = 0; // Initialize the argument count for function calls
     for (int instr_no = 0; instr_no < TAC_CODE.size(); instr_no++)
     {
         TACInstruction *instr = TAC_CODE[instr_no];
+        if(instr->op.type == TACOperatorType::TAC_OPERATOR_PARAM && func_sym == nullptr){
+            for(int param_itr = instr_no; param_itr < TAC_CODE.size(); param_itr++){
+                if(TAC_CODE[param_itr]->op.type == TACOperatorType::TAC_OPERATOR_CALL){
+                    string func = TAC_CODE[param_itr]->result->value;
+                    func_sym = current_symbol_table.get_symbol_using_mangled_name(func); // Get the function symbol
+                    break;
+                }
+            }
+        }
+        if(instr->op.type == TACOperatorType::TAC_OPERATOR_CALL){
+            func_sym = nullptr;
+        }
         vector<string> emit_instruction_args = parameters_emit_instrcution(instr);
         if (leader_labels_map.find(get_operand_string(instr->label)) != leader_labels_map.end())
         {
             MIPSInstruction label_instr(leader_labels_map[get_operand_string(instr->label)]); // Create a label instruction
             mips_code_text.push_back(label_instr);                                            // Emit the label instruction
+        }
+        if(instr->op.type == TACOperatorType::TAC_OPERATOR_PARAM){
+            Symbol *param_sym = current_symbol_table.get_symbol_using_mangled_name(emit_instruction_args[1]); // Get the parameter symbol
+            // Siya : Complete this
+            if(arg_count < func_sym->type.num_args && param_sym->type != func_sym->type.arg_types[arg_count]){
+                // emit_instruction("cast","" , "", emit_instruction_args[1]); // Cast the parameter to the correct type
+            }
+            arg_count++;
         }
         emit_instruction(emit_instruction_args[0], emit_instruction_args[1], emit_instruction_args[2], emit_instruction_args[3]);
     }
