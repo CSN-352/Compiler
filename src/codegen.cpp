@@ -527,6 +527,7 @@ void set_offset_for_function_args(string func){
 
 void update_for_load(MIPSRegister reg, const std::string &var, bool is_double)
 {
+    if(reg == MIPSRegister::SP) return;
     std::string reg_name = get_mips_register_name(reg);
     register_descriptor[reg].clear();
     register_descriptor[reg].insert(var);
@@ -577,6 +578,7 @@ void update_for_store(const std::string &var, MIPSRegister reg, bool is_double)
 
 void update_for_add(const std::string &x, MIPSRegister rx, bool is_double)
 {
+    if(rx == MIPSRegister::SP) return;
     register_descriptor[rx].clear();
     register_descriptor[rx].insert(x);
 
@@ -2283,7 +2285,6 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "function_param")
     {   
-
         Symbol *dest_sym = current_symbol_table.get_symbol_using_mangled_name(dest);
         if (dest_sym->type.type_index >= PrimitiveTypes::U_CHAR_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_T)
         {
@@ -2339,7 +2340,10 @@ void emit_instruction(string op, string dest, string src1, string src2)
         // emit_instruction("jal", dest, "", "");
         emit_instruction("addi", "SP", "SP", to_string(function_args_size));
         restore_temp_registers();
-        if(src1_sym == nullptr) return; // no need to load return value
+        if(src1_sym == nullptr) {
+            function_args_size = 0;
+            return; // no need to load return value
+        }
         if(src1_sym->type.type_index < PrimitiveTypes::U_LONG_LONG_T)
         {
             MIPSRegister dest_reg = get_register_for_operand(src1, true); // Get a register for the destination
@@ -2362,6 +2366,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
             MIPSRegister dest_reg = get_float_register_for_operand(src1, true, true); // Get a register for the destination
             emit_instruction("move", src1, "F0", "");                              // Move instruction for double
         }
+        function_args_size = 0;
+        debug(function_args_size);
     }
     else if (op == "function_return")
     {
@@ -2739,12 +2745,20 @@ void emit_instruction(string op, string dest, string src1, string src2)
     else if (op == "addi")
     { // addi instruction
         // only used for sp,fp,gp so no need to check for type
+        if(src1=="SP"){
+            MIPSRegister src1_reg = get_register_for_operand(src1);                  // Get a register for the source 1
+            MIPSRegister dest_reg = get_register_for_operand(dest, true);            // Get a register for the destination
+            MIPSInstruction addi_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, src2); // Add immediate instruction
+            mips_code_text.push_back(addi_instr);                                    // Emit add immediate instruction
+            update_for_add(dest, dest_reg); 
+            return;
+        }
         emit_instruction("load", src1, src1, "");                                  // Load the source value into a register
         MIPSRegister src1_reg = get_register_for_operand(src1);                  // Get a register for the source 1
         MIPSRegister dest_reg = get_register_for_operand(dest, true);            // Get a register for the destination
         MIPSInstruction addi_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, src2); // Add immediate instruction
         mips_code_text.push_back(addi_instr);                                    // Emit add immediate instruction
-        update_for_add(dest, dest_reg);                                          // Update register descriptor and address descriptor
+        update_for_add(dest, dest_reg);                                    // Update register descriptor and address descriptor
     }
     else if (op == "sub")
     { // sub instruction
@@ -2810,6 +2824,15 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "subi")
     { // subi instruction
+        if(src1 == "SP"){
+            MIPSRegister src1_reg = get_register_for_operand(src1);       // Get a register for the source 1
+            MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
+            string neg_offset = "-" + src2;
+            MIPSInstruction add_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, neg_offset); // Sub immediate instruction
+            mips_code_text.push_back(add_instr);                                          // Emit sub immediate instruction
+            update_for_add(dest, dest_reg);   
+            return;
+        }
         emit_instruction("load", src1, src1, "");                                  // Load the source value into a register
         MIPSRegister src1_reg = get_register_for_operand(src1);       // Get a register for the source 1
         MIPSRegister dest_reg = get_register_for_operand(dest, true); // Get a register for the destination
