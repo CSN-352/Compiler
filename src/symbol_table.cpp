@@ -943,7 +943,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                 auto i = init_declarator_list->init_declarator_list[index]->initializer;
                 Symbol* sym = symbolTable.getSymbol(variable->direct_declarator->identifier->value);
                 TACOperand* id = new_identifier(sym->mangled_name); // TAC
-                if (symbolTable.currentScope == 0) {
+                if (symbolTable.currentScope == 0 || sym->type.is_static) {
                     string value="";
                     PrimaryExpression* p = i->assignment_expression->conditional_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression;
                     if(p->constant != nullptr) value = p->constant->value; // TAC
@@ -978,7 +978,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                 }
             }
         }
-        else if (symbolTable.currentScope == 0) {
+        else if (symbolTable.currentScope == 0 || symbolTable.getSymbol(variable->direct_declarator->identifier->value)->type.is_static) {
             Symbol* sym = symbolTable.getSymbol(variable->direct_declarator->identifier->value);
             TACOperand* id = new_identifier(sym->mangled_name); // TAC
             Constant* c = new Constant("I_CONSTANT", "0", init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->line_no, init_declarator_list->init_declarator_list[index]->declarator->direct_declarator->identifier->column_no); // TAC
@@ -2876,26 +2876,6 @@ void SymbolTable::exitScope()
             ++it;
     }
 
-    for (auto it = table.begin(); it != table.end();)
-    {
-        for (auto symIt = it->second.begin(); symIt != it->second.end();)
-        {
-            if ((*symIt)->scope == currentScope)
-            {
-                // print();
-                symIt = it->second.erase(symIt);
-            }
-            else
-            {
-                ++symIt;
-            }
-        }
-        if (it->second.empty())
-            it = table.erase(it);
-        else
-            ++it;
-    }
-
     // for (auto it = defined_types.begin(); it != defined_types.end();)
     // {
     //     for (auto symIt = it->second.begin(); symIt != it->second.end();)
@@ -2975,6 +2955,9 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
         }
     }
     Symbol* sym = new Symbol(name, type, currentScope, this->currAddress);
+    if(type.is_static){
+        static_vars[name].push_front(sym);
+    }
     table[name].push_front(sym);
     if (top.type.is_function)
     {
@@ -3006,7 +2989,8 @@ void SymbolTable::insert(string name, Type type, int size, int overloaded)
             set_error();
             return;
         }
-        Symbol* sym_c = new Symbol(name, type, currentScope - 1, dt->type_definition->type_symbol_table.currAddress);
+        Symbol* sym_c = new Symbol(name, type, currentScope, dt->type_definition->type_symbol_table.currAddress);
+        sym_c->scope = currentScope - 1;
         dt->type_definition->type_symbol_table.table[sym->name].push_front(sym_c);
         if (dt->type_category != TYPE_CATEGORY_UNION) {
             dt->type_definition->type_symbol_table.currAddress += size;

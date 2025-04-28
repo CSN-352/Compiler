@@ -23,11 +23,36 @@ void initialize_global_symbol_table()
     {
         current_symbol_table.defined_types.insert(entry); // Copy entries from the global symbol table
     }
+    for(const auto &entry : symbolTable.static_vars)
+    {
+        for(const auto &sym : entry.second)
+        {
+            current_symbol_table.table[entry.first].push_back(sym); // Copy entries from the global symbol table
+        }
+    }
 }
 
 void insert_function_symbol_table(const string &function_name)
 {
-    SymbolTable function_symbol_table = symbolTable.get_symbol_using_mangled_name(function_name)->function_definition->function_symbol_table;
+    Symbol* func = current_symbol_table.get_symbol_using_mangled_name(function_name);
+    if(func == nullptr){
+        for(auto &entry : current_symbol_table.defined_types){
+            for(auto p : entry.second){
+                SymbolTable st = p.second->type_definition->type_symbol_table;
+                func = st.get_symbol_using_mangled_name(function_name);
+                if(func != nullptr){
+                    current_symbol_table.print(); // Print the current symbol table for debugging
+                    current_symbol_table.table[func->name].push_front(func); // Copy entries from the function symbol table
+                    current_symbol_table.print(); // Print the current symbol table for debugging
+                    break;
+                }
+            }
+            if(func != nullptr){
+                break;
+            }
+        }
+    }
+    SymbolTable function_symbol_table = func->function_definition->function_symbol_table;
     for (const auto &entry : function_symbol_table.table)
     {
         current_symbol_table.table[entry.first].insert(current_symbol_table.table[entry.first].begin(), entry.second.begin(), entry.second.end()); // Copy entries from the function symbol table
@@ -36,7 +61,8 @@ void insert_function_symbol_table(const string &function_name)
 
 void erase_function_symbol_table(const string &function_name)
 {
-    SymbolTable function_symbol_table = symbolTable.get_symbol_using_mangled_name(function_name)->function_definition->function_symbol_table;
+    Symbol* func = current_symbol_table.get_symbol_using_mangled_name(function_name);
+    SymbolTable function_symbol_table = func->function_definition->function_symbol_table;
     for (const auto &entry : function_symbol_table.table)
     {
         for (auto sym : entry.second)
@@ -897,13 +923,16 @@ MIPSRegister get_float_register_for_operand(const std::string &var, bool for_res
         // 1. Already in a register
         if (!for_result)
         {
+            cout<<"float register for: "<<var<<"\n";
             for (const auto &[reg, vars] : register_descriptor)
             {
                 if (vars.count(var) && address_descriptor[var].count(get_mips_register_name(reg)))
                 {
+                    cout<<"found in register: "<<get_mips_register_name(reg)<<"\n";
                     return reg;
                 }
             }
+            cout<<"not found in register\n";
         }
         else
         {
@@ -2346,28 +2375,25 @@ void emit_instruction(string op, string dest, string src1, string src2)
         }
         else if (dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T && src2_sym->type.isInt())
         { // zero extend unsigned
-            int smaller_bit_size = 8 * src2_sym->type.get_size();
+            int smaller_bit_size = 8 * src2_sym->type.get_size() - 1;
             int mask = (1U << smaller_bit_size) - 1;                       // Create a mask for the smaller size
-            emit_instruction("andi", dest + "_hi", dest + "_hi", "0");     // emit instruction dest_hi = 0
-            emit_instruction("andi", dest + "_lo", src2, to_string(mask)); // emit instruction dest = src2 & mask
+            emit_instruction("andi", dest, src2, to_string(mask)); // emit instruction dest_hi = 0 and dest = src2 & mask
         }
         else if (dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T && src2_sym->type.isInt() && src2_sym->type.isSigned())
         { // sign extend signed
             int shift_size = 8 * (4 - min(dest_sym->type.get_size(), src2_sym->type.get_size()));
-            emit_instruction("sll", dest + "_lo", src2, to_string(shift_size));         // emit instruction dest_lo = src2 << shift_size
-            emit_instruction("sra", dest + "_lo", dest + "_lo", to_string(shift_size)); // emit instruction dest_lo = dest_lo >> shift_size
-            emit_instruction("sra", dest + "_hi", dest + "_lo", to_string(31));         // emit instruction dest_hi = dest_lo >> 32
+            emit_instruction("sll", dest, src2, to_string(shift_size));         // emit instruction dest_lo = src2 << shift_size
+            emit_instruction("sra", dest, dest, to_string(shift_size)); // emit instruction dest_lo = dest_lo >> shift_size and dest_hi = dest_lo >> 32
         }
         else if (dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T && src2_sym->type.isInt() && src2_sym->type.isUnsigned())
         { // zero extend unsigned
             int smaller_bit_size = 8 * src2_sym->type.get_size();
             int mask = (1U << smaller_bit_size) - 1;                       // Create a mask for the smaller size
-            emit_instruction("andi", dest + "_hi", dest + "_hi", "0");     // emit instruction dest_hi = 0
-            emit_instruction("andi", dest + "_lo", src2, to_string(mask)); // emit instruction dest = src2 & mask
+            emit_instruction("andi", dest, src2, to_string(mask)); // emit instruction dest_hi = 0 and dest = src2 & mask
         }
         else if ((src2_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T || src2_sym->type.type_index == PrimitiveTypes::LONG_LONG_T) && dest_sym->type.isUnsigned())
         { // zero extend unsigned
-            int smaller_bit_size = 8 * dest_sym->type.get_size();
+            int smaller_bit_size = 8 * dest_sym->type.get_size() - 1;
             int mask = (1U << smaller_bit_size) - 1;                       // Create a mask for the smaller size
             emit_instruction("andi", dest, src2 + "_lo", to_string(mask)); // emit instruction dest = src2_lo & mask
         }
@@ -2379,7 +2405,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
         }
         else if (dest_sym->type.isUnsigned())
         { // zero extend unsigned
-            int smaller_bit_size = 8 * min(dest_sym->type.get_size(), src2_sym->type.get_size());
+            int smaller_bit_size = 8 * min(dest_sym->type.get_size(), src2_sym->type.get_size()) - 1;
             int mask = (1U << smaller_bit_size) - 1;               // Create a mask for the smaller size
             emit_instruction("andi", dest, src2, to_string(mask)); // emit instruction dest = src2 & mask
         }
@@ -2391,7 +2417,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
         }
         else if (dest_sym->type.isSigned() && src2_sym->type.isUnsigned())
         { // zero extend unsigned
-            int smaller_bit_size = 8 * min(dest_sym->type.get_size(), src2_sym->type.get_size());
+            int smaller_bit_size = 8 * min(dest_sym->type.get_size(), src2_sym->type.get_size()) - 1;
             int mask = (1U << smaller_bit_size) - 1;               // Create a mask for the smaller size
             emit_instruction("andi", dest, src2, to_string(mask)); // emit instruction dest = src2 & mask
         }
@@ -2418,7 +2444,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             // Convert to 32 bit int first
             if (src2_sym->type.isUnsigned())
             {
-                int bit_size = 8 * src2_sym->type.get_size();
+                int bit_size = 8 * src2_sym->type.get_size() - 1;
                 int mask = (1U << bit_size) - 1;
                 emit_instruction("andi", src2, src2, to_string(mask));
             }
@@ -2516,7 +2542,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             update_for_add(dest, dest_reg);       // Update register descriptor and address descriptor
             if (dest_sym->type.isUnsigned())
             {
-                int bit_size = 8 * dest_sym->type.get_size();
+                int bit_size = 8 * dest_sym->type.get_size() - 1;
                 int mask = (1U << bit_size) - 1;
                 emit_instruction("andi", dest, dest, to_string(mask));
             }
@@ -2550,11 +2576,12 @@ void emit_instruction(string op, string dest, string src1, string src2)
             update_for_add(dest + "_lo", dest_lo_reg); // Update register descriptor and address descriptor
             if (dest_sym->type.isUnsigned())
             {
-                emit_instruction("andi", dest + "_hi", dest + "_lo", "0"); // emit instruction dest_hi = 0
+                string mask = to_string((1U << 31) - 1);
+                emit_instruction("andi", dest, dest, mask); // emit instruction dest_hi = 0
             }
             else
             {
-                emit_instruction("sra", dest + "_hi", dest + "_lo", "31"); // emit instruction dest_hi = dest_lo >> 32
+                emit_instruction("sra", dest, dest, "0"); // emit instruction dest_hi = dest_lo >> 32
             }
         }
         else if ((dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || src2_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T) && src2_sym->type.type_index < PrimitiveTypes::U_INT_T)
@@ -2570,7 +2597,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
             update_for_add(dest, dest_reg);       // Update register descriptor and address descriptor
             if (dest_sym->type.isUnsigned())
             {
-                int bit_size = 8 * dest_sym->type.get_size();
+                int bit_size = 8 * dest_sym->type.get_size() - 1;
                 int mask = (1U << bit_size) - 1;
                 emit_instruction("andi", dest, dest, to_string(mask));
             }
@@ -3062,6 +3089,21 @@ void emit_instruction(string op, string dest, string src1, string src2)
             mips_code_text.push_back(andi_instr);                                   // Emit andi instruction
             update_for_add(dest, dest_reg);                                         // Update register descriptor and address descriptor
         }
+        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T)
+        {
+            // ANDI low parts
+            emit_instruction("load", src1, src1, "");                             // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1);                    // Get a register for the source 1
+            MIPSRegister dest_reg_lo = get_register_for_operand(dest + "_lo", true);              // Get a register for the destination lo
+            MIPSInstruction andi_instr_lo(MIPSOpcode::ANDI, dest_reg_lo, src1_reg, src2);      // Bitwise ANDI the register and immediate value
+            mips_code_text.push_back(andi_instr_lo);                                               // Emit andi instruction
+            update_for_add(dest + "_lo", dest_reg_lo);                                            // Update register descriptor and address descriptor for lo
+            // ANDI high parts                          
+            MIPSRegister dest_reg_hi = get_register_for_operand(dest + "_hi", true);              // Get a register for the destination hi
+            MIPSInstruction andi_instr_hi(MIPSOpcode::ANDI, dest_reg_hi, src1_reg, "0");      // Bitwise ANDI the register and 0
+            mips_code_text.push_back(andi_instr_hi);                                               // Emit andi instruction
+            update_for_add(dest + "_hi", dest_reg_hi);                                            // Update register descriptor and address descriptor for hi
+        }
     }
     else if (op == "or")
     { // bitwise or instruction
@@ -3178,6 +3220,16 @@ void emit_instruction(string op, string dest, string src1, string src2)
             mips_code_text.push_back(sll_instr);                                  // Emit sll instruction
             update_for_add(dest, dest_reg);                                       // Update register descriptor and address descriptor
         }
+        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T)
+        {
+            // SLL only low part
+            emit_instruction("load", src1, src1, "");                             // Load the source value into a register
+            MIPSRegister src1_reg_lo = get_register_for_operand(src1 + "_lo");                    // Get a register for the source 1 lo
+            MIPSRegister dest_reg_lo = get_register_for_operand(dest + "_lo", true);              // Get a register for the destination lo
+            MIPSInstruction sll_instr_lo(MIPSOpcode::SLL, dest_reg_lo, src1_reg_lo, src2); // Shift left logical instruction
+            mips_code_text.push_back(sll_instr_lo);                                  // Emit sll instruction
+            update_for_add(dest + "_lo", dest_reg_lo);                               // Update register descriptor and address descriptor for lo
+        }
     }
     else if (op == "srlv")
     {
@@ -3225,6 +3277,20 @@ void emit_instruction(string op, string dest, string src1, string src2)
             MIPSInstruction sra_instr(MIPSOpcode::SRA, dest_reg, src1_reg, src2); // Shift right arithmetic instruction
             mips_code_text.push_back(sra_instr);                                  // Emit sra instruction
             update_for_add(dest, dest_reg);                                       // Update register descriptor and address descriptor
+        }
+        else if(dest_sym->type.type_index <= PrimitiveTypes::LONG_LONG_T)
+        {
+            emit_instruction("load", src1, src1, "");                             // Load the source value into a register
+            MIPSRegister src1_reg = get_register_for_operand(src1);                    // Get a register for the source 1 
+            MIPSRegister dest_reg_lo = get_register_for_operand(dest + "_lo", true);              // Get a register for the destination lo
+            MIPSInstruction sra_instr_lo(MIPSOpcode::SRA, dest_reg_lo, src1_reg, src2); // Shift right arithmetic instruction
+            mips_code_text.push_back(sra_instr_lo);                                  // Emit sra instruction
+            update_for_add(dest + "_lo", dest_reg_lo);                               // Update register descriptor and address descriptor for lo
+            // SRA high parts
+            MIPSRegister dest_reg_hi = get_register_for_operand(dest + "_hi", true);              // Get a register for the destination hi
+            MIPSInstruction sra_instr_hi(MIPSOpcode::SRA, dest_reg_hi, dest_reg_lo, "31"); // Shift right arithmetic instruction
+            mips_code_text.push_back(sra_instr_hi);                                  // Emit sra instruction
+            update_for_add(dest + "_hi", dest_reg_hi);                               // Update register descriptor and address descriptor for hi
         }
     }
     else if (op == "neg")

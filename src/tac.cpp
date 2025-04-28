@@ -182,7 +182,8 @@ string get_operator_string(TACOperatorType op) {
 }
 
 void print_TAC_instruction(TACInstruction* instruction) {
-    if (!instruction||instruction->result->type == TAC_OPERAND_EMPTY) return;
+    if(instruction->op.type == TACOperatorType::TAC_OPERATOR_CALL) cout<<"calling function: "<<get_operand_string(instruction->arg1)<<endl;
+    // if (!instruction||instruction->result->type == TAC_OPERAND_EMPTY) return;
     if(instruction->label->type == TAC_OPERAND_LABEL) cout<<instruction->label->value << ": "; // Print the label of the instruction
     // **Jump Instructions**
     if (instruction->flag == 1) {
@@ -293,7 +294,7 @@ void fix_labels_temps(){
     int label_ct = 1;
 
     for(int i=0;i<TAC_CODE.size();i++){
-        if (TAC_CODE[i]->result->type == TAC_OPERAND_EMPTY ) TAC_CODE.erase(TAC_CODE.begin() + i); // Remove uninitialized entries
+        // if (TAC_CODE[i]->result->type == TAC_OPERAND_EMPTY ) TAC_CODE.erase(TAC_CODE.begin() + i); // Remove uninitialized entries
         if(TAC_CODE[i]->label->type == TAC_OPERAND_LABEL && TAC_CODE[i]->label->value != ""){
             if(labels.find(TAC_CODE[i]->label->value) == labels.end()){
                 labels[TAC_CODE[i]->label->value] = label_ct;

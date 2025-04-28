@@ -343,8 +343,36 @@
 
 // char c = 'B';
 
-int main(){
-    char ch = 'A';
-    char next_ch = ch + 1;
-    return 0;
+// int main(){
+//     float a = 1.1;
+//     float b = 2.5;
+//     float c = a + b;
+//     return 0;
+// }
+
+static int x = 1;
+int add(int a, int b) {
+    static int y = 2;
+    return a + b;
 }
+class A {
+public:
+    int x1;
+    int x2;
+    void func() {
+        static int z = 1;
+    }
+};
+breakpoint_global;
+
+// void printf(char* str, int d, int e, int f){
+
+// }
+
+// int main(){
+//     int p = 8;
+//     int q = 10;
+//     int r = p+q;
+//     printf("The sum of %d and %d is %d\n", p, q, r);
+//     return 0;
+// }

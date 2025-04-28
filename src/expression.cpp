@@ -787,6 +787,7 @@ Expression *create_postfix_expression_func(Expression *x, ArgumentExpressionList
                     }
                 }
                 if (x->type.type_index == PrimitiveTypes::VOID_T){
+                    cout<<"Function " << P->primary_expression->identifier->value << " is a void function" << endl;
                     i1 = emit(TACOperator(TAC_OPERATOR_CALL), new_empty_var(), x->result, new_constant(to_string(arguments.size())), 0); // TAC
                 }
                 else{
