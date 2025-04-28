@@ -1191,7 +1191,7 @@ void store_immediate(const string &immediate, Type type)
         if (type.ptr_level == 0)
         {
             immediate_storage_map[immediate] = "immediate_" + to_string(immediate_storage_map.size());
-            string immediate_ascii = to_string((int)(immediate[0]));                                                // Convert char to ASCII value
+            string immediate_ascii = to_string((int)(decode_char_literal(immediate))); // Convert char to ASCII value
             MIPSDataInstruction data_instr(immediate_storage_map[immediate], MIPSDirective::BYTE, immediate_ascii); // char
             mips_code_data.push_back(data_instr);
         }

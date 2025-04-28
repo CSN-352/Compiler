@@ -336,7 +336,14 @@
 //     int* y = x+1;
 // }
 
-int add(int a, int b) {
-    return a + b;
-}
+// int add(int a, int b) {
+//     return a + b;
+// }
 
+// char c = 'B';
+
+int main(){
+    char ch = 'A';
+    char next_ch = ch + 1;
+    return 0;
+}
