@@ -2009,6 +2009,7 @@ EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el)
             TACOperand* id = new_identifier(sym->mangled_name); // TAC
             if (e->initializer_expression == nullptr) {
                 el->last_constant_value = to_string(stoi(el->last_constant_value) + 1); // TAC
+                symbolTable.add_constant_value(sym->mangled_name, el->last_constant_value, "I_CONSTANT");
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, new_constant(el->last_constant_value), new_empty_var(), 0); // TAC
                 el->code.push_back(i1); // TAC
             }
@@ -2017,6 +2018,7 @@ EnumSpecifier* create_enumerator_specifier(Identifier* id, EnumeratorList* el)
                 TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), id, new_constant(value), new_empty_var(), 0); // TAC
                 el->last_constant_value = value; // TAC
                 el->code.push_back(i1); // TAC
+                symbolTable.add_constant_value(sym->mangled_name, el->last_constant_value, "I_CONSTANT");
                 backpatch(e->initializer_expression->next_list, i1->label); // TAC
             }
         }
