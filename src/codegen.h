@@ -184,6 +184,7 @@ vector<string> parameters_emit_instrcution(TACInstruction* instr);
 void initalize_mips_code_vectors();
 void print_mips_code();
 void add_printf_code();
+void add_scanf_code();
 
 //=================== MIPS Data Instruction Class ===================//
 
