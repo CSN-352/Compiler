@@ -11,6 +11,9 @@ vector<pair<std::string,int> > function_params;
 
 using namespace std;
 
+static bool has_printf_code = false; // Flag to check if printf code has been added
+static bool has_scanf_code = false;  // Flag to check if scanf code has been added
+
 //=================== Symbol Table ===================//
 void initialize_global_symbol_table()
 {
@@ -2253,7 +2256,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "function_begin")
     {
-        if (dest == "_f_printf_S0__sig_1") {
+        if (dest == "_f_printf_S0__sig_1" || dest == "_f_scanf_S0__sig_1") {
             function_args_size = 0;
             return;
         }
@@ -2272,7 +2275,11 @@ void emit_instruction(string op, string dest, string src1, string src2)
     else if (op == "function_end")
     {
         spill_registers_at_function_end(); // Spill registers at function end
-        if (dest == "_f_printf_S0__sig_1") {
+        if (dest == "_f_printf_S0__sig_1"){
+            // has_printf_code = true;
+            return;
+        } if(dest == "_f_scanf_S0__sig_1") {
+            // has_scanf_code = true;
             return;
         }
         Symbol *func = current_symbol_table.get_symbol_using_mangled_name(dest);
@@ -4075,6 +4082,10 @@ void print_mips_code()
             break;
         case (MIPSInstructionType::_LABEL_TYPE):
             if(instr.label == "_f_printf_S0__sig_1"){
+                has_printf_code = true;
+                continue;
+            } else if(instr.label == "_f_scanf_S0__sig_1"){
+                has_scanf_code = true;
                 continue;
             }
             else
@@ -4088,6 +4099,7 @@ void print_mips_code()
     }
 
     add_printf_code();
+    add_scanf_code();
 
     cout << endl;
 }
@@ -4095,6 +4107,9 @@ void print_mips_code()
 
 void add_printf_code()
 {
+    if(!has_printf_code){
+        return;
+    }
     std::cout << R"(
 _f_printf_S0__sig_1:
     ADDIU $sp, $sp, -8
@@ -4184,5 +4199,89 @@ done_printf:
     JR $ra
     jr $ra
 )" << std::endl;
+}
+
+void add_scanf_code(){
+    if(!has_scanf_code){
+        return;
+    }
+    std::cout << R"(
+_f_scanf_S0__sig_1:
+    ADDIU $sp, $sp, -8
+    SW $ra, 4($sp)
+    SW $fp, 0($sp)
+    MOVE $fp, $sp
+
+    addu $a0, $a0, $sp   # Adjust $a0 if needed
+
+    lw $t0, 0($a0)       # Load format string address
+    addiu $a0, $a0, -4   # $t2 will point to addresses where inputs are to be stored
+    move $t2, $a0
+
+next_char_scanf:
+    lb $t3, 0($t0)       # Load current char
+    beqz $t3, done_scanf
+
+    li $t4, '%'
+    bne $t3, $t4, skip_nonformat_scanf
+
+    addiu $t0, $t0, 1
+    lb $t3, 0($t0)
+
+    beq $t3, 'd', read_int_scanf
+    beq $t3, 's', read_string_scanf
+    beq $t3, 'c', read_char_scanf
+    beq $t3, 'f', read_float_scanf
+
+skip_nonformat_scanf:
+    addiu $t0, $t0, 1
+    j next_char_scanf
+
+read_int_scanf:
+    li $v0, 5          # syscall 5: read int
+    syscall
+    lw $t1, 0($t2)     # Load address where to store int
+    sw $v0, 0($t1)     # Store input value
+
+    addiu $t2, $t2, -4
+    addiu $t0, $t0, 1
+    j next_char_scanf
+
+read_string_scanf:
+    li $v0, 8          # syscall 8: read string
+    lw $a0, 0($t2)     # Load address where to store string
+    li $a1, 100        # Max length of input (adjust if needed)
+    syscall
+
+    addiu $t2, $t2, -4
+    addiu $t0, $t0, 1
+    j next_char_scanf
+
+read_char_scanf:
+    li $v0, 12         # syscall 12: read char
+    syscall
+    lw $t1, 0($t2)     # Load address where to store char
+    sb $v0, 0($t1)     # Store input byte
+
+    addiu $t2, $t2, -4
+    addiu $t0, $t0, 1
+    j next_char_scanf
+
+read_float_scanf:
+    li $v0, 6          # syscall 6: read float
+    syscall
+    lw $t1, 0($t2)     # Load address where to store float
+    swc1 $f0, 0($t1)   # Store float into memory
+
+    addiu $t2, $t2, -4
+    addiu $t0, $t0, 1
+    j next_char_scanf
+
+done_scanf:
+    LW $fp, 0($sp)
+    LW $ra, 4($sp)
+    ADDIU $sp, $sp, 8
+    JR $ra
+)"<< std::endl;
 }
 

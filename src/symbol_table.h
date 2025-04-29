@@ -267,6 +267,8 @@ public:
     std::string mangled_name;
     FunctionDefinition* function_definition;
     bool is_temp;
+    string constant_value;
+    string constant_type_str;
 
     Symbol(string n, Type t, int s, int o);
     Symbol();
@@ -306,6 +308,7 @@ public:
     bool lookup_typedef(string name);
     bool check_member_variable(string name, string member);
     void add_function_definition(Symbol* sym, FunctionDefinition* fd);
+    void add_constant_value(std::string mangled_name, std::string value, std::string type);
     void add_member_variable(string name, string member, Type type, MemberKind kind, AccessSpecifiers access_specifier);
     Type get_type_of_member_variable(string name, string member);
     Type get_type_of_member_variable(string name, string member, vector<Type> arg_types);

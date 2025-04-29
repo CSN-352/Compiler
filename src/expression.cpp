@@ -58,6 +58,15 @@ Expression *create_primary_expression(Identifier *i)
         symbolTable.set_error();
         return P;
     }
+
+    if(sym->type.is_const_variable)
+    {
+        Constant* c = new Constant(sym->constant_type_str, sym->constant_value, i->line_no, i->column_no);
+        delete P;
+        Expression* primary_expr = create_primary_expression(c);
+        return primary_expr;
+    }
+
     P->result = new_identifier(sym->mangled_name); // TAC
     TACInstruction* i1 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
     TACInstruction* i2 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC

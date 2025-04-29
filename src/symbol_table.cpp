@@ -942,6 +942,7 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
             }
             else {
                 auto i = init_declarator_list->init_declarator_list[index]->initializer;
+                bool is_const = i->assignment_expression->type.is_const_literal;
                 Symbol* sym = symbolTable.getSymbol(variable->direct_declarator->identifier->value);
                 TACOperand* id = new_identifier(sym->mangled_name); // TAC
                 if (symbolTable.currentScope == 0 || sym->type.is_static) {
@@ -962,6 +963,18 @@ Declaration* create_declaration(DeclarationSpecifiers* declaration_specifiers,
                     backpatch(i->assignment_expression->jump_false_list, i0->label); // TAC
                 }
                 else {
+                    if(is_const){
+                        PrimaryExpression* p = i->assignment_expression->conditional_expression->logical_or_expression->logical_and_expression->or_expression->xor_expression->and_expression->equality_expression->relational_expression->shift_expression->additive_expression->multiplicative_expression->cast_expression->unary_expression->postfix_expression->primary_expression;
+                        Constant* c = p->constant;
+                        if(c == nullptr) {
+                            string error_msg = "Constant is null while initializing variable '" + variable->direct_declarator->identifier->value + "' at line " + to_string(variable->direct_declarator->identifier->line_no) + ", column " + to_string(variable->direct_declarator->identifier->column_no);
+                            yyerror(error_msg.c_str());
+                            symbolTable.set_error();
+                            return P;
+                        }
+                        symbolTable.add_constant_value(sym->mangled_name, c->value, c->name); // TAC
+                    }
+
                     init_declarator_list->init_declarator_list[index]->code.insert(init_declarator_list->init_declarator_list[index]->code.end(), i->assignment_expression->code.begin(), i->assignment_expression->code.end()); // TAC
                     TACInstruction* i1;
                     if (t.type_index != i->assignment_expression->type.type_index)i1 = emit(TACOperator(TAC_OPERATOR_CAST), id, new_type(t.to_string()), i->assignment_expression->result, 0); // TAC
@@ -2774,12 +2787,12 @@ StringLiteral::StringLiteral(string value, unsigned int line_no, unsigned int co
 // ################################## SYMBOL ######################################
 // ##############################################################################
 
-Symbol::Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o), is_temp(false) {
+Symbol::Symbol(string n, Type t, int s, int o) : name(n), type(t), scope(s), offset(o), is_temp(false), constant_value(""), constant_type_str("") {
     function_definition = nullptr;
     this->mangled_name = create_mangled_name(this->name, this->type, this->scope, symbolTable.scope_stack);
 }
 
-Symbol::Symbol() : name(""), type(Type()), scope(0), offset(0), is_temp(false), mangled_name("") {
+Symbol::Symbol() : name(""), type(Type()), scope(0), offset(0), is_temp(false), mangled_name(""), constant_value(""), constant_type_str("") {
     function_definition = nullptr;
 }
 
@@ -3065,6 +3078,18 @@ void SymbolTable::add_function_definition(Symbol* sym, FunctionDefinition* fd) {
         Symbol* sym_c = dt->type_definition->type_symbol_table.getSymbol(sym->name);
         sym_c->function_definition = fd;
     }
+}
+
+void SymbolTable::add_constant_value(std::string mangled_name, std::string value, std::string type){
+    Symbol* sym = this->get_symbol_using_mangled_name(mangled_name);
+    if(sym == nullptr){
+        string error_msg = "Symbol " + mangled_name + " not found";
+        yyerror(error_msg.c_str());
+        set_error();
+        return;
+    }
+    sym->constant_value = value;
+    sym->constant_type_str = type;
 }
 
 void SymbolTable::insert_defined_type(std::string name, DefinedTypes* type)
