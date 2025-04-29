@@ -4,6 +4,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <algorithm>
 using namespace std;
 
 void yyerror(const char *msg);
@@ -276,6 +277,7 @@ void print_TAC() {
         print_TAC_instruction(instruction); // Print each instruction
     }
     cout << "====================================" << endl;
+    remove_dead_code(); // Remove dead code after printing
 }
 
 
@@ -345,4 +347,148 @@ void fix_labels_temps(){
         // }
     }
     // cout<<labels["22"]<<endl;
+}
+
+const char* getOperatorName(TACOperatorType op) {
+    switch (op) {
+        #define CASE(x) case x: return #x;
+        CASE(TAC_OPERATOR_ADD)
+        CASE(TAC_OPERATOR_SUB)
+        CASE(TAC_OPERATOR_MUL)
+        CASE(TAC_OPERATOR_DIV)
+        CASE(TAC_OPERATOR_MOD)
+        CASE(TAC_OPERATOR_UMINUS)
+        CASE(TAC_OPERATOR_EQ)
+        CASE(TAC_OPERATOR_NE)
+        CASE(TAC_OPERATOR_GT)
+        CASE(TAC_OPERATOR_LT)
+        CASE(TAC_OPERATOR_GE)
+        CASE(TAC_OPERATOR_LE)
+        CASE(TAC_OPERATOR_AND)
+        CASE(TAC_OPERATOR_OR)
+        CASE(TAC_OPERATOR_NOT)
+        CASE(TAC_OPERATOR_BIT_AND)
+        CASE(TAC_OPERATOR_BIT_OR)
+        CASE(TAC_OPERATOR_BIT_XOR)
+        CASE(TAC_OPERATOR_LEFT_SHIFT)
+        CASE(TAC_OPERATOR_RIGHT_SHIFT)
+        CASE(TAC_OPERATOR_BIT_NOT)
+        CASE(TAC_OPERATOR_ASSIGN)
+        CASE(TAC_OPERATOR_ADDR_OF)
+        CASE(TAC_OPERATOR_DEREF)
+        CASE(TAC_OPERATOR_CAST)
+        CASE(TAC_OPERATOR_GOTO)
+        CASE(TAC_OPERATOR_IF_GOTO)
+        CASE(TAC_OPERATOR_LABEL)
+        CASE(TAC_OPERATOR_CALL)
+        CASE(TAC_OPERATOR_RETURN)
+        CASE(TAC_OPERATOR_PARAM)
+        CASE(TAC_OPERATOR_FUNC_BEGIN)
+        CASE(TAC_OPERATOR_FUNC_END)
+        CASE(TAC_OPERATOR_INDEX)
+        CASE(TAC_OPERATOR_INDEX_ASSIGN)
+        CASE(TAC_OPERATOR_NOP)
+        #undef CASE
+        default: return "UNKNOWN_OPERATOR";
+    }
+}
+
+void eliminateDeadCode(std::vector<TACInstruction*>& TAC_CODE) {
+    using std::string;
+    using std::unordered_set;
+    using std::vector;
+
+    unordered_set<string> usedVars;
+    unordered_set<string> referencedLabels;
+
+    // === Phase 1: Collect all referenced labels (i.e., jump targets) ===
+    for (const auto* instr : TAC_CODE) {
+        if (!instr) continue;
+        const TACOperatorType& opType = instr->op.type;
+        bool is_goto = instr->flag == 1;
+        bool is_if_goto = instr->flag == 2;
+
+        if ((is_goto || is_if_goto) && instr->result) {
+            const string& label = instr->result->value;
+            if (!label.empty()) {
+                referencedLabels.insert(label);
+            }
+        }
+    }
+
+    // === Phase 2: Backward pass to track variable liveness and eliminate dead code ===
+    vector<TACInstruction*> new_TAC_CODE;
+    for (int i = static_cast<int>(TAC_CODE.size()) - 1; i >= 0; --i) {
+        TACInstruction* instr = TAC_CODE[i];
+        if (!instr) continue;
+        bool is_goto = instr->flag == 1;
+        bool is_if_goto = instr->flag == 2;
+        const TACOperatorType& type = instr->op.type;
+
+        string resultVal = (instr->result ? instr->result->value : "");
+        string arg1Val = (instr->arg1 ? instr->arg1->value : "");
+        string arg2Val = (instr->arg2 ? instr->arg2->value : "");
+
+        // === Always preserve instructions with side-effects or control flow impact ===
+        bool hasSideEffect = (
+            is_goto || is_if_goto ||
+            type == TAC_OPERATOR_GOTO ||
+            type == TAC_OPERATOR_IF_GOTO ||
+            type == TAC_OPERATOR_CALL ||
+            type == TAC_OPERATOR_RETURN ||
+            type == TAC_OPERATOR_PARAM ||
+            type == TAC_OPERATOR_FUNC_BEGIN ||
+            type == TAC_OPERATOR_FUNC_END ||
+            type == TAC_OPERATOR_DEREF ||
+            type == TAC_OPERATOR_INDEX_ASSIGN
+        );
+
+        if (hasSideEffect) {
+            if (!arg1Val.empty()) usedVars.insert(arg1Val);
+            if (!arg2Val.empty()) usedVars.insert(arg2Val);
+            if (!resultVal.empty()) usedVars.insert(resultVal);
+            new_TAC_CODE.push_back(instr);
+            continue;
+        }
+
+        // === Preserve labels if they are jump targets ===
+        if (type == TAC_OPERATOR_LABEL && referencedLabels.count(resultVal)) {
+            new_TAC_CODE.push_back(instr);
+            continue;
+        }
+
+        // === Preserve if the result is live (used later) ===
+        if (!resultVal.empty() && usedVars.count(resultVal)) {
+            if (!arg1Val.empty()) usedVars.insert(arg1Val);
+            if (!arg2Val.empty()) usedVars.insert(arg2Val);
+            new_TAC_CODE.push_back(instr);
+            continue;
+        }
+
+        // === Preserve if arguments are used and there’s no result (e.g., pointer loads) ===
+        if (resultVal.empty() && (!arg1Val.empty() || !arg2Val.empty())) {
+            if (!arg1Val.empty()) usedVars.insert(arg1Val);
+            if (!arg2Val.empty()) usedVars.insert(arg2Val);
+            new_TAC_CODE.push_back(instr);
+            continue;
+        }
+
+        // === Otherwise, the instruction is dead and can be safely removed ===
+    }
+
+    // Restore original order
+    std::reverse(new_TAC_CODE.begin(), new_TAC_CODE.end());
+    TAC_CODE = std::move(new_TAC_CODE);
+}
+
+
+void remove_dead_code(){
+    debug("Removing dead code", YELLOW);
+    debug("TAC_CODE size before: " + to_string(TAC_CODE.size()), YELLOW);
+    size_t prevSize;
+    do {
+        prevSize = TAC_CODE.size();
+        eliminateDeadCode(TAC_CODE);
+    } while (TAC_CODE.size() < prevSize);
+    debug("TAC_CODE size after: " + to_string(TAC_CODE.size()), YELLOW);
 }
