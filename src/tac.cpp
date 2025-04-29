@@ -278,7 +278,7 @@ void print_TAC() {
         print_TAC_instruction(instruction); // Print each instruction
     }
     cout << "====================================" << endl;
-    remove_dead_code(); // Remove dead code after printing
+    // remove_dead_code();
 }
 
 
