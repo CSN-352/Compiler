@@ -7,7 +7,9 @@
 #include <set>
 SymbolTable current_symbol_table; // Symbol Table for current scope (global scope + current function scope)
 int function_args_size = 0;       // Number of arguments in the current function
+int offset = 0;               // Offset for pointer indexing
 vector<pair<std::string,int> > function_params;
+unordered_map<string, string> pointer_descriptor; // Map to store pointer descriptors
 
 using namespace std;
 
@@ -618,6 +620,61 @@ void update_for_add(const std::string &x, MIPSRegister rx, bool is_double)
             locs.erase(x);
         }
     }
+
+    for(auto &entry : pointer_descriptor){
+        if(entry.second == x){
+            MIPSRegister addr_reg = get_register_for_operand(entry.first);
+            MIPSRegister src1_reg = get_register_for_operand(x); // Get a register for the source
+            string src1 = x;
+            Symbol* dest_sym = current_symbol_table.get_symbol_using_mangled_name(entry.second);
+            if (dest_sym->type.type_index == PrimitiveTypes::U_CHAR_T || dest_sym->type.type_index == PrimitiveTypes::CHAR_T)
+            {
+                MIPSRegister src1_reg = get_register_for_operand(src1);               // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SB, src1_reg, "0", addr_reg); // Store byte to memory
+                mips_code_text.push_back(store_instr);                                // Emit store instruction
+                update_for_store(src1, src1_reg);                                     // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::U_SHORT_T || dest_sym->type.type_index == PrimitiveTypes::SHORT_T)
+            {
+                MIPSRegister src1_reg = get_register_for_operand(src1);               // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SH, src1_reg, "0", addr_reg); // Store halfword to memory
+                mips_code_text.push_back(store_instr);                                // Emit store instruction
+                update_for_store(src1, src1_reg);                                     // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index >= PrimitiveTypes::U_INT_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_T)
+            {
+                MIPSRegister src1_reg = get_register_for_operand(src1);               // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SW, src1_reg, "0", addr_reg); // Store word to memory
+                mips_code_text.push_back(store_instr);                                // Emit store instruction
+                update_for_store(src1, src1_reg);                                     // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T || dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T)
+            {
+                MIPSRegister src1_reg_hi = get_register_for_operand(src1 + "_hi");          // Get a register for the upper 32 bits of the source
+                MIPSRegister src1_reg_lo = get_register_for_operand(src1 + "_lo");          // Get a register for the lower 32 bits of the source
+                MIPSInstruction store_instr_hi(MIPSOpcode::SW, src1_reg_hi, "0", addr_reg); // Store upper 32 bits of long long to memory
+                MIPSInstruction store_instr_lo(MIPSOpcode::SW, src1_reg_lo, "4", addr_reg); // Store lower 32 bits of long long to memory
+                mips_code_text.push_back(store_instr_hi);                                   // Emit store instruction for upper 32 bits
+                mips_code_text.push_back(store_instr_lo);                                   // Emit store instruction for lower 32 bits
+                update_for_store(src1 + "_hi", src1_reg_hi);                                // Update register descriptor and address descriptor
+                update_for_store(src1 + "_lo", src1_reg_lo);                                // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::FLOAT_T)
+            {
+                MIPSRegister src1_reg = get_float_register_for_operand(src1);           // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SWC1, src1_reg, "0", addr_reg); // Store float to memory
+                mips_code_text.push_back(store_instr);                                  // Emit store instruction for float
+                update_for_store(src1, src1_reg);                                       // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T)
+            {
+                MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SDC1, src1_reg, "0", addr_reg);    // Store double to memory
+                mips_code_text.push_back(store_instr);                                     // Emit store instruction for double
+                update_for_store(src1, src1_reg, true);                                    // Update register descriptor and address descriptor
+            }
+        }
+    }
 }
 
 // x = y
@@ -641,6 +698,74 @@ void update_for_assign(const std::string &x, const std::string &y, MIPSRegister 
             locs.erase(x);
         }
     }
+    for(auto &entry : pointer_descriptor){
+        if(entry.second == x){
+            MIPSRegister addr_reg = get_register_for_operand(entry.first);
+            MIPSRegister src1_reg = get_register_for_operand(x); // Get a register for the source
+            string src1 = x;
+            Symbol* dest_sym = current_symbol_table.get_symbol_using_mangled_name(entry.second);
+            if (dest_sym->type.type_index == PrimitiveTypes::U_CHAR_T || dest_sym->type.type_index == PrimitiveTypes::CHAR_T)
+            {
+                MIPSRegister src1_reg = get_register_for_operand(src1);               // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SB, src1_reg, "0", addr_reg); // Store byte to memory
+                mips_code_text.push_back(store_instr);                                // Emit store instruction
+                update_for_store(src1, src1_reg);                                     // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::U_SHORT_T || dest_sym->type.type_index == PrimitiveTypes::SHORT_T)
+            {
+                MIPSRegister src1_reg = get_register_for_operand(src1);               // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SH, src1_reg, "0", addr_reg); // Store halfword to memory
+                mips_code_text.push_back(store_instr);                                // Emit store instruction
+                update_for_store(src1, src1_reg);                                     // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index >= PrimitiveTypes::U_INT_T && dest_sym->type.type_index <= PrimitiveTypes::LONG_T)
+            {
+                MIPSRegister src1_reg = get_register_for_operand(src1);               // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SW, src1_reg, "0", addr_reg); // Store word to memory
+                mips_code_text.push_back(store_instr);                                // Emit store instruction
+                update_for_store(src1, src1_reg);                                     // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::U_LONG_LONG_T || dest_sym->type.type_index == PrimitiveTypes::LONG_LONG_T)
+            {
+                MIPSRegister src1_reg_hi = get_register_for_operand(src1 + "_hi");          // Get a register for the upper 32 bits of the source
+                MIPSRegister src1_reg_lo = get_register_for_operand(src1 + "_lo");          // Get a register for the lower 32 bits of the source
+                MIPSInstruction store_instr_hi(MIPSOpcode::SW, src1_reg_hi, "0", addr_reg); // Store upper 32 bits of long long to memory
+                MIPSInstruction store_instr_lo(MIPSOpcode::SW, src1_reg_lo, "4", addr_reg); // Store lower 32 bits of long long to memory
+                mips_code_text.push_back(store_instr_hi);                                   // Emit store instruction for upper 32 bits
+                mips_code_text.push_back(store_instr_lo);                                   // Emit store instruction for lower 32 bits
+                update_for_store(src1 + "_hi", src1_reg_hi);                                // Update register descriptor and address descriptor
+                update_for_store(src1 + "_lo", src1_reg_lo);                                // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::FLOAT_T)
+            {
+                MIPSRegister src1_reg = get_float_register_for_operand(src1);           // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SWC1, src1_reg, "0", addr_reg); // Store float to memory
+                mips_code_text.push_back(store_instr);                                  // Emit store instruction for float
+                update_for_store(src1, src1_reg);                                       // Update register descriptor and address descriptor
+            }
+            else if (dest_sym->type.type_index == PrimitiveTypes::DOUBLE_T || dest_sym->type.type_index == PrimitiveTypes::LONG_DOUBLE_T)
+            {
+                MIPSRegister src1_reg = get_float_register_for_operand(src1, false, true); // Get a register for the source
+                MIPSInstruction store_instr(MIPSOpcode::SDC1, src1_reg, "0", addr_reg);    // Store double to memory
+                mips_code_text.push_back(store_instr);                                     // Emit store instruction for double
+                update_for_store(src1, src1_reg, true);                                    // Update register descriptor and address descriptor
+            }
+        }
+        
+    }
+}
+
+void update_for_assign_store(const std::string &x){
+    address_descriptor[x].clear();
+    address_descriptor[x].insert("mem");
+    for (auto &[v, locs] : register_descriptor)
+    {
+        if (locs.count(x))
+        {
+            locs.erase(x);
+        }
+    }
+        
 }
 
 void clear_register(MIPSRegister reg)
@@ -1517,7 +1642,15 @@ void emit_instruction(string op, string dest, string src1, string src2)
         if (check_if_variable_in_register(src1))
         {
             // No instruction needed, only change register descriptor and address descriptor
+            // update_for_assign(dest, src1, get_register_for_operand(src1));
+            // if(!dest_sym->type.is_pointer && !dest_sym->type.is_function){ // load value of variable
+            //     emit_instruction("store", dest, src1, ""); // store in memory
+            //     update_for_assign_store(dest);
+            // }
+            // else{
             update_for_assign(dest, src1, get_register_for_operand(src1));
+            // }
+            return;
         }
         else if (src1_sym != nullptr && (src1_sym->scope == 0 || src1_sym->type.is_static))
         { // global variable
@@ -1864,6 +1997,7 @@ void emit_instruction(string op, string dest, string src1, string src2)
     }
     else if (op == "deref")
     {
+        //spill_registers_after_basic_block(); // Ensure up to date values in memory before dereferencing
         // same as load, but without la
         if (dest_sym != nullptr && (dest_sym->scope == 0 || dest_sym->type.is_static))
         { // global variable
@@ -1880,6 +2014,8 @@ void emit_instruction(string op, string dest, string src1, string src2)
         { // all variables
             // Load variable from memory
             // emit_instruction("la", "addr", src1, ""); // Load address of src1
+            pointer_descriptor[src1] = dest; // Store the pointer in the descriptor
+            offset = 0;
             emit_instruction("load", src1, src1, "");               // Load address of src1
             MIPSRegister addr_reg = get_register_for_operand(src1); // Get a register for the address
 
@@ -2766,6 +2902,9 @@ void emit_instruction(string op, string dest, string src1, string src2)
         MIPSInstruction addi_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, src2); // Add immediate instruction
         mips_code_text.push_back(addi_instr);                                    // Emit add immediate instruction
         update_for_add(dest, dest_reg);                                    // Update register descriptor and address descriptor
+        if(dest_sym->type.is_pointer){
+            offset += stoi(src2);
+        }
     }
     else if (op == "sub")
     { // sub instruction
@@ -2847,6 +2986,9 @@ void emit_instruction(string op, string dest, string src1, string src2)
         MIPSInstruction add_instr(MIPSOpcode::ADDIU, dest_reg, src1_reg, neg_offset); // Sub immediate instruction
         mips_code_text.push_back(add_instr);                                          // Emit sub immediate instruction
         update_for_add(dest, dest_reg);                                               // Update register descriptor and address descriptor
+        if(dest_sym->type.is_pointer){
+            offset -= stoi(src2);
+        }
     }
     else if (op == "mul")
     { // mul instruction

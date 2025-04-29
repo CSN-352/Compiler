@@ -178,6 +178,7 @@ string get_operator_string(TACOperatorType op) {
     case TAC_OPERATOR_BIT_NOT: return "~";
     case TAC_OPERATOR_ASSIGN: return "=";
     case TAC_OPERATOR_ADDR_OF: return "&"; // Address of operator
+    case TAC_OPERATOR_INDEX: return "[]"; // Array index operator
     default: return ""; // Default case
     }
 }

@@ -443,12 +443,122 @@ void printf(char* str, ...){
     
 }
 
+// int main(){
+//     int a = 1;
+//     for(int j=12;j<15;j++){
+//         if(j == 14) continue;
+//         a--;
+//     }
+//     printf("a = %d\n", a);
+//     return 0;
+// } 
+
+// int main(){
+//     int arr[2];
+//     // for(int i=0;i<2;i++){
+//     //     for(int j=0;j<4;j++){
+//     //         arr[i][j] = i+j;
+//     //     }
+//     // }
+//     arr[1] = 10;
+//     int x = arr[1];
+//     printf("x = %d\n", x);
+//     return 0;
+// }
+
+// int main(){
+//     int* p;
+//     int x = 1;
+//     p = &x;
+//     int y = *p;
+//     printf("y = %d\n", y);
+// }
+
+// void scanf(char* str, ...){
+    
+// }
+
+// int main(){
+//     int a = 1;
+//     scanf("%d", &a);
+// }
+
+// int main(){
+//     int arr[2][3];
+//     arr[1][2] = 10;
+//     int x = arr[1][2];
+//     printf("x = %d\n", x);
+// }
+
+// class A{
+//     public:
+//     int x;
+//     int y;
+// };
+
+// int main(){
+//     class A obj;
+//     obj.x = 1;
+//     obj.y = 2;
+//     printf("x = %d, y = %d\n", obj.x, obj.y);
+//     return 0;
+// }
+
+// int main(){
+//     int* p;
+//     int x = 1;
+//     p = &x;
+//     p[1] = 2;
+//     int y = p[1];
+//     printf("y = %d\n", y);
+// }
+
+
+
+// class A{
+//     public:
+//     int x;
+//     int y;
+// };
+
+// int main(){
+//     class A obj;
+//     obj.x = 1;
+//     obj.y = 2;
+//     printf("x = %d, y = %d\n", obj.x, obj.y);
+//     return 0;
+// }
+
+// int main(){
+//     int x = 1;
+//     int* p = &x;
+//     *(p+1) = 2;
+//     int y = *(p+1);
+//     printf("y = %d\n", y);
+// }
+
+// class A{
+//     public:
+//     int x;
+//     int y;
+// };
+
+// int main(){
+//     class A obj;
+//     obj.x = 1;
+//     obj.y = 2;
+//     printf("x = %d, y = %d\n", obj.x, obj.y);
+//     return 0;
+// }
+
 int main(){
-    int a = 1;
-    for(int j=12;j<15;j++){
-        if(j == 14) continue;
-        a--;
-    }
-    printf("a = %d\n", a);
+    int arr[5];
+    arr[2] = 71;
+    arr[4] = 100;
+    int x = arr[2]++;
+    int y = arr[2];
+    y++;
+    printf("x = %d\n", x);
+    printf("y = %d\n", y);
     return 0;
-}  
+}

@@ -15,6 +15,8 @@ void initialize_global_symbol_table();
 void insert_function_symbol_table(const string& function_name);
 void erase_function_symbol_table(const string& function_name);
 
+extern unordered_map<string,string> pointer_descriptor;
+
 
 //=================== MIPS Register Definitions ===================//
 

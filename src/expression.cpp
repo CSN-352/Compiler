@@ -469,7 +469,6 @@ Expression *create_postfix_expression(Expression *x, Terminal *op, Identifier *i
         {
             TACOperand *t1 = new_temp_var();                                                                              // TAC
             TACOperand *t2 = new_temp_var();                                                                              // TAC
-            TACOperand *t3 = new_temp_var();                                                                              // TAC
             P->result = new_temp_var();                                                                                   // TAC
             TACInstruction *i1 = emit(TACOperator(TAC_OPERATOR_ADDR_OF), t1, x->result, new_empty_var(), 0);              // TAC
             backpatch(x->next_list, i1->label);                                                                           // TAC
@@ -479,12 +478,10 @@ Expression *create_postfix_expression(Expression *x, Terminal *op, Identifier *i
             backpatch(x->jump_true_list, i1->label);                                                                      // TAC
             backpatch(x->jump_false_list, i1->label);                                                                     // TAC
             TACInstruction *i2 = emit(TACOperator(TAC_OPERATOR_ADD), t2, t1, new_constant(to_string(member->offset)), 0); // TAC
-            TACInstruction *i3 = emit(TACOperator(TAC_OPERATOR_DEREF), t3, t2, new_empty_var(), 0);                       // TAC
-            TACInstruction *i4 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t3, new_empty_var(), 0);                  // TAC
+            TACInstruction *i3 = emit(TACOperator(TAC_OPERATOR_DEREF), P->result, t2, new_empty_var(), 0);                   // TAC
             P->code.push_back(i1);                                                                                        // TAC
             P->code.push_back(i2);                                                                                        // TAC
             P->code.push_back(i3);                                                                                        // TAC
-            P->code.push_back(i4);                                                                                        // TAC
 
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
             TACInstruction* i6 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
@@ -497,7 +494,6 @@ Expression *create_postfix_expression(Expression *x, Terminal *op, Identifier *i
             P->jump_code.push_back(i1); // TAC
             P->jump_code.push_back(i2); // TAC
             P->jump_code.push_back(i3); // TAC
-            P->jump_code.push_back(i4); // TAC
             P->jump_code.push_back(i5); // TAC
             P->jump_code.push_back(i6); // TAC
             P->jump_code.push_back(i5_); // TAC
@@ -507,14 +503,12 @@ Expression *create_postfix_expression(Expression *x, Terminal *op, Identifier *i
             t1_type.ptr_level ++;
             symbolTable.insert(t1->value, t1_type, t1_type.get_size(), 0); // Insert temp into symbol table
             symbolTable.insert(t2->value, t1_type, t1_type.get_size(), 0); // Insert temp into symbol table
-            symbolTable.insert(t3->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
             symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
-
+            Symbol* sym = symbolTable.getSymbol(P->result->value);
         }
         else if (op->name == "PTR_OP")
         {
             TACOperand *t1 = new_temp_var();                                                                                     // TAC
-            TACOperand *t2 = new_temp_var();                                                                                     // TAC
             P->result = new_temp_var();                                                                                          // TAC
             TACInstruction *i1 = emit(TACOperator(TAC_OPERATOR_ADD), t1, x->result, new_constant(to_string(member->offset)), 0); // TAC
             backpatch(x->next_list, i1->label);                                                                                  // TAC
@@ -523,11 +517,9 @@ Expression *create_postfix_expression(Expression *x, Terminal *op, Identifier *i
             backpatch(x->false_list, i1->label);                                                                                 // TAC
             backpatch(x->jump_true_list, i1->label);                                                                             // TAC
             backpatch(x->jump_false_list, i1->label);                                                                            // TAC
-            TACInstruction *i2 = emit(TACOperator(TAC_OPERATOR_DEREF), t2, t1, new_empty_var(), 0);                              // TAC
-            TACInstruction *i3 = emit(TACOperator(TAC_OPERATOR_NOP), P->result, t2, new_empty_var(), 0);                         // TAC
+            TACInstruction *i2 = emit(TACOperator(TAC_OPERATOR_DEREF), P->result, t1, new_empty_var(), 0);                       // TAC
             P->code.push_back(i1);                                                                                               // TAC
             P->code.push_back(i2);                                                                                               // TAC
-            P->code.push_back(i3);                                                                                               // TAC
 
             TACInstruction* i4 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), P->result, new_empty_var(), 2); // TAC
             TACInstruction* i5 = emit(TACOperator(TAC_OPERATOR_NOP), new_empty_var(), new_empty_var(), new_empty_var(), 1); // TAC
@@ -539,14 +531,12 @@ Expression *create_postfix_expression(Expression *x, Terminal *op, Identifier *i
             P->jump_false_list.insert(i5); // TAC
             P->jump_code.push_back(i1); // TAC
             P->jump_code.push_back(i2); // TAC
-            P->jump_code.push_back(i3); // TAC
             P->jump_code.push_back(i4); // TAC
             P->jump_code.push_back(i5); // TAC
             P->jump_code.push_back(i4_); // TAC
             P->jump_code.push_back(i5_); // TAC
 
             symbolTable.insert(t1->value, x->type, x->type.get_size(), 0); // Insert temp into symbol table
-            symbolTable.insert(t2->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
             symbolTable.insert(P->result->value, P->type, P->type.get_size(), 0); // Insert temp into symbol table
         }
     }
