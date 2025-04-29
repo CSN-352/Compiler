@@ -551,14 +551,199 @@ void printf(char* str, ...){
 //     return 0;
 // }
 
-int main(){
-    int arr[5];
-    arr[2] = 71;
-    arr[4] = 100;
-    int x = arr[2]++;
-    int y = arr[2];
-    y++;
-    printf("x = %d\n", x);
-    printf("y = %d\n", y);
-    return 0;
-}
+// int main(){
+//     int arr[5];
+//     arr[2] = 71;
+//     arr[4] = 100;
+//     int x = arr[2]++;
+//     int y = arr[2];
+//     y++;
+//     printf("x = %d\n", x);
+//     printf("y = %d\n", y);
+//     return 0;
+// }
+
+// void count_with_static() {
+//     static int counter = 0;
+//     counter++;
+//     printf("Static counter = %d\n", counter);
+// }
+
+// int main() {
+//     int i = 0;
+
+// start_loop:
+//     for (i = 0; i < 10; i++) {
+//         if (i == 2) {
+//             continue; 
+//         }
+//         if (i == 5) {
+//             break; 
+//         }
+//         printf("i = %d\n", i);
+//         count_with_static();
+//     }
+
+//     static int repeat = 0;
+//     if (repeat == 0) {
+//         repeat = 1;
+//         printf("Repeating the loop using goto!\n\n");
+//         goto start_loop;
+//     }
+
+//     printf("Program finished.\n");
+//     return 0;
+// }
+
+// class Animal {
+//     protected:
+//         string name; 
+//     public:
+//         Animal(string n) : name(n) {}
+//         void display() {
+//             cout << "Animal Name: " << name << endl;
+//         }
+//     };
+    
+//     class Dog : public Animal {
+//     private:
+//         int age; 
+//     public:
+//         Dog(string n, int a) : Animal(n), age(a) {}
+    
+//         void bark() {
+//             cout << name << " barks! Age: " << age << endl;
+//         }
+//     };
+    
+    // void greet() {
+    //     cout << "Hello from function pointer!\n";
+    // }
+    
+    // void callFunction(void (*func)()) {
+    //     func();
+    // }
+    
+    // int main() {
+    //     // --- Class, Object, Inheritance ---
+    //     // Dog d("Buddy", 5);
+    //     // d.display();      
+    //     // d.bark();          
+    
+    //     // --- Function Pointer ---
+    //     // void (*fp)() = greet; 
+    //     // callFunction(fp);    
+    
+    //     // --- References ---
+    //     // int x = 10;
+    //     // int& ref = x;
+    //     // ref = 20; 
+    //     // cout << "Reference value: " << x << endl;
+    
+    //     // --- Multi-level Pointers ---
+    //     int y = 50;
+    //     int* p1 = &y;
+    //     int** p2 = &p1;
+    //     int*** p3 = &p2;
+    //     printf("Multi-level pointer value: %d\n", ***p3); // Using printf for C-style output
+    //     // cout << "Multi-level pointer value: " << ***p3 << endl;
+    
+    //     // --- Multi-level Array ---
+    //     // int arr[2][3] = { {1,2,3}, {4,5,6} }; initializer list not in language spec
+    //     int arr[2][3]; 
+    //     arr[0][0] = 1;
+    //     arr[0][1] = 2;
+    //     arr[0][2] = 3;
+    //     arr[1][0] = 4;
+    //     arr[1][1] = 5;
+    //     arr[1][2] = 6;
+    //     printf("Multi-level array element arr[1][2]: %d\n", arr[1][2]); // Using printf for C-style output
+    //     //cout << "Multi-level array element arr[1][2]: " << arr[1][2] << endl;
+    
+    //     return 0;
+    // }
+
+    int add(int a, int b) {
+        return a + b;
+    }
+    
+    int factorial(int n) {
+        if (n <= 1) return 1;
+        else return n * factorial(n - 1);
+    }
+    
+    // int array_sum(int arr[5], int size) {
+    //     int sum = 0;
+    //     for (int i = 0; i < size; i++) {
+    //         sum = sum + arr[i];
+    //     }
+    //     return sum;
+    // }
+    
+    struct Point {
+        int x;
+        int y;
+    }P;
+    
+    float point_sum(struct Point *p) {
+        // int a = p->x;
+        // int b = p->y;
+        // return p->x / p->y;
+    }
+    
+    int main() {
+        int a = 5, b = 10;
+    
+        int result = add(a, b);
+        if (result != 15) {
+            printf("Arithmetic test failed: %d\n", result);
+            return 1;
+        }
+    
+        int fact = factorial(5);
+        if (fact != 120) {
+            printf("Recursion test failed: %d\n", fact);
+            return 1;
+        }
+    
+        // int arr[5] = {1, 2, 3, 4, 5}; // initializer list not in language spec
+        int arr[5];
+        arr[0] = 1;
+        arr[1] = 2;
+        arr[2] = 3;
+        arr[3] = 4;
+        arr[4] = 5;
+        //int arr_sum = array_sum(arr, 5);
+        // if (arr_sum != 15) {
+        //     printf("Array sum test failed: %d\n", arr_sum);
+        //     return 1;
+        // }
+    
+        // struct Point p = {3, 4}; // initializer list not in langaugae spec
+        struct Point p;
+        p.x = 3;
+        p.y = 4;
+        printf("Point: (%d, %d)\n", p.x, p.y);
+
+        // int p_sum = point_sum(&p);
+        // if (p_sum != 7) {
+        //     printf("Struct test failed: %d\n", p_sum);
+        //     return 1;
+        // }
+    
+        int value = 0;
+        if (a < b) {
+            value = 1;
+        } else {
+            value = 2;
+        }
+        if (value != 1) {
+            printf("Branching test failed: %d\n", value);
+            return 1;
+        }
+    
+        printf("All tests passed successfully!\n");
+        return 0;
+    }
+    
+    

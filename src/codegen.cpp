@@ -1248,8 +1248,13 @@ void spill_temp_registers() {
         if (!register_descriptor[reg].empty()) {
             Symbol* var_sym = current_symbol_table.get_symbol_using_mangled_name(*(register_descriptor[reg].begin()));
             if (var_sym != nullptr) {
-                string offset = get_stack_offset_for_local_variable(var_sym->mangled_name);
-                emit_instruction("store", "FP", *(register_descriptor[reg].begin()), offset);
+                if(var_sym->scope == 0 || var_sym->type.is_static){ // store global variables only
+                    emit_instruction("store", var_sym->mangled_name, *(register_descriptor[reg].begin()), "0"); // store the variable in memory
+                }
+                else{
+                    string offset = get_stack_offset_for_local_variable(var_sym->mangled_name);
+                    emit_instruction("store", "FP", *(register_descriptor[reg].begin()), offset);
+                }
                 address_descriptor[var_sym->mangled_name].insert("mem");
             }
 
