@@ -55,27 +55,27 @@ $(LEX_C_FILE): $(LEX_FILE) $(YACC_H_FILE) | $(BUILD_DIR)
 	$(LEX) -o $(LEX_C_FILE) $(LEX_FILE)
 
 # Compile symbol_table.cpp into symbol_table.o
-$(SYMBOL_TABLE_O_FILE): $(SRC_DIR)/symbol_table.cpp $(SRC_DIR)/symbol_table.h | $(BUILD_DIR)
+$(SYMBOL_TABLE_O_FILE): $(SRC_DIR)/symbol_table.cpp $(SRC_DIR)/symbol_table.h $(YACC_H_FILE) | $(BUILD_DIR)
 	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/symbol_table.cpp -o $(SYMBOL_TABLE_O_FILE) $(CFLAGS)
 
 # Compile tac.cpp into tac.o
-$(TAC_O_FILE): $(SRC_DIR)/tac.cpp $(SRC_DIR)/tac.h | $(BUILD_DIR)
+$(TAC_O_FILE): $(SRC_DIR)/tac.cpp $(SRC_DIR)/tac.h $(YACC_H_FILE) | $(BUILD_DIR)
 	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/tac.cpp -o $(TAC_O_FILE) $(CFLAGS)
 
 # Compile ast.cpp into ast.o
-$(AST_O_FILE): $(SRC_DIR)/ast.cpp $(SRC_DIR)/ast.h | $(BUILD_DIR)
+$(AST_O_FILE): $(SRC_DIR)/ast.cpp $(SRC_DIR)/ast.h $(YACC_H_FILE) | $(BUILD_DIR)
 	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/ast.cpp -o $(AST_O_FILE) $(CFLAGS)
 
 # Compile expression.cpp into expression.o
-$(EXPRESSION_O_FILE): $(SRC_DIR)/expression.cpp $(SRC_DIR)/expression.h | $(BUILD_DIR)
+$(EXPRESSION_O_FILE): $(SRC_DIR)/expression.cpp $(SRC_DIR)/expression.h $(YACC_H_FILE) | $(BUILD_DIR)
 	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/expression.cpp -o $(EXPRESSION_O_FILE) $(CFLAGS)
 
 # Compile statement.cpp into statement.o
-$(STATEMENT_O_FILE): $(SRC_DIR)/statement.cpp $(SRC_DIR)/statement.h | $(BUILD_DIR)
+$(STATEMENT_O_FILE): $(SRC_DIR)/statement.cpp $(SRC_DIR)/statement.h $(YACC_H_FILE) | $(BUILD_DIR)
 	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/statement.cpp -o $(STATEMENT_O_FILE) $(CFLAGS)
 
 # Compile codegen.cpp into codegen.o
-$(CODEGEN_O_FILE): $(SRC_DIR)/tac.cpp $(SRC_DIR)/tac.h $(SRC_DIR)/codegen.cpp $(SRC_DIR)/codegen.h | $(BUILD_DIR)
+$(CODEGEN_O_FILE): $(SRC_DIR)/tac.cpp $(SRC_DIR)/tac.h $(SRC_DIR)/codegen.cpp $(SRC_DIR)/codegen.h $(YACC_H_FILE) | $(BUILD_DIR)
 	$(CXX) -c -I$(BUILD_DIR) $(SRC_DIR)/codegen.cpp -o $(CODEGEN_O_FILE) $(CFLAGS)
 
 # Compile lex.yy.c into lex.yy.o
